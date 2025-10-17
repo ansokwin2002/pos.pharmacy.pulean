@@ -4,9 +4,7 @@ import { DropdownMenu, Avatar, TextField, Flex, Text, Link as RadixLink, Button,
 import { Bell, User, Search, Moon, Sun, Settings, LogOut, ChevronDown, Building, Store, Menu, Rocket } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { organization } from "@/data/CommonData";
 import BrandLogo from "./BrandLogo";
-import { AppOrganizationContext } from "@/contexts/AppOrganizationContext";
 
 interface NotificationItem {
   icon: React.ReactNode;
@@ -23,7 +21,6 @@ export default function TopBar({ isScrolled, onMenuClick }: TopBarProps) {
   const [isDropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState<boolean>(false);
-  const { activeEntity, setActiveEntity } = useContext(AppOrganizationContext);
 
   // Handle mounting state
   useEffect(() => {
@@ -80,41 +77,8 @@ export default function TopBar({ isScrolled, onMenuClick }: TopBarProps) {
             </Link>
           </div>
           
-          {/* Search input on the left */}
-          <div className="hidden lg:block">
-            <TextField.Root placeholder="Search...">
-              <TextField.Slot>
-                <Search size={14} />
-              </TextField.Slot>
-            </TextField.Root>
-          </div>
-          
           {/* Right side items */}
           <Flex align="center" gap="4">
-            {/* Branch dropdown */}
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger>
-                <Button highContrast>
-                  {activeEntity?.id === 'hq' ? <Building size={14} /> : <Store size={14} />}
-                  {activeEntity?.name}
-                  <ChevronDown size={14} />
-                </Button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Content>
-                {organization.map((entity) => (
-                  <DropdownMenu.Item
-                    key={entity.id}
-                    onClick={() => {
-                      setActiveEntity(entity);
-                    }}
-                  >
-                    {entity.id === 'hq' ? <Building size={14} /> : <Store size={14} />}
-                    <span>{entity.name}</span>
-                  </DropdownMenu.Item>
-                ))}
-              </DropdownMenu.Content>
-            </DropdownMenu.Root>
-
             {/* Dark mode switch */}
             <div className="flex items-center gap-2 cursor-pointer bg-gray-100 dark:bg-neutral-800 rounded-full p-2" role="button" onClick={handleThemeToggle}>
               {mounted && (theme === 'dark' ? <Sun size={18} className="text-gray-400 dark:text-neutral-600" /> : <Moon size={18} className="text-gray-400 dark:text-neutral-600" />)}
