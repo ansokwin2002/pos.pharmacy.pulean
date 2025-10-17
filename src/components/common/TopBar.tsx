@@ -5,6 +5,7 @@ import { Bell, User, Search, Moon, Sun, Settings, LogOut, ChevronDown, Building,
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { organization } from "@/data/CommonData";
+import BrandLogo from "./BrandLogo";
 import { AppOrganizationContext } from "@/contexts/AppOrganizationContext";
 
 interface NotificationItem {
@@ -68,10 +69,15 @@ export default function TopBar({ isScrolled, onMenuClick }: TopBarProps) {
     >
       <Box className="w-full px-4 py-3 max-w-[1200px] mx-auto">
         <Flex justify="between" align="center" gap="4">
-          <div className="lg:hidden">
-            <IconButton variant="ghost" color="gray" onClick={onMenuClick}>
-              <Menu />
-            </IconButton>
+          <div className="flex items-center gap-3">
+            <div className="lg:hidden">
+              <IconButton variant="ghost" color="gray" onClick={onMenuClick}>
+                <Menu />
+              </IconButton>
+            </div>
+            <Link href="/" aria-label="punleukrek pharmacy" className="hidden lg:block">
+              <BrandLogo size={18} showText={true} />
+            </Link>
           </div>
           
           {/* Search input on the left */}

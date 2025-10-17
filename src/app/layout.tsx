@@ -31,6 +31,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <title>punleukrek pharmacy</title>
+        <meta name="application-name" content="punleukrek pharmacy" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="manifest" href="/site.webmanifest" />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${plusJakartaSans.variable} antialiased`}>

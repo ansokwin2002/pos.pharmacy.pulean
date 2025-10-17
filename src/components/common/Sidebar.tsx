@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, X } from 'lucide-react'
 import { Box, ScrollArea, Flex, IconButton } from "@radix-ui/themes";
 import Image from "next/image";
+import BrandLogo from "./BrandLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -544,8 +545,8 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
     >
       <Flex gap="3" justify="between" align="center" px="2" py="5">
         <Box px="4">
-          <Link href="/">
-            <Image src={theme === 'dark' ? '/images/logo-dark.png' : '/images/logo.png'} alt="Logo" width={130} height={20} />
+          <Link href="/" aria-label="punleukrek">
+            <BrandLogo size={22} showText={true} />
           </Link>
         </Box>
         <div className="lg:hidden">
