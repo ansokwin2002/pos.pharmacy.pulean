@@ -558,10 +558,10 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
       <ScrollArea scrollbars="vertical" style={{height: 'calc(100vh - 64px)'}} className="pb-8"> 
         <Box className="flex flex-col" style={{minHeight: "calc(100vh - 100px)"}}>
           <Box className="flex-1">
-            {/* Application Menu Group */}
+            {/* OPD Menu Group (moved to top) */}
             <MenuGroup 
-              title="Application" 
-              menuData={applicationMenuData} 
+              title="OPD" 
+              menuData={opdMenuData} 
               openMenu={openMenu} 
               setOpenMenu={setOpenMenu} 
               openSubMenu={openSubMenu} 
@@ -569,9 +569,11 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
               isActive={isActive}
               onClose={onClose}
             />
+            
+            {/* Application Menu Group */}
             <MenuGroup 
-              title="OPD" 
-              menuData={opdMenuData} 
+              title="Application" 
+              menuData={applicationMenuData} 
               openMenu={openMenu} 
               setOpenMenu={setOpenMenu} 
               openSubMenu={openSubMenu} 

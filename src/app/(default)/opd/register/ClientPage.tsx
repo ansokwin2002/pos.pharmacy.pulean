@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, IconButton, Dialog } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
@@ -8,13 +8,41 @@ import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
   const [name, setName] = useState('');
-  const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [age, setAge] = useState<string>('');
   const [telephone, setTelephone] = useState('');
   const [address, setAddress] = useState('');
   const [signOfLife, setSignOfLife] = useState<'BP' | 'P' | 'T' | 'RR' | ''>('');
   const [symptom, setSymptom] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
+  
+  // Form validation state
+  const [errors, setErrors] = useState<{ 
+    name?: string;
+    gender?: string;
+    age?: string;
+    telephone?: string;
+    address?: string;
+    signOfLife?: string;
+    symptom?: string;
+    diagnosis?: string;
+  }>({});
+
+  const validateAll = () => {
+    const e: typeof errors = {};
+    if (!name.trim()) e.name = 'Name is required';
+    if (!gender) e.gender = 'Gender is required';
+    const ageNum = Number(age);
+    if (!age || isNaN(ageNum) || ageNum <= 0) e.age = 'Age must be greater than 0';
+    if (!telephone.trim()) e.telephone = 'Telephone is required';
+    else if (!/^\d{8,12}$/.test(telephone.trim())) e.telephone = 'Telephone must be 8–12 digits';
+    if (!address.trim()) e.address = 'Address is required';
+    if (!signOfLife) e.signOfLife = 'Please select a sign of life';
+    if (!symptom.trim()) e.symptom = 'Symptom is required';
+    if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   // Fake drugs dataset
   const baseDrugOptions = [
@@ -65,6 +93,9 @@ export default function RegisterPatientPage() {
   const [manualErrors, setManualErrors] = useState<{ name?: string; price?: string }>({});
   const [customDrugs, setCustomDrugs] = useState<{ id: string; name: string; price: number }[]>([]);
 
+  // Prescription form validation (drug select)
+  const [prescErrors, setPrescErrors] = useState<{ drug?: string; meal?: string }>({});
+
   const allDrugOptions = [...customDrugs, ...baseDrugOptions];
 
   const addManualDrug = () => {
@@ -95,7 +126,8 @@ export default function RegisterPatientPage() {
   const [period, setPeriod] = useState<string>('');
   const [qty, setQty] = useState<string>('');
 
-  const autoComputeQty = () => {
+  // Recompute QTY whenever any dose or period changes to avoid stale state issues
+  useEffect(() => {
     const m = Number(doseMorning) || 0;
     const a = Number(doseAfternoon) || 0;
     const e = Number(doseEvening) || 0;
@@ -104,7 +136,7 @@ export default function RegisterPatientPage() {
     const totalPerDay = m + a + e + n;
     const total = totalPerDay * p;
     setQty(String(total));
-  };
+  }, [doseMorning, doseAfternoon, doseEvening, doseNight, period]);
 
   const [afterMeal, setAfterMeal] = useState<boolean>(false);
   const [beforeMeal, setBeforeMeal] = useState<boolean>(false);
@@ -113,8 +145,18 @@ export default function RegisterPatientPage() {
   const [hasSaved, setHasSaved] = useState(false);
 
   const addDrugToTable = () => {
+    // Validate required Drug selection
     const d = allDrugOptions.find(x => x.id === selectedDrugId);
-    if (!d) return;
+    if (!d) {
+      setPrescErrors(prev => ({ ...prev, drug: 'Drug is required' }));
+      return;
+    }
+    // Require at least one meal selection
+    if (!afterMeal && !beforeMeal) {
+      setPrescErrors(prev => ({ ...prev, meal: 'Please choose After Meal or Before Meal' }));
+      return;
+    }
+    setPrescErrors({});
     const entry: Presc = {
       id: d.id,
       name: d.name,
@@ -403,13 +445,12 @@ export default function RegisterPatientPage() {
   };
 
   const handleSubmit = async () => {
-    if (!name) {
-      toast.error('Patient name is required.');
-      return;
-    }
+    // Validate all fields and show inline errors (no toast)
+    const ok = validateAll();
+    if (!ok) return;
+
     // Save success (stub)
     console.log({ name, gender, age, telephone, address, signOfLife, symptom, diagnosis, prescriptions });
-    toast.success('Patient added successfully!');
     setHasSaved(true);
   };
 
@@ -425,33 +466,43 @@ export default function RegisterPatientPage() {
               <Text as="div" size="2" mb="1" weight="bold">Name</Text>
               <TextField.Root
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({...prev, name: undefined})); }}
                 placeholder="Enter full name"
                 required
               />
+              {errors.name && <Text size="1" className="text-red-500">{errors.name}</Text>}
             </label>
 
             {/* Gender */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Gender</Text>
-              <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => setGender(value)}>
-                <Select.Trigger placeholder="Select gender" />
-                <Select.Content>
-                  <Select.Item value="male">Male</Select.Item>
-                  <Select.Item value="female">Female</Select.Item>
-                </Select.Content>
-              </Select.Root>
+              <Flex direction="column" align="start" className="w-full">
+                <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => { setGender(value); if (errors.gender) setErrors(prev => ({...prev, gender: undefined})); }}>
+                  <Select.Trigger placeholder="Select gender" />
+                  <Select.Content>
+                    <Select.Item value="male">Male</Select.Item>
+                    <Select.Item value="female">Female</Select.Item>
+                  </Select.Content>
+                </Select.Root>
+                {errors.gender && (
+                  <Text size="1" className="text-red-500 mt-1 pt-4">Gender is required</Text>
+                )}
+              </Flex>
             </label>
 
             {/* Age */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Age</Text>
               <TextField.Root
+                type="number"
                 value={age}
-                onChange={(e) => setAge(e.target.value)}
+                onChange={(e) => { setAge(e.target.value); if (errors.age) setErrors(prev => ({...prev, age: undefined})); }}
                 placeholder="Enter age"
                 inputMode="numeric"
+                min={1}
+                step={1}
               />
+              {errors.age && <Text size="1" className="text-red-500">{errors.age}</Text>}
             </label>
 
             {/* Telephone */}
@@ -459,10 +510,11 @@ export default function RegisterPatientPage() {
               <Text as="div" size="2" mb="1" weight="bold">Telephone</Text>
               <TextField.Root
                 value={telephone}
-                onChange={(e) => setTelephone(e.target.value)}
+                onChange={(e) => { setTelephone(e.target.value); if (errors.telephone) setErrors(prev => ({...prev, telephone: undefined})); }}
                 placeholder="Enter telephone number"
                 inputMode="tel"
               />
+              {errors.telephone && <Text size="1" className="text-red-500">{errors.telephone}</Text>}
             </label>
 
             {/* Address */}
@@ -470,23 +522,27 @@ export default function RegisterPatientPage() {
               <Text as="div" size="2" mb="1" weight="bold">Address</Text>
               <TextField.Root
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors(prev => ({...prev, address: undefined})); }}
                 placeholder="Enter address"
               />
+              {errors.address && <Text size="1" className="text-red-500">{errors.address}</Text>}
             </label>
 
             {/* Signs of Life */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Signs of Life</Text>
-              <Select.Root value={signOfLife} onValueChange={(value: 'BP' | 'P' | 'T' | 'RR') => setSignOfLife(value)}>
-                <Select.Trigger placeholder="Select sign" />
-                <Select.Content>
-                  <Select.Item value="BP">BP</Select.Item>
-                  <Select.Item value="P">P</Select.Item>
-                  <Select.Item value="T">T</Select.Item>
-                  <Select.Item value="RR">RR</Select.Item>
-                </Select.Content>
-              </Select.Root>
+              <Flex direction="column" align="start" className="w-full">
+                <Select.Root value={signOfLife} onValueChange={(value: 'BP' | 'P' | 'T' | 'RR') => { setSignOfLife(value); if (errors.signOfLife) setErrors(prev => ({...prev, signOfLife: undefined})); }}>
+                  <Select.Trigger placeholder="Select sign" />
+                  <Select.Content>
+                    <Select.Item value="BP">BP</Select.Item>
+                    <Select.Item value="P">P</Select.Item>
+                    <Select.Item value="T">T</Select.Item>
+                    <Select.Item value="RR">RR</Select.Item>
+                  </Select.Content>
+                </Select.Root>
+                {errors.signOfLife && <Text size="1" className="text-red-500 mt-1 pt-4">Please select a sign of life</Text>}
+              </Flex>
             </label>
 
             {/* Symptom */}
@@ -494,9 +550,10 @@ export default function RegisterPatientPage() {
               <Text as="div" size="2" mb="1" weight="bold">Symptom</Text>
               <TextArea
                 value={symptom}
-                onChange={(e) => setSymptom((e.target as HTMLTextAreaElement).value)}
+                onChange={(e) => { setSymptom((e.target as HTMLTextAreaElement).value); if (errors.symptom) setErrors(prev => ({...prev, symptom: undefined})); }}
                 placeholder="Describe patient symptoms"
               />
+              {errors.symptom && <Text size="1" className="text-red-500">{errors.symptom}</Text>}
             </label>
 
             {/* Diagnosis */}
@@ -504,9 +561,10 @@ export default function RegisterPatientPage() {
               <Text as="div" size="2" mb="1" weight="bold">Diagnosis</Text>
               <TextArea
                 value={diagnosis}
-                onChange={(e) => setDiagnosis((e.target as HTMLTextAreaElement).value)}
+                onChange={(e) => { setDiagnosis((e.target as HTMLTextAreaElement).value); if (errors.diagnosis) setErrors(prev => ({...prev, diagnosis: undefined})); }}
                 placeholder="Enter diagnosis"
               />
+              {errors.diagnosis && <Text size="1" className="text-red-500">{errors.diagnosis}</Text>}
             </label>
           </Flex>
 
@@ -521,28 +579,34 @@ export default function RegisterPatientPage() {
                     <Text as="div" size="2" mb="1" weight="bold">Drug</Text>
                     <Flex align="center" gap="2">
                       <Box className="flex-1">
-                        <Select.Root value={selectedDrugId} onValueChange={(val) => {
-                          if (val === '__add_custom__') {
-                            setManualDrugOpen(true);
-                            return;
-                          }
-                          setSelectedDrugId(val);
-                        }}>
-                          <Select.Trigger placeholder="Select a drug" />
-                          <Select.Content>
-                            <Select.Group>
-                              <Select.Label>Actions</Select.Label>
-                              <Select.Item value="__add_custom__">➕ Add custom…</Select.Item>
-                            </Select.Group>
-                            <Select.Separator />
-                            <Select.Group>
-                              <Select.Label>Drugs</Select.Label>
-                              {allDrugOptions.map(d => (
-                                <Select.Item key={d.id} value={d.id}>{d.name} — ${d.price.toFixed(2)}</Select.Item>
-                              ))}
-                            </Select.Group>
-                          </Select.Content>
-                        </Select.Root>
+                        <Flex direction="column" align="start" className="w-full">
+                          <Select.Root value={selectedDrugId} onValueChange={(val) => {
+                            if (val === '__add_custom__') {
+                              setManualDrugOpen(true);
+                              return;
+                            }
+                            setSelectedDrugId(val);
+                            if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
+                          }}>
+                            <Select.Trigger placeholder="Select a drug" />
+                            <Select.Content>
+                              <Select.Group>
+                                <Select.Label>Actions</Select.Label>
+                                <Select.Item value="__add_custom__">➕ Add custom…</Select.Item>
+                              </Select.Group>
+                              <Select.Separator />
+                              <Select.Group>
+                                <Select.Label>Drugs</Select.Label>
+                                {allDrugOptions.map(d => (
+                                  <Select.Item key={d.id} value={d.id}>{d.name} — ${d.price.toFixed(2)}</Select.Item>
+                                ))}
+                              </Select.Group>
+                            </Select.Content>
+                          </Select.Root>
+                          {prescErrors.drug && (
+                            <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
+                          )}
+                        </Flex>
                       </Box>
                       <Dialog.Root open={isManualDrugOpen} onOpenChange={(open) => {
                         setManualDrugOpen(open);
@@ -579,25 +643,25 @@ export default function RegisterPatientPage() {
                   {/* Dose grid */}
                   <div>
                     <Text as="div" size="2" mb="1" weight="bold">Morning</Text>
-                    <TextField.Root type="number" value={doseMorning} onChange={(e) => { setDoseMorning(e.target.value); autoComputeQty(); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                    <TextField.Root type="number" value={doseMorning} onChange={(e) => { setDoseMorning(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
                   <div>
                     <Text as="div" size="2" mb="1" weight="bold">Afternoon</Text>
-                    <TextField.Root type="number" value={doseAfternoon} onChange={(e) => { setDoseAfternoon(e.target.value); autoComputeQty(); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                    <TextField.Root type="number" value={doseAfternoon} onChange={(e) => { setDoseAfternoon(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
                   <div>
                     <Text as="div" size="2" mb="1" weight="bold">Evening</Text>
-                    <TextField.Root type="number" value={doseEvening} onChange={(e) => { setDoseEvening(e.target.value); autoComputeQty(); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                    <TextField.Root type="number" value={doseEvening} onChange={(e) => { setDoseEvening(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
                   <div>
                     <Text as="div" size="2" mb="1" weight="bold">Night</Text>
-                    <TextField.Root type="number" value={doseNight} onChange={(e) => { setDoseNight(e.target.value); autoComputeQty(); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                    <TextField.Root type="number" value={doseNight} onChange={(e) => { setDoseNight(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
 
                   {/* Period & Qty */}
                   <div>
                     <Text as="div" size="2" mb="1" weight="bold">Period (days)</Text>
-                    <TextField.Root type="number" value={period} onChange={(e) => { setPeriod(e.target.value); autoComputeQty(); }} inputMode="numeric" min={0} step={1} placeholder="e.g. 5" />
+                    <TextField.Root type="number" value={period} onChange={(e) => { setPeriod(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="e.g. 5" />
                   </div>
                   <div>
                     <Text as="div" size="2" mb="1" weight="bold">QTY</Text>
@@ -609,14 +673,17 @@ export default function RegisterPatientPage() {
                 <Flex mt="3" align="center" justify="between" className="gap-4 flex-wrap">
                   <Flex align="center" gap="5" className="flex-wrap">
                     <Flex align="center" gap="2">
-                      <Switch checked={afterMeal} onCheckedChange={setAfterMeal} />
+                      <Switch checked={afterMeal} onCheckedChange={(val) => { setAfterMeal(val); if (val) setBeforeMeal(false); if (val || beforeMeal) setPrescErrors(prev => ({ ...prev, meal: undefined })); }} />
                       <Text size="2">After Meal</Text>
                     </Flex>
                     <Flex align="center" gap="2">
-                      <Switch checked={beforeMeal} onCheckedChange={setBeforeMeal} />
+                      <Switch checked={beforeMeal} onCheckedChange={(val) => { setBeforeMeal(val); if (val) setAfterMeal(false); if (val || afterMeal) setPrescErrors(prev => ({ ...prev, meal: undefined })); }} />
                       <Text size="2">Before Meal</Text>
                     </Flex>
                   </Flex>
+                  {prescErrors.meal && (
+                    <Text size="1" className="text-red-500 mt-1 pl-4">{prescErrors.meal}</Text>
+                  )}
                   <Button onClick={addDrugToTable}>Add</Button>
                 </Flex>
               </Box>
