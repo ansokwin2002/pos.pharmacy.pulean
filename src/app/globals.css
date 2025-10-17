@@ -1,3 +1,13 @@
+/* Ensure native number input steppers are visible across browsers */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: auto;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: number-input; /* Firefox */
+}
 @import "tailwindcss";
 @import "@radix-ui/themes/styles.css";
 @import "react-date-range/dist/styles.css";
