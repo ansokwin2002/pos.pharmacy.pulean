@@ -350,6 +350,19 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
       ],
     },
   ], []);
+
+  // OPD menu group
+  const opdMenuData: MenuItem[] = useMemo(() => [
+    {
+      title: "OPD",
+      icon: <IconPages />,
+      link: "#",
+      subMenu: [
+        { title: "List Patient", link: "/opd/patients" },
+        { title: "Add Patient", link: "/opd/register" },
+      ],
+    },
+  ], []);
   
   // UI & Pages menu group
   const uiPagesMenuData: MenuItem[] = useMemo(() => [
@@ -461,7 +474,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
     };
 
     // Combine both menu arrays for checking active items
-    const allMenuData = [...applicationMenuData, ...uiPagesMenuData, ...documentationMenuData];
+    const allMenuData = [...applicationMenuData, ...opdMenuData, ...uiPagesMenuData, ...documentationMenuData];
     
     // Iterate through menu data to find the active item and its parents
     for (const item of allMenuData) {
@@ -548,6 +561,16 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
             <MenuGroup 
               title="Application" 
               menuData={applicationMenuData} 
+              openMenu={openMenu} 
+              setOpenMenu={setOpenMenu} 
+              openSubMenu={openSubMenu} 
+              setOpenSubMenu={setOpenSubMenu} 
+              isActive={isActive}
+              onClose={onClose}
+            />
+            <MenuGroup 
+              title="OPD" 
+              menuData={opdMenuData} 
               openMenu={openMenu} 
               setOpenMenu={setOpenMenu} 
               openSubMenu={openSubMenu} 
