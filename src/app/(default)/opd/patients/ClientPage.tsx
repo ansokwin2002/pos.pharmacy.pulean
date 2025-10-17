@@ -197,7 +197,7 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Content style={{ maxWidth: 450 }}>
+      <Dialog.Content style={{ maxWidth: 650, width: '100%' }}>
         <Dialog.Title>Edit Patient</Dialog.Title>
         <Dialog.Description size="2" mb="4">
           Update the details of the patient.
@@ -381,16 +381,16 @@ export default function PatientListPage() {
   const currentItems = filteredPatients.slice(startIndex, endIndex);
 
   return (
-    <Box className="space-y-4">
-      <Flex justify="between" align="start" mb="5">
+    <Box className="space-y-4 w-full px-4">
+      <Flex justify="between" align="start" mb="5" className="w-full">
         <PageHeading title="Patient List" description="View and manage all patients" />
         <Button onClick={() => setAddPatientDialogOpen(true)}>
           <Plus size={16} /> Add Patient
         </Button>
       </Flex>
 
-      <Box>
-        <Flex gap="4" align="center" wrap="wrap">
+      <Box className="w-full">
+        <Flex gap="4" align="center" wrap="wrap" className="w-full">
           <Box className="flex-grow min-w-[250px]">
             <TextField.Root
               placeholder="Search by name..."
@@ -430,7 +430,7 @@ export default function PatientListPage() {
         </Flex>
       </Box>
 
-      <Table.Root variant="surface">
+      <Table.Root variant="surface" style={{ width: '100%' }}>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>

@@ -59,10 +59,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           
           {/* Page content */}
           <Box className="flex-1 overflow-y-auto">
-            <Box className="w-full flex justify-center py-6">
-              <Box className="px-4 max-w-[1200px] w-full mx-auto">
-                {children}
-              </Box>
+            <Box className="w-full py-6 px-4">
+              {children}
             </Box>
           </Box>
           
