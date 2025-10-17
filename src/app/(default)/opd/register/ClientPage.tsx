@@ -7,6 +7,36 @@ import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
+  // Existing patient selection (fake dataset)
+  type Patient = {
+    id: string;
+    name: string;
+    gender: 'male' | 'female';
+    age: number;
+    telephone: string;
+    address: string;
+    signOfLife: 'BP' | 'P' | 'T' | 'RR';
+    symptom: string;
+    diagnosis: string;
+  };
+
+  const fakePatients: Patient[] = Array.from({ length: 20 }).map((_, i) => {
+    const id = `P${String(i + 1).padStart(3, '0')}`;
+    const male = i % 2 === 0;
+    const names = male ? ['Sophea', 'Vannak', 'Rith', 'Borey', 'Dara', 'Sokchea'] : ['Sokha', 'Chantha', 'Sreymom', 'Leakena', 'Malika', 'Rachana'];
+    const name = `${names[i % names.length]} ${male ? 'Chan' : 'Kim'}`;
+    const age = 18 + (i % 50);
+    const telephone = `0975${String(111111 + i * 123).slice(0, 6)}`;
+    const address = `Street ${100 + i}, Phnom Penh`;
+    const sol: Patient['signOfLife'][] = ['BP', 'P', 'T', 'RR'];
+    const signOfLife = sol[i % sol.length];
+    const symptom = ['Headache', 'Cough', 'Fever', 'Stomach ache'][i % 4];
+    const diagnosis = ['Migraine', 'Flu', 'Common cold', 'Gastritis'][i % 4];
+    return { id, name, gender: male ? 'male' : 'female', age, telephone, address, signOfLife, symptom, diagnosis };
+  });
+
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [age, setAge] = useState<string>('');
@@ -461,6 +491,55 @@ export default function RegisterPatientPage() {
       <Card style={{ width: '100%' }}>
         <Box p="4">
           <Flex direction="column" gap="3">
+            {/* Existing Patient */}
+            <label>
+              <Text as="div" size="2" mb="1" weight="bold">Existing Patient</Text>
+              <Flex direction="row" align="end" gap="2" className="w-full">
+                <Flex direction="column" align="start" className="w-[320px]">
+                  <Select.Root value={selectedPatientId} onValueChange={(val) => {
+                    setSelectedPatientId(val);
+                    if (!val) return;
+                    const p = fakePatients.find(x => x.id === val);
+                    if (p) {
+                      setName(p.name);
+                      setGender(p.gender);
+                      setAge(String(p.age));
+                      setTelephone(p.telephone);
+                      setAddress(p.address);
+                      setSignOfLife(p.signOfLife);
+                      setSymptom(p.symptom);
+                      setDiagnosis(p.diagnosis);
+                      setErrors({});
+                    }
+                  }}>
+                    <Select.Trigger placeholder="Select existing patient" style={{ width: '100%' }} />
+                    <Select.Content>
+                      <Select.Group>
+                        <Select.Label>Patients</Select.Label>
+                        {fakePatients.map(p => (
+                          <Select.Item key={p.id} value={p.id}>{p.id} — {p.name} ({p.gender}), {p.age}y</Select.Item>
+                        ))}
+                      </Select.Group>
+                    </Select.Content>
+                  </Select.Root>
+                </Flex>
+                <Button variant="soft" color="gray" className="ml-1" onClick={() => {
+                  setSelectedPatientId('');
+                  setName('');
+                  setGender('');
+                  setAge('');
+                  setTelephone('');
+                  setAddress('');
+                  setSignOfLife('');
+                  setSymptom('');
+                  setDiagnosis('');
+                  setErrors({});
+                }}>
+                  Reset
+                </Button>
+              </Flex>
+            </label>
+
             {/* Name */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Name</Text>
@@ -573,9 +652,9 @@ export default function RegisterPatientPage() {
             <Text as="div" size="3" weight="bold" mb="3">Prescription</Text>
             <Box className="rounded-md border" style={{ borderColor: 'var(--gray-3)' }}>
               <Box className="p-4">
-                <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' }}>
                   {/* Drug */}
-                  <div className="min-w-[220px]">
+                  <div className="col-span-12 sm:col-span-6 lg:col-span-6 min-w-[240px]">
                     <Text as="div" size="2" mb="1" weight="bold">Drug</Text>
                     <Flex align="center" gap="2">
                       <Box className="flex-1">
@@ -588,7 +667,7 @@ export default function RegisterPatientPage() {
                             setSelectedDrugId(val);
                             if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
                           }}>
-                            <Select.Trigger placeholder="Select a drug" />
+                            <Select.Trigger placeholder="Select a drug" style={{ width: '100%' }} />
                             <Select.Content>
                               <Select.Group>
                                 <Select.Label>Actions</Select.Label>
@@ -641,29 +720,29 @@ export default function RegisterPatientPage() {
                   </div>
 
                   {/* Dose grid */}
-                  <div>
+                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
                     <Text as="div" size="2" mb="1" weight="bold">Morning</Text>
                     <TextField.Root type="number" value={doseMorning} onChange={(e) => { setDoseMorning(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
-                  <div>
+                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
                     <Text as="div" size="2" mb="1" weight="bold">Afternoon</Text>
                     <TextField.Root type="number" value={doseAfternoon} onChange={(e) => { setDoseAfternoon(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
-                  <div>
+                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
                     <Text as="div" size="2" mb="1" weight="bold">Evening</Text>
                     <TextField.Root type="number" value={doseEvening} onChange={(e) => { setDoseEvening(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
-                  <div>
+                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
                     <Text as="div" size="2" mb="1" weight="bold">Night</Text>
                     <TextField.Root type="number" value={doseNight} onChange={(e) => { setDoseNight(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
 
                   {/* Period & Qty */}
-                  <div>
+                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
                     <Text as="div" size="2" mb="1" weight="bold">Period (days)</Text>
                     <TextField.Root type="number" value={period} onChange={(e) => { setPeriod(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="e.g. 5" />
                   </div>
-                  <div>
+                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
                     <Text as="div" size="2" mb="1" weight="bold">QTY</Text>
                     <TextField.Root type="number" value={qty} readOnly inputMode="numeric" min={0} step={1} placeholder="0" />
                   </div>
