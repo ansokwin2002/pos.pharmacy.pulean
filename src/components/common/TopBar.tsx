@@ -5,6 +5,9 @@ import { Bell, User, Search, Moon, Sun, Settings, LogOut, ChevronDown, Building,
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import BrandLogo from "./BrandLogo";
+import { logoutRequest, clearAuth } from '@/utilities/api/auth-helpers';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface NotificationItem {
   icon: React.ReactNode;
@@ -21,6 +24,7 @@ export default function TopBar({ isScrolled, onMenuClick }: TopBarProps) {
   const [isDropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState<boolean>(false);
+  const router = useRouter();
 
   // Handle mounting state
   useEffect(() => {
@@ -144,7 +148,7 @@ export default function TopBar({ isScrolled, onMenuClick }: TopBarProps) {
                   </Link>
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator />
-                <DropdownMenu.Item className="flex items-center gap-2 text-red-500 dark:text-red-400 dark:hover:text-white !cursor-pointer" role="button" onClick={() => {}}>
+                <DropdownMenu.Item className="flex items-center gap-2 text-red-500 dark:text-red-400 dark:hover:text-white !cursor-pointer" role="button" onClick={async () => { try { await logoutRequest(); } catch {} clearAuth(); toast.info('Logged out'); router.replace('/auth/login'); }}>
                   <LogOut size={14} />
                   <span>Logout</span>
                 </DropdownMenu.Item>

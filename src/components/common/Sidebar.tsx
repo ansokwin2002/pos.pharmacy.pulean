@@ -558,6 +558,17 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
       <ScrollArea scrollbars="vertical" style={{height: 'calc(100vh - 64px)'}} className="pb-8"> 
         <Box className="flex flex-col" style={{minHeight: "calc(100vh - 100px)"}}>
           <Box className="flex-1">
+            {/* Dashboard (placed above OPD) */}
+            <MenuGroup 
+              title="Dashboard"
+              menuData={[{ title: 'Dashboard', icon: <IconDashboard />, link: '/dashboard' }] as any}
+              openMenu={openMenu} 
+              setOpenMenu={setOpenMenu} 
+              openSubMenu={openSubMenu} 
+              setOpenSubMenu={setOpenSubMenu} 
+              isActive={isActive}
+              onClose={onClose}
+            />
             {/* OPD Menu Group (moved to top) */}
             <MenuGroup 
               title="OPD" 
@@ -570,44 +581,14 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
               onClose={onClose}
             />
             
-            {/* Application Menu Group */}
-            <MenuGroup 
-              title="Application" 
-              menuData={applicationMenuData} 
-              openMenu={openMenu} 
-              setOpenMenu={setOpenMenu} 
-              openSubMenu={openSubMenu} 
-              setOpenSubMenu={setOpenSubMenu} 
-              isActive={isActive}
-              onClose={onClose}
-            />
+            {/* Application Menu Group - hidden per request */}
+            {/* (Removed rendering of Application menu) */}
             
-            {/* UI & Pages Menu Group */}
-            <MenuGroup 
-              title="UI & Pages" 
-              menuData={uiPagesMenuData} 
-              openMenu={openMenu} 
-              setOpenMenu={setOpenMenu} 
-              openSubMenu={openSubMenu} 
-              setOpenSubMenu={setOpenSubMenu} 
-              isActive={isActive}
-              onClose={onClose}
-            />
+            {/* UI & Pages Menu Group - hidden per request to keep only OPD */}
+            {/* (Removed rendering of UI & Pages group) */}
           </Box>
 
-          {/* Resources Menu Group */}
-          <MenuGroup 
-            title="Resources" 
-            menuData={documentationMenuData} 
-            openMenu={openMenu} 
-            setOpenMenu={setOpenMenu} 
-            openSubMenu={openSubMenu} 
-            setOpenSubMenu={setOpenSubMenu} 
-            isActive={isActive}
-            isBottomGroup={true}
-            allExternalLinks={true}
-            onClose={onClose}
-          />
+          {/* Resources Menu Group removed per request (keep only top OPD) */}
         </Box>
       </ScrollArea>
     </Box>

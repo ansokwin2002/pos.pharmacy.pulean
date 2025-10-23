@@ -223,6 +223,38 @@ export default function RegisterPatientPage() {
     const autoTable = (await import('jspdf-autotable')).default;
 
     const doc = new jsPDF();
+
+    // Register Khmer font dynamically from public folder
+    const registerKhmerFonts = async () => {
+      async function fetchAsBase64(url: string): Promise<string> {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to load font: ${url}`);
+        const blob = await res.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(((reader.result || '') as string).split(',')[1] || '');
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+      try {
+        const regularBase64 = await fetchAsBase64('/fonts/khmer/NotoSansKhmer-Regular.ttf');
+        (doc as any).addFileToVFS('NotoSansKhmer-Regular.ttf', regularBase64);
+        (doc as any).addFont('NotoSansKhmer-Regular.ttf', 'NotoSansKhmer', 'normal');
+      } catch (e) {
+        console.warn('Khmer Regular font not found, Khmer may not render correctly', e);
+      }
+      try {
+        const boldBase64 = await fetchAsBase64('/fonts/khmer/NotoSansKhmer-Bold.ttf');
+        (doc as any).addFileToVFS('NotoSansKhmer-Bold.ttf', boldBase64);
+        (doc as any).addFont('NotoSansKhmer-Bold.ttf', 'NotoSansKhmer', 'bold');
+      } catch {
+        // Bold is optional; fallback to normal
+      }
+      try { doc.setFont('NotoSansKhmer', 'normal'); } catch {}
+    };
+    await registerKhmerFonts();
+
     const now = new Date();
     const fileName = `prescription-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.pdf`;
 
@@ -252,22 +284,22 @@ export default function RegisterPatientPage() {
     // Header title
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
+    try { doc.setFont('NotoSansKhmer', 'bold'); } catch { doc.setFont('helvetica', 'bold'); }
     doc.text('PUNLEUKREK PHARMACY', pageWidth / 2, 18, { align: 'center' });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Prescription', pageWidth / 2, 24, { align: 'center' });
+    doc.setFontSize(11);
+    try { doc.setFont('NotoSansKhmer', 'normal'); } catch { doc.setFont('helvetica', 'normal'); }
+    doc.text('បង្កាន់ដៃថ្នាំ / Prescription', pageWidth / 2, 24, { align: 'center' });
 
     // Date (top right)
     const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
     doc.setFontSize(9);
-    doc.text(dateStr, pageWidth - margin, 32, { align: 'right' });
+    doc.text(dateStr, pageWidth - margin, 34, { align: 'right' });
 
     // Patient information box - full width with margins
     const boxX = margin;
-    const boxY = 35;
+    const boxY = 37;
     const boxWidth = pageWidth - (margin * 2);
-    const boxHeight = 42;
+    const boxHeight = 44;
     
     doc.setDrawColor(100);
     doc.setLineWidth(0.4);
@@ -275,8 +307,8 @@ export default function RegisterPatientPage() {
 
     // Patient information inside box
     doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    let yPos = boxY + 6;
+    try { doc.setFont('NotoSansKhmer', 'normal'); } catch { doc.setFont('helvetica', 'normal'); }
+    let yPos = boxY + 7;
     const leftCol = boxX + 4;
     const midCol = boxX + boxWidth * 0.48;
     const rightCol = boxX + boxWidth * 0.73;
@@ -287,12 +319,12 @@ export default function RegisterPatientPage() {
     doc.text(`Age: ${age}`, rightCol, yPos);
     
     // Row 2: Address
-    yPos += 6;
+    yPos += 8;
     doc.text(`Address: ${address}`, leftCol, yPos);
     
     // Row 3: Signs of Life
-    yPos += 6;
-    doc.text('Signs of Life:', leftCol, yPos);
+    yPos += 7;
+    doc.text('សញ្ញានៃជីវិត / Signs of Life:', leftCol, yPos);
     const solStartX = leftCol + 26;
     doc.text(`BP: ${signOfLife === 'BP' ? '✓' : ''}`, solStartX, yPos);
     doc.text(`P: ${signOfLife === 'P' ? '✓' : ''}`, solStartX + 22, yPos);
@@ -300,23 +332,23 @@ export default function RegisterPatientPage() {
     doc.text(`RR: ${signOfLife === 'RR' ? '✓' : ''}`, solStartX + 58, yPos);
     
     // Row 4: Telephone
-    yPos += 6;
+    yPos += 7;
     doc.text(`Telephone: ${telephone}`, leftCol, yPos);
     
     // Row 5: Symptom
-    yPos += 6;
-    doc.text(`Symptom: ${symptom || '-'}`, leftCol, yPos);
+    yPos += 7;
+    doc.text(`រោគសញ្ញា / Symptom: ${symptom || '-'}`, leftCol, yPos);
     
     // Row 6: Diagnosis
-    yPos += 6;
-    doc.text(`Diagnosis: ${diagnosis || '-'}`, leftCol, yPos);
+    yPos += 7;
+    doc.text(`រោគវិនិច្ឆ័យ / Diagnosis: ${diagnosis || '-'}`, leftCol, yPos);
 
     // "Prescription" title
-    yPos = boxY + boxHeight + 10;
+    yPos = boxY + boxHeight + 12;
     doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
+    try { doc.setFont('NotoSansKhmer', 'bold'); } catch { doc.setFont('helvetica', 'bold'); }
     doc.setTextColor(41, 98, 255);
-    doc.text('Prescription', pageWidth / 2, yPos, { align: 'center' });
+    doc.text('ការកំណត់ថ្នាំ / Prescription', pageWidth / 2, yPos, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
     // Table with Khmer labels
@@ -355,8 +387,9 @@ export default function RegisterPatientPage() {
       margin: { left: margin, right: margin },
       tableWidth: availableWidth,
       styles: { 
-        fontSize: 7,
-        cellPadding: { top: 2, right: 0.8, bottom: 2, left: 0.8 },
+        font: 'NotoSansKhmer',
+        fontSize: 8.5,
+        cellPadding: { top: 2, right: 1, bottom: 2, left: 1 },
         lineColor: [200, 200, 200],
         lineWidth: 0.25,
         halign: 'center',
@@ -364,6 +397,7 @@ export default function RegisterPatientPage() {
         overflow: 'linebreak',
       },
       headStyles: { 
+        font: 'NotoSansKhmer',
         fillColor: [245, 248, 252],
         textColor: [30, 30, 30],
         fontStyle: 'bold',
@@ -373,15 +407,16 @@ export default function RegisterPatientPage() {
         minCellHeight: 11,
       },
       bodyStyles: {
+        font: 'NotoSansKhmer',
         textColor: [40, 40, 40],
-        minCellHeight: 7,
+        minCellHeight: 9,
       },
       alternateRowStyles: {
         fillColor: [253, 253, 253],
       },
       columnStyles: {
         0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 45, halign: 'left' },
+        1: { cellWidth: 50, halign: 'left' },
         2: { cellWidth: 13, halign: 'center' },
         3: { cellWidth: 13, halign: 'center' },
         4: { cellWidth: 13, halign: 'center' },
@@ -475,13 +510,47 @@ export default function RegisterPatientPage() {
   };
 
   const handleSubmit = async () => {
-    // Validate all fields and show inline errors (no toast)
     const ok = validateAll();
     if (!ok) return;
-
-    // Save success (stub)
-    console.log({ name, gender, age, telephone, address, signOfLife, symptom, diagnosis, prescriptions });
-    setHasSaved(true);
+    try {
+      const { normalizePatientPayload } = await import('@/utilities/api/normalizePatient');
+      const raw = {
+        name,
+        gender,
+        age,
+        telephone,
+        address,
+        signs_of_life: signOfLife,
+        symptom,
+        diagnosis,
+      };
+      const payload = normalizePatientPayload(raw);
+      const { createPodPatient } = await import('@/utilities/api/podPatients');
+      const saved = await createPodPatient(payload as any);
+      setHasSaved(true);
+      toast.success('Patient saved');
+      // optionally reset prescriptions after save
+      // setPrescriptions([]);
+      // Update selectedPatientId to new id if backend returns it
+      if (saved?.id) setSelectedPatientId(String(saved.id));
+    } catch (e: any) {
+      console.error(e);
+      if (e?.detail && typeof e.detail === 'object') {
+        // Map backend validation errors if available
+        const be = e.detail.errors || e.detail;
+        const newErrs: any = {};
+        if (be?.name) newErrs.name = String(be.name);
+        if (be?.gender) newErrs.gender = String(be.gender);
+        if (be?.age) newErrs.age = String(be.age);
+        if (be?.telephone) newErrs.telephone = String(be.telephone);
+        if (be?.address) newErrs.address = String(be.address);
+        if (be?.signs_of_life) newErrs.signOfLife = String(be.signs_of_life);
+        if (be?.symptom) newErrs.symptom = String(be.symptom);
+        if (be?.diagnosis) newErrs.diagnosis = String(be.diagnosis);
+        setErrors(newErrs);
+      }
+      toast.error('Failed to save patient');
+    }
   };
 
 

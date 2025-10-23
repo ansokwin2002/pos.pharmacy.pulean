@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton } from "@radix-ui/themes";
 import { faker } from '@faker-js/faker';
+import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient } from '@/utilities/api/podPatients';
 import { PageHeading } from '@/components/common/PageHeading';
 import { Search, Plus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
 import { SortableHeader } from '@/components/common/SortableHeader';
@@ -10,13 +11,18 @@ import { toast } from 'sonner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
 interface Patient {
-  id: string;
+  id: number | string;
   name: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  gender: 'male' | 'female';
+  telephone?: string | null;
+  address?: string | null;
+  gender?: 'male' | 'female' | string | null;
+  age?: number | null;
+  signs_of_life?: string | null;
+  symptom?: string | null;
+  diagnosis?: string | null;
+  email?: string;
+  phone?: string;
+  city?: string;
 }
 
 const generateFakePatients = (count: number): Patient[] => {
@@ -38,11 +44,12 @@ const generateFakePatients = (count: number): Patient[] => {
 
 const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [telephone, setTelephone] = useState('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [age, setAge] = useState<string>('');
+  const [symptom, setSymptom] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
 
 
   const handleSubmit = () => {
@@ -50,23 +57,16 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
       toast.error('Patient name is required.');
       return;
     }
-    const newPatient: Patient = {
-      id: faker.string.uuid(),
-      name,
-      email,
-      phone,
-      address,
-      city,
-      gender,
-    };
-    onAddPatient(newPatient);
+    const payload = { name, gender, age, telephone, address, symptom, diagnosis };
+    onAddPatient(payload);
     setOpen(false);
     setName('');
-    setEmail('');
-    setPhone('');
+    setTelephone('');
     setAddress('');
-    setCity('');
     setGender('male');
+    setAge('');
+    setSymptom('');
+    setDiagnosis('');
     toast.success('Patient added successfully!');
   };
 
@@ -92,22 +92,24 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              Email
+              Telephone
             </Text>
             <TextField.Root
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email address"
+              value={telephone}
+              onChange={(e) => setTelephone(e.target.value)}
+              placeholder="Enter telephone"
             />
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              Phone
+              Age
             </Text>
             <TextField.Root
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Enter phone number"
+              type="number"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="Enter age"
+              min={0}
             />
           </label>
           <label>
@@ -122,12 +124,22 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              City
+              Symptom
             </Text>
             <TextField.Root
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Enter city"
+              value={symptom}
+              onChange={(e) => setSymptom(e.target.value)}
+              placeholder="Enter symptom"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Diagnosis
+            </Text>
+            <TextField.Root
+              value={diagnosis}
+              onChange={(e) => setDiagnosis(e.target.value)}
+              placeholder="Enter diagnosis"
             />
           </label>
           <label>
@@ -298,8 +310,18 @@ export default function PatientListPage() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
   useEffect(() => {
-    setPatientsData(generateFakePatients(30));
-  }, []);
+    const load = async () => {
+      try {
+        const data = await listPodPatients({ search: searchTerm || undefined, page: currentPage, per_page: itemsPerPage });
+        const items = Array.isArray(data?.data) ? data.data : data;
+        setPatientsData(items);
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to load patients');
+      }
+    };
+    load();
+  }, [searchTerm, currentPage, itemsPerPage]);
 
   const cities = [...new Set(patientsData.map(p => p.city).filter(Boolean))];
 
@@ -342,8 +364,16 @@ export default function PatientListPage() {
     setSortConfig({ key, direction });
   };
 
-  const handleAddPatient = (newPatient: Patient) => {
-    setPatientsData(prev => [newPatient, ...prev]);
+  const handleAddPatient = async (payload: any) => {
+    try {
+      const { normalizePatientPayload } = await import('@/utilities/api/normalizePatient');
+      const normalized = normalizePatientPayload(payload);
+      const saved = await createPodPatient(normalized);
+      setPatientsData(prev => [saved, ...prev]);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to add patient');
+    }
   };
 
   const handleEditPatient = (patient: Patient) => {
@@ -495,13 +525,13 @@ export default function PatientListPage() {
         <Table.Body>
           {currentItems.map((patient) => (
             <Table.Row key={patient.id}>
-              <Table.Cell>{patient.id.substring(0,8)}</Table.Cell>
+              <Table.Cell>{String(patient.id).substring(0,8)}</Table.Cell>
               <Table.RowHeaderCell>{patient.name}</Table.RowHeaderCell>
-              <Table.Cell>{patient.email}</Table.Cell>
-              <Table.Cell>{patient.phone}</Table.Cell>
-              <Table.Cell>{patient.address}</Table.Cell>
-              <Table.Cell>{patient.city}</Table.Cell>
-              <Table.Cell>{patient.gender}</Table.Cell>
+              <Table.Cell>{patient.email || '-'}</Table.Cell>
+              <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
+              <Table.Cell>{patient.address || '-'}</Table.Cell>
+              <Table.Cell>{patient.city || '-'}</Table.Cell>
+              <Table.Cell>{patient.gender || '-'}</Table.Cell>
               <Table.Cell>
                 <Flex gap="3">
                   <IconButton size="1" variant="outline" color="gray" onClick={() => handleEditPatient(patient)}>

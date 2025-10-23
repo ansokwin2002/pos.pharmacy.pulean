@@ -2,51 +2,61 @@
 
 import { useEffect, useState } from 'react';
 import { Box, Container, Flex, Heading, Text, Button, Link, Card, IconButton, TextField } from '@radix-ui/themes';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
-import { usePageTitle } from '@/hooks/usePageTitle';
-import { login as apiLogin, saveAuth } from '@/utilities/api/auth';
 import { useRouter } from 'next/navigation';
+import { usePageTitle } from '@/hooks/usePageTitle';
+import { register as apiRegister, saveAuth } from '@/utilities/api/auth';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
-  usePageTitle('Login');
+export default function RegisterPage() {
+  usePageTitle('Register');
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setIsLoading(true);
     
     try {
-      const res = await apiLogin({ email, password });
+      const res = await apiRegister({
+        name: fullName,
+        email,
+        password,
+        password_confirmation: confirmPassword,
+      });
       saveAuth(res.access_token);
-      toast.success('Login successful');
+      toast.success('Registration successful');
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Login failed:', error);
+      console.error('Register failed:', error);
       const detail = error?.detail;
-      const message = detail?.message || detail?.errors?.email?.[0] || 'Login failed';
-      setError(message);
+      const message = detail?.message || Object.values(detail?.errors || {})?.[0]?.[0] || 'Registration failed';
+      setError(String(message));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <Flex className="h-screen">
-      {/* Left side - Full height image or gradient */}
+      {/* Left side image same as login */}
       <div className="hidden md:block w-1/2 relative">
         <Image
           src="/images/restaurant-counter.png"
@@ -64,7 +74,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right side - Login form */}
+      {/* Right side - Register form */}
       <Flex 
         direction="column"
         justify="end"
@@ -89,7 +99,7 @@ export default function LoginPage() {
                 <div style={{ width: 130, height: 20 }} />
               );
             })()}
-            <Heading size="5">Login to your account</Heading>
+            <Heading size="5">Create your account</Heading>
           </Flex>
         </Box>
 
@@ -99,6 +109,23 @@ export default function LoginPage() {
               {error && (
                 <Text size="2" color="red">{error}</Text>
               )}
+
+              <Flex direction="column" gap="1">
+                <Text as="label" size="2" weight="medium">Full Name</Text>
+                <TextField.Root 
+                  type="text"
+                  placeholder="John Doe" 
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  className="w-full"
+                >
+                  <TextField.Slot>
+                    <User size={16} />
+                  </TextField.Slot>
+                </TextField.Root>
+              </Flex>
+
               <Flex direction="column" gap="1">
                 <Text as="label" size="2" weight="medium">Email Address</Text>
                 <TextField.Root 
@@ -133,10 +160,37 @@ export default function LoginPage() {
                       size="1"
                       variant="ghost"
                       color="gray"
-                      onClick={togglePasswordVisibility}
+                      onClick={() => setShowPassword(!showPassword)}
                       className="p-0 cursor-pointer"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </IconButton>
+                  </TextField.Slot>
+                </TextField.Root>
+              </Flex>
+
+              <Flex direction="column" gap="1">
+                <Text as="label" size="2" weight="medium">Confirm Password</Text>
+                <TextField.Root
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full"
+                >
+                  <TextField.Slot>
+                    <Lock size={16} />
+                  </TextField.Slot>
+                  <TextField.Slot>
+                    <IconButton
+                      size="1"
+                      variant="ghost"
+                      color="gray"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="p-0 cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </IconButton>
                   </TextField.Slot>
                 </TextField.Root>
@@ -149,18 +203,17 @@ export default function LoginPage() {
                   disabled={isLoading}
                   size="3"
                 >
-                  {isLoading ? 'Signing in...' : 'Sign in'}
+                  {isLoading ? 'Creating account...' : 'Create account'}
                 </Button>
               </Box>
             </form>
           </Card>
           <Box className="text-center mt-4">
-            <Link href="/auth/forgot-password" size="1" color="gray">
-              Forgot password?
-            </Link>
+            <Text size="2">Already have an account? </Text>
+            <Link href="/auth/login" size="2">Sign in</Link>
           </Box>
         </Container>
-        
+
         <Box className="text-center mt-8 mb-4">
           <Text as="p" size="1" color="gray">
             © {new Date().getFullYear()} EatlyPOS. All rights reserved.
@@ -172,4 +225,4 @@ export default function LoginPage() {
       </Flex>
     </Flex>
   );
-} 
+}
