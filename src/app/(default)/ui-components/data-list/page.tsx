@@ -2,7 +2,7 @@ import React from 'react'
 import { Box, Card, DataList, Flex, Heading, Text } from '@radix-ui/themes'
 
 export const metadata = {
-  title: "Data List | EatlyPOS",
+  title: "Data List | Punleukrek Pharmacy",
 }
 
 export default function DataListDemo() {

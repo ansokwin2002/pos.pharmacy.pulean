@@ -7,6 +7,7 @@ import { ThemeProvider, useTheme } from "next-themes";
 import { ReactNode, useEffect, useState } from "react";
 import { Theme } from "@radix-ui/themes";
 import { Toaster } from "sonner";
+import NProgressProvider from "./nprogress-provider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${plusJakartaSans.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="theme">
           <RadixThemeWrapper>
+            <NProgressProvider />
             {children}
             <ThemedToaster />
           </RadixThemeWrapper>

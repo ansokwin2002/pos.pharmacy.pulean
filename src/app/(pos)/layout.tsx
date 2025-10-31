@@ -50,10 +50,10 @@ export default function POSLayout({
     // Add meta title
     const titleMeta = document.querySelector('title');
     if (titleMeta) {
-      titleMeta.textContent = "EatlyPOS | Next.js Restaurant Management System Template";
+      titleMeta.textContent = "Punleukrek Pharmacy | Next.js Restaurant Management System Template";
     } else {
       const newTitleElement = document.createElement('title');
-      newTitleElement.textContent = "EatlyPOS | Next.js Restaurant Management System Template";
+      newTitleElement.textContent = "Punleukrek Pharmacy | Next.js Restaurant Management System Template";
       document.head.appendChild(newTitleElement);
     }
     

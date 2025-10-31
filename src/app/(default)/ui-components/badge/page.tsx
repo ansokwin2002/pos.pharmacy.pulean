@@ -2,7 +2,7 @@ import React from 'react'
 import { Badge, Card, Flex, Heading } from '@radix-ui/themes'
 
 export const metadata = {
-  title: "Badge | EatlyPOS",
+  title: "Badge | Punleukrek Pharmacy",
 }
 
 export default function BadgeDemo() {

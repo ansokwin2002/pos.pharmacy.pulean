@@ -9,8 +9,8 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import clsx from 'clsx';
 import {
-  IconDot, IconDashboard, IconSales, IconUI, IconPages, IconMenuLevel, IconDocs, 
-  IconSupport, IconMenu, IconInventory, IconSettings, IconWaste, IconLoyalty, IconPurchasing 
+  IconDot, IconDashboard, IconSales, IconUI, IconPages, IconMenuLevel, IconDocs,
+  IconSupport, IconMenu, IconInventory, IconSettings, IconWaste, IconLoyalty, IconPurchasing, IconDrug
 } from './MenuIcons';
 
 // Define types for menu items
@@ -55,14 +55,14 @@ const MenuLink = ({
   level?: number;
   onClose?: () => void;
 }) => {
-  const padding = level === 1 ? "px-3" : level === 2 ? "pl-3.5 pr-2" : "pl-11 pr-2";
-  
+  const padding = level === 1 ? "px-4" : level === 2 ? "pl-6 pr-4" : "pl-12 pr-4";
+
   return (
-    <Link 
-      href={href} 
+    <Link
+      href={href}
       className={clsx(
-        "flex items-center",
-        level === 1 ? "py-2 gap-3 hover:bg-gray-100 dark:hover:bg-neutral-800" : level === 2 ? "gap-2.5" : "",
+        "flex items-center rounded-md transition-colors duration-200",
+        level === 1 ? "py-2.5 gap-3 hover:bg-gray-100 dark:hover:bg-neutral-800" : level === 2 ? "py-2 gap-2.5 hover:bg-gray-50 dark:hover:bg-neutral-800/50" : "py-1.5",
         padding,
         className
       )}
@@ -108,14 +108,14 @@ const MenuButton = ({
   onClick: () => void;
   level?: number;
 }) => {
-  const padding = level === 1 ? "pl-3 pr-3" : "pl-14 pr-3";
-  
+  const padding = level === 1 ? "px-4" : "pl-14 pr-4";
+
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className={clsx(
-        "flex items-center w-full py-2 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800",
-        level === 1 ? "gap-3" : "gap-2.5",
+        "flex items-center w-full rounded-md transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-neutral-800",
+        level === 1 ? "py-2.5 gap-3" : "py-2 gap-2.5",
         padding
       )}
     >
@@ -142,7 +142,7 @@ const Accordion = ({
         opacity: isOpen ? 1 : 0
       }}
     >
-      <div className="flex flex-col space-y-1 py-1">
+      <div className="flex flex-col space-y-0.5 py-1">
         {children}
       </div>
     </div>
@@ -173,63 +173,83 @@ const MenuGroup = ({
   onClose?: () => void;
 }) => {
   return (
-    <Box mb={isBottomGroup ? undefined : "6"}>
-      <div className="px-6 mb-3 text-[11px] font-semibold text-gray-400 uppercase dark:text-neutral-600">{title}</div>
-      <Flex direction="column" gap="1" className="text-[14px]">
+    <Box mb={isBottomGroup ? undefined : "5"}>
+      <div className="px-4 mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider dark:text-neutral-600">{title}</div>
+      <Flex direction="column" gap="0.5" className="text-[14px]">
         {menuData.map((menuItem, index) => (
           <Box key={index}>
             {menuItem.subMenu ? (
-              <div className="relative pl-2 pr-3">
-                <MenuButton 
-                  title={menuItem.title}
-                  icon={menuItem.icon}
-                  isOpen={openMenu === menuItem.title}
-                  onClick={() => setOpenMenu(openMenu === menuItem.title ? null : menuItem.title)}
-                />
-                <Accordion isOpen={openMenu === menuItem.title}>
-                  {menuItem.subMenu.map((subItem, subIndex) => (
-                    <div key={subIndex}>
-                      {subItem.subMenu ? (
-                        <>
-                          <MenuButton 
-                            title={subItem.title}
-                            isOpen={openSubMenu === subItem.title}
-                            onClick={() => setOpenSubMenu(openSubMenu === subItem.title ? null : subItem.title)}
-                            level={2}
-                          />
-                          <Accordion isOpen={openSubMenu === subItem.title}>
-                            {subItem.subMenu.map((subSubItem, subSubIndex) => (
-                              <MenuLink 
-                                key={subSubIndex} 
-                                href={subSubItem.link} 
-                                isActive={isActive(subSubItem.link)}
-                                title={subSubItem.title}
-                                level={3}
-                                target={allExternalLinks ? "_blank" : undefined}
-                                onClose={onClose}
+              <div className="relative">
+                {/* Special case for Product Management - always show as single line */}
+                {title === "Product Management" ? (
+                  <div className="space-y-0.5">
+                    {menuItem.subMenu.map((subItem, subIndex) => (
+                      <MenuLink
+                        key={subIndex}
+                        href={subItem.link || "#"}
+                        isActive={isActive(subItem.link || "")}
+                        icon={menuItem.icon}
+                        title={subItem.title}
+                        level={1}
+                        target={subItem.target || (allExternalLinks ? "_blank" : undefined)}
+                        onClose={onClose}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <MenuButton
+                      title={menuItem.title}
+                      icon={menuItem.icon}
+                      isOpen={openMenu === menuItem.title}
+                      onClick={() => setOpenMenu(openMenu === menuItem.title ? null : menuItem.title)}
+                    />
+                    <Accordion isOpen={openMenu === menuItem.title}>
+                      {menuItem.subMenu.map((subItem, subIndex) => (
+                        <div key={subIndex}>
+                          {subItem.subMenu ? (
+                            <>
+                              <MenuButton
+                                title={subItem.title}
+                                isOpen={openSubMenu === subItem.title}
+                                onClick={() => setOpenSubMenu(openSubMenu === subItem.title ? null : subItem.title)}
+                                level={2}
                               />
-                            ))}
-                          </Accordion>
-                        </>
-                      ) : (
-                        <MenuLink 
-                          href={subItem.link || "#"} 
-                          isActive={isActive(subItem.link || "")}
-                          icon={subItem.icon}
-                          title={subItem.title}
-                          level={2}
-                          target={subItem.target || (allExternalLinks ? "_blank" : undefined)}
-                          onClose={onClose}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </Accordion>
+                              <Accordion isOpen={openSubMenu === subItem.title}>
+                                {subItem.subMenu.map((subSubItem, subSubIndex) => (
+                                  <MenuLink
+                                    key={subSubIndex}
+                                    href={subSubItem.link}
+                                    isActive={isActive(subSubItem.link)}
+                                    title={subSubItem.title}
+                                    level={3}
+                                    target={allExternalLinks ? "_blank" : undefined}
+                                    onClose={onClose}
+                                  />
+                                ))}
+                              </Accordion>
+                            </>
+                          ) : (
+                            <MenuLink
+                              href={subItem.link || "#"}
+                              isActive={isActive(subItem.link || "")}
+                              icon={subItem.icon}
+                              title={subItem.title}
+                              level={2}
+                              target={subItem.target || (allExternalLinks ? "_blank" : undefined)}
+                              onClose={onClose}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </Accordion>
+                  </>
+                )}
               </div>
             ) : (
-              <Box className="pl-2 pr-3">
-                <MenuLink 
-                  href={menuItem.link || "#"} 
+              <Box>
+                <MenuLink
+                  href={menuItem.link || "#"}
                   isActive={isActive(menuItem.link || "")}
                   icon={menuItem.icon}
                   title={menuItem.title}
@@ -333,6 +353,14 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
         { title: "Purchase Orders", link: "/purchasing/purchase-orders" },
         { title: "Suppliers", link: "/purchasing/suppliers" },
         { title: "Reports", link: "/purchasing/purchasing-reports" },
+      ],
+    },
+    {
+      title: "Product Management",
+      icon: <IconDrug />,
+      link: "#",
+      subMenu: [
+        { title: "Drugs", link: "/drugs" },
       ],
     },
     {
@@ -543,8 +571,8 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
         width: width
       }}
     >
-      <Flex gap="3" justify="between" align="center" px="2" py="5">
-        <Box px="4">
+      <Flex gap="3" justify="between" align="center" px="4" py="4">
+        <Box>
           <Link href="/" aria-label="punleukrek">
             <BrandLogo size={22} showText={true} />
           </Link>
@@ -555,8 +583,8 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
           </IconButton>
         </div>
       </Flex>
-      <ScrollArea scrollbars="vertical" style={{height: 'calc(100vh - 64px)'}} className="pb-8"> 
-        <Box className="flex flex-col" style={{minHeight: "calc(100vh - 100px)"}}>
+      <ScrollArea scrollbars="vertical" style={{height: 'calc(100vh - 64px)'}} className="pb-6">
+        <Box className="flex flex-col px-2" style={{minHeight: "calc(100vh - 100px)"}}>
           <Box className="flex-1">
             {/* Dashboard (placed above OPD) */}
             <MenuGroup 
@@ -570,20 +598,39 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
               onClose={onClose}
             />
             {/* OPD Menu Group (moved to top) */}
-            <MenuGroup 
-              title="OPD" 
-              menuData={opdMenuData} 
-              openMenu={openMenu} 
-              setOpenMenu={setOpenMenu} 
-              openSubMenu={openSubMenu} 
-              setOpenSubMenu={setOpenSubMenu} 
+            <MenuGroup
+              title="OPD"
+              menuData={opdMenuData}
+              openMenu={openMenu}
+              setOpenMenu={setOpenMenu}
+              openSubMenu={openSubMenu}
+              setOpenSubMenu={setOpenSubMenu}
               isActive={isActive}
               onClose={onClose}
             />
-            
+
+            {/* Product Management Menu Group */}
+            <MenuGroup
+              title="Product Management"
+              menuData={[{
+                title: "Product Management",
+                icon: <IconDrug />,
+                link: "#",
+                subMenu: [
+                  { title: "Drugs", link: "/drugs" },
+                ],
+              }]}
+              openMenu={openMenu}
+              setOpenMenu={setOpenMenu}
+              openSubMenu={openSubMenu}
+              setOpenSubMenu={setOpenSubMenu}
+              isActive={isActive}
+              onClose={onClose}
+            />
+
             {/* Application Menu Group - hidden per request */}
             {/* (Removed rendering of Application menu) */}
-            
+
             {/* UI & Pages Menu Group - hidden per request to keep only OPD */}
             {/* (Removed rendering of UI & Pages group) */}
           </Box>

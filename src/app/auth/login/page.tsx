@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Box, Container, Flex, Heading, Text, Button, Link, Card, IconButton, TextField } from '@radix-ui/themes';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import Image from 'next/image';
+import BrandLogo from '@/components/common/BrandLogo';
 import { useTheme } from 'next-themes';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { login as apiLogin, saveAuth } from '@/utilities/api/auth';
@@ -45,50 +46,12 @@ export default function LoginPage() {
   };
 
   return (
-    <Flex className="h-screen">
-      {/* Left side - Full height image or gradient */}
-      <div className="hidden md:block w-1/2 relative">
-        <Image
-          src="/images/restaurant-counter.png"
-          alt="Restaurant counter"
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          style={{ objectFit: 'cover', objectPosition: 'center' }}
-          priority
-        />
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-          <div className="p-8 text-white text-center">
-            <Heading size="8" className="mb-4 text-white">EatlyPOS</Heading>
-            <Text size="5" className="text-white/90">Managing your restaurant made easy</Text>
-          </div>
-        </div>
-      </div>
-
-      {/* Right side - Login form */}
-      <Flex 
-        direction="column"
-        justify="end"
-        className="w-full md:w-1/2 px-4 sm:px-6 lg:px-8 py-12"
-      >
+    <Flex className="min-h-screen w-full px-4 sm:px-6 lg:px-8 py-12" direction="column" justify="center" align="center">
         <Box className="flex-grow"></Box>
         
         <Box className="text-center" mb="6">
           <Flex direction="column" align="center" gap="4">
-            {(() => {
-              const [mounted, setMounted] = useState(false);
-              useEffect(() => setMounted(true), []);
-              return mounted ? (
-                <Image
-                  src={theme === 'dark' ? '/images/logo-dark.png' : '/images/logo.png'}
-                  alt="EatlyPOS Logo"
-                  width={130}
-                  height={20}
-                  priority
-                />
-              ) : (
-                <div style={{ width: 130, height: 20 }} />
-              );
-            })()}
+            <BrandLogo size={24} showText={true} />
             <Heading size="5">Login to your account</Heading>
           </Flex>
         </Box>
@@ -163,13 +126,12 @@ export default function LoginPage() {
         
         <Box className="text-center mt-8 mb-4">
           <Text as="p" size="1" color="gray">
-            © {new Date().getFullYear()} EatlyPOS. All rights reserved.
+            © {new Date().getFullYear()} Punleukrek Pharmacy. All rights reserved.
           </Text>
           <Text as="p" size="1" color="gray">
             Version 1.0.0 (Build 001)
           </Text>
         </Box>
       </Flex>
-    </Flex>
   );
 } 

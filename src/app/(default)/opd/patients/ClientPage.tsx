@@ -117,7 +117,7 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
               Address
             </Text>
             <TextField.Root
-              value={address}
+              value={address ?? ''}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Enter address"
             />
@@ -172,19 +172,19 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
 const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [telephone, setTelephone] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
 
   useEffect(() => {
     if (patient) {
-      setName(patient.name);
-      setEmail(patient.email);
-      setPhone(patient.phone);
-      setAddress(patient.address);
-      setCity(patient.city);
-      setGender(patient.gender);
+      setName(patient.name ?? '');
+      setEmail(patient.email ?? '');
+      setTelephone((patient.telephone ?? patient.phone ?? '') as string);
+      setAddress(patient.address ?? '');
+      setCity(patient.city ?? '');
+      setGender((patient.gender as 'male' | 'female') ?? 'male');
     }
   }, [patient]);
 
@@ -197,7 +197,7 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
       ...patient,
       name,
       email,
-      phone,
+      telephone,
       address,
       city,
       gender,
@@ -232,19 +232,19 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
               Email
             </Text>
             <TextField.Root
-              value={email}
+              value={email ?? ''}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter email address"
             />
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              Phone
+              Telephone
             </Text>
             <TextField.Root
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Enter phone number"
+              value={telephone ?? ''}
+              onChange={(e) => setTelephone(e.target.value)}
+              placeholder="Enter telephone"
             />
           </label>
           <label>
@@ -262,7 +262,7 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
               City
             </Text>
             <TextField.Root
-              value={city}
+              value={city ?? ''}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Enter city"
             />
@@ -390,13 +390,26 @@ export default function PatientListPage() {
     setConfirmDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (patientToDelete) {
-      setPatientsData(prev => prev.filter(p => p.id !== patientToDelete.id));
-      toast.success(`Patient "${patientToDelete.name}" deleted successfully.`);
-      setPatientToDelete(null);
+  const confirmDelete = async () => {
+    if (!patientToDelete) {
+      setConfirmDialogOpen(false);
+      return;
     }
+    const deleting = patientToDelete;
+    // Optimistic UI update
+    setPatientsData(prev => prev.filter(p => p.id !== deleting.id));
     setConfirmDialogOpen(false);
+    setPatientToDelete(null);
+    try {
+      await deletePodPatient(deleting.id);
+      toast.success(`Patient \"${deleting.name}\" deleted successfully.`);
+    } catch (e: any) {
+      // Rollback on failure
+      setPatientsData(prev => [deleting, ...prev]);
+      console.error(e);
+      const msg = e?.detail?.message || e?.message || 'Failed to delete patient';
+      toast.error(msg);
+    }
   };
 
   const handleResetFilters = () => {

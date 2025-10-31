@@ -21,9 +21,9 @@ export default function DocsHome() {
   usePageTitle('Documentation');
   return (
     <div className="max-w-5xl mx-auto py-8 px-4">
-      <Heading size="8" mb="4">EatlyPOS Documentation</Heading>
+      <Heading size="8" mb="4">Punleukrek Pharmacy Documentation</Heading>
       <Text as="p" size="3" mb="4">
-        Welcome to the EatlyPOS documentation. Here you&apos;ll find comprehensive guides and documentation to help you start working with EatlyPOS as quickly as possible.
+        Welcome to the Punleukrek Pharmacy documentation. Here you&apos;ll find comprehensive guides and documentation to help you start working with Punleukrek Pharmacy as quickly as possible.
       </Text>
       
       <Grid columns={{initial: "1", sm: "2"}} gap="6" className="mt-10">
@@ -35,13 +35,13 @@ export default function DocsHome() {
         />
         <DocCard
           title="User Interface"
-          description="Explore our UI framework and various layout options available in EatlyPOS"
+          description="Explore our UI framework and various layout options available in Punleukrek Pharmacy"
           icon={<Layout size={24} className="text-orange-500" />}
           href="/docs/ui/ui-framework"
         />
         <DocCard
           title="Customization"
-          description="Learn how to style, add features, and extend components in EatlyPOS"
+          description="Learn how to style, add features, and extend components in Punleukrek Pharmacy"
           icon={<Palette size={24} className="text-orange-500" />}
           href="/docs/customization/styling"
         />

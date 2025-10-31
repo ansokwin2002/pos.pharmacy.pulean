@@ -92,7 +92,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {/* Footer */}
           <Box className="py-4 mt-auto">
             <Flex justify="center">
-              <Text size="1" className="text-gray-400 dark:text-neutral-600 text-center">&copy; {new Date().getFullYear()} EatlyPOS. All rights reserved.</Text>
+              <Text size="1" className="text-gray-400 dark:text-neutral-600 text-center">&copy; {new Date().getFullYear()} Punleukrek Pharmacy. All rights reserved.</Text>
             </Flex>
           </Box>
         </Box>

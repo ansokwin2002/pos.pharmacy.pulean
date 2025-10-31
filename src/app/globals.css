@@ -13,6 +13,15 @@ input[type="number"] {
 @import "react-date-range/dist/styles.css";
 @import "react-date-range/dist/theme/default.css";
 
+/* NProgress base styles */
+@import "nprogress/nprogress.css";
+
+/* Orange theme for NProgress */
+#nprogress .bar { background: #fc8019 !important; height: 3px; }
+#nprogress .peg { box-shadow: 0 0 10px #fc8019, 0 0 5px #fc8019 !important; }
+#nprogress .spinner-icon { border-top-color: #fc8019; border-left-color: #fc8019; }
+#nprogress .spinner { right: 12px; top: 12px; }
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* 

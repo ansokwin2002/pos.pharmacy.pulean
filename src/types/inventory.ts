@@ -213,3 +213,29 @@ export interface WasteLog {
   branchId?: string;
   cost?: number;
 }
+
+// Drug Management Types
+export type DrugStatus = 'active' | 'inactive';
+
+export interface Drug {
+  id: string;
+  name: string;
+  slug: string;
+  generic_name: string;
+  brand_name?: string;
+  category_id?: number;
+  image?: string;
+  unit: string;
+  price: number;
+  cost_price: number;
+  quantity: number;
+  expiry_date: Date;
+  barcode?: string;
+  manufacturer?: string;
+  dosage?: string;
+  instructions?: string;
+  side_effects?: string;
+  status: DrugStatus;
+  created_at?: Date;
+  updated_at?: Date;
+}
