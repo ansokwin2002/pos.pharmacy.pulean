@@ -376,9 +376,12 @@ export default function RegisterPatientPage() {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 8;
+    const margin = 15;
 
-    // Try to load real logo from public/images/invoice/logo.png
+    // === HEADER SECTION ===
+    let currentY = 20;
+
+    // Try to load logo
     try {
       const res = await fetch('/images/invoice/logo.png');
       if (res.ok) {
@@ -389,200 +392,259 @@ export default function RegisterPatientPage() {
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
-        const imgW = 35;
-        const imgH = 14;
-        doc.addImage(dataUrl, 'PNG', margin, 8, imgW, imgH);
+        doc.addImage(dataUrl, 'PNG', margin, 15, 30, 12);
       }
     } catch (e) {
       console.warn('Failed to load logo for PDF header', e);
     }
 
-    // Header title
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(18);
-    try { doc.setFont('NotoSansKhmer', 'bold'); } catch { doc.setFont('helvetica', 'bold'); }
-    doc.text('PUNLEUKREK PHARMACY', pageWidth / 2, 18, { align: 'center' });
-    doc.setFontSize(11);
-    try { doc.setFont('NotoSansKhmer', 'normal'); } catch { doc.setFont('helvetica', 'normal'); }
-    doc.text('បង្កាន់ដៃថ្នាំ / Prescription', pageWidth / 2, 24, { align: 'center' });
+    // Pharmacy name and title
+    doc.setTextColor(0, 102, 204); // Professional blue
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PUNLEUKREK PHARMACY', pageWidth / 2, currentY, { align: 'center' });
 
-    // Date (top right)
+    currentY += 8;
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Medical Prescription / បង្កាន់ដៃថ្នាំ', pageWidth / 2, currentY, { align: 'center' });
+
+    // Date and prescription number
+    currentY += 15;
     const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-    doc.setFontSize(9);
-    doc.text(dateStr, pageWidth - margin, 34, { align: 'right' });
+    const prescriptionNo = `RX-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
 
-    // Patient information box - full width with margins
-    const boxX = margin;
-    const boxY = 37;
-    const boxWidth = pageWidth - (margin * 2);
-    const boxHeight = 44;
-    
-    doc.setDrawColor(100);
-    doc.setLineWidth(0.4);
-    doc.rect(boxX, boxY, boxWidth, boxHeight);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${dateStr}`, pageWidth - margin, currentY, { align: 'right' });
+    doc.text(`Prescription No: ${prescriptionNo}`, pageWidth - margin, currentY + 5, { align: 'right' });
 
-    // Patient information inside box
-    doc.setFontSize(8.5);
-    try { doc.setFont('NotoSansKhmer', 'normal'); } catch { doc.setFont('helvetica', 'normal'); }
-    let yPos = boxY + 7;
-    const leftCol = boxX + 4;
-    const midCol = boxX + boxWidth * 0.48;
-    const rightCol = boxX + boxWidth * 0.73;
-    
-    // Row 1: Name, Gender, Age
-    doc.text(`Name: ${name}`, leftCol, yPos);
-    doc.text(`Gender: ${gender}`, midCol, yPos);
-    doc.text(`Age: ${age}`, rightCol, yPos);
-    
-    // Row 2: Address
-    yPos += 8;
-    doc.text(`Address: ${address}`, leftCol, yPos);
-    
-    // Row 3: Signs of Life
-    yPos += 7;
-    doc.text('សញ្ញានៃជីវិត / Signs of Life:', leftCol, yPos);
-    const solStartX = leftCol + 26;
-    doc.text(`BP: ${signOfLife === 'BP' ? '✓' : ''}`, solStartX, yPos);
-    doc.text(`P: ${signOfLife === 'P' ? '✓' : ''}`, solStartX + 22, yPos);
-    doc.text(`T: ${signOfLife === 'T' ? '✓' : ''}`, solStartX + 40, yPos);
-    doc.text(`RR: ${signOfLife === 'RR' ? '✓' : ''}`, solStartX + 58, yPos);
-    
-    // Row 4: Telephone
-    yPos += 7;
-    doc.text(`Telephone: ${telephone}`, leftCol, yPos);
-    
-    // Row 5: Symptom
-    yPos += 7;
-    doc.text(`រោគសញ្ញា / Symptom: ${symptom || '-'}`, leftCol, yPos);
-    
-    // Row 6: Diagnosis
-    yPos += 7;
-    doc.text(`រោគវិនិច្ឆ័យ / Diagnosis: ${diagnosis || '-'}`, leftCol, yPos);
+    // === PATIENT INFORMATION SECTION ===
+    currentY += 15;
 
-    // "Prescription" title
-    yPos = boxY + boxHeight + 12;
-    doc.setFontSize(13);
-    try { doc.setFont('NotoSansKhmer', 'bold'); } catch { doc.setFont('helvetica', 'bold'); }
-    doc.setTextColor(41, 98, 255);
-    doc.text('ការកំណត់ថ្នាំ / Prescription', pageWidth / 2, yPos, { align: 'center' });
+    // Section title
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 102, 204);
+    doc.text('PATIENT INFORMATION', margin, currentY);
+
+    // Underline
+    currentY += 2;
+    doc.setDrawColor(0, 102, 204);
+    doc.setLineWidth(0.5);
+    doc.line(margin, currentY, margin + 60, currentY);
+
+    currentY += 10;
+
+    // Patient info in a clean grid layout
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
 
-    // Table with Khmer labels
-    yPos += 6;
-    const head = [['លេខ\nNo', 'ឈ្មោះថ្នាំ\nMedication', 'ពេលព្រឹក\nMorn', 'ពេលរសៀល\nAfter', 'ពេលល្ងាច\nEven', 'ពេលយប់\nNight', 'រយៈពេល\nPeriod', 'បរិមាណ\nQTY', 'ក្រោយពេលបាយ\nAfter Meal', 'មុនពេលបាយ\nBefore Meal', 'តម្លៃ\nPrice', 'សរុប\nTotal']];
-    const body = prescriptions.map((p, idx) => [
-      idx + 1,
-      p.name,
-      p.morning || '-',
-      p.afternoon || '-',
-      p.evening || '-',
-      p.night || '-',
-      p.period ? `${p.period}d` : '-',
-      p.qty || '-',
-      p.afterMeal ? 'Yes' : '-',
-      p.beforeMeal ? 'Yes' : '-',
-      `$${p.price.toFixed(2)}`,
-      `$${(p.price * p.qty).toFixed(2)}`,
-    ]);
+    const leftCol = margin;
+    const rightCol = pageWidth / 2 + 10;
+    const lineHeight = 8;
 
-    // Add empty rows
-    while (body.length < 10) {
-      body.push(['', '', '', '', '', '', '', '', '', '', '', '']);
+    // Left column
+    doc.setFont('helvetica', 'bold');
+    doc.text('Name:', leftCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(name || '-', leftCol + 20, currentY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Gender:', rightCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(gender || '-', rightCol + 20, currentY);
+
+    currentY += lineHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Age:', leftCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(age || '-', leftCol + 20, currentY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Phone:', rightCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(telephone || '-', rightCol + 20, currentY);
+
+    currentY += lineHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Address:', leftCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(address || '-', leftCol + 20, currentY);
+
+    currentY += lineHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Vital Signs:', leftCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${signOfLife || '-'}`, leftCol + 30, currentY);
+
+    currentY += lineHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Symptoms:', leftCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(symptom || '-', leftCol + 25, currentY);
+
+    currentY += lineHeight;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Diagnosis:', leftCol, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(diagnosis || '-', leftCol + 25, currentY);
+
+    // === PRESCRIPTION SECTION ===
+    currentY += 20;
+
+    // Section title
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 102, 204);
+    doc.text('PRESCRIPTION DETAILS', margin, currentY);
+
+    // Underline
+    currentY += 2;
+    doc.setDrawColor(0, 102, 204);
+    doc.setLineWidth(0.5);
+    doc.line(margin, currentY, margin + 70, currentY);
+
+    currentY += 10;
+
+    // Simplified table headers - focus on essential information
+    const head = [['No.', 'Medication', 'Morning', 'Afternoon', 'Evening', 'Night', 'Duration', 'Qty', 'Price', 'Total']];
+    const body = prescriptions.map((p, idx) => {
+      // Add meal timing info to medication name if specified
+      let medicationName = p.name;
+      const mealTiming = [];
+      if (p.beforeMeal) mealTiming.push('Before meal');
+      if (p.afterMeal) mealTiming.push('After meal');
+      if (mealTiming.length > 0) {
+        medicationName += `\n(${mealTiming.join(', ')})`;
+      }
+
+      return [
+        idx + 1,
+        medicationName,
+        p.morning || '-',
+        p.afternoon || '-',
+        p.evening || '-',
+        p.night || '-',
+        p.period ? `${p.period} days` : '-',
+        p.qty || '-',
+        `$${p.price.toFixed(2)}`,
+        `$${(p.price * p.qty).toFixed(2)}`,
+      ];
+    });
+
+    // Add minimum empty rows for consistent layout
+    while (body.length < 5) {
+      body.push(['', '', '', '', '', '', '', '', '', '']);
     }
 
     const totalAmount = prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0);
 
-    // Calculate available width for table
-    const availableWidth = pageWidth - (margin * 2);
-
+    // Generate clean table
     // @ts-ignore
     autoTable(doc, {
       head,
       body,
-      startY: yPos,
+      startY: currentY,
       margin: { left: margin, right: margin },
-      tableWidth: availableWidth,
-      styles: { 
-        font: 'NotoSansKhmer',
-        fontSize: 8.5,
-        cellPadding: { top: 2, right: 1, bottom: 2, left: 1 },
-        lineColor: [200, 200, 200],
-        lineWidth: 0.25,
+      styles: {
+        font: 'helvetica',
+        fontSize: 9,
+        cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
+        lineColor: [220, 220, 220],
+        lineWidth: 0.3,
         halign: 'center',
         valign: 'middle',
         overflow: 'linebreak',
       },
-      headStyles: { 
-        font: 'NotoSansKhmer',
-        fillColor: [245, 248, 252],
-        textColor: [30, 30, 30],
+      headStyles: {
+        fillColor: [0, 102, 204],
+        textColor: [255, 255, 255],
         fontStyle: 'bold',
         halign: 'center',
-        lineWidth: 0.3,
-        lineColor: [180, 180, 180],
-        minCellHeight: 11,
+        minCellHeight: 12,
       },
       bodyStyles: {
-        font: 'NotoSansKhmer',
-        textColor: [40, 40, 40],
-        minCellHeight: 9,
+        textColor: [50, 50, 50],
+        minCellHeight: 10,
       },
       alternateRowStyles: {
-        fillColor: [253, 253, 253],
+        fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 50, halign: 'left' },
-        2: { cellWidth: 13, halign: 'center' },
-        3: { cellWidth: 13, halign: 'center' },
-        4: { cellWidth: 13, halign: 'center' },
-        5: { cellWidth: 13, halign: 'center' },
-        6: { cellWidth: 15, halign: 'center' },
-        7: { cellWidth: 12, halign: 'center' },
-        8: { cellWidth: 17, halign: 'center' },
-        9: { cellWidth: 17, halign: 'center' },
-        10: { cellWidth: 16, halign: 'right' },
-        11: { cellWidth: 16, halign: 'right' },
+        0: { cellWidth: 15, halign: 'center' },  // No.
+        1: { cellWidth: 45, halign: 'left' },    // Medication
+        2: { cellWidth: 18, halign: 'center' },  // Morning
+        3: { cellWidth: 18, halign: 'center' },  // Afternoon
+        4: { cellWidth: 18, halign: 'center' },  // Evening
+        5: { cellWidth: 18, halign: 'center' },  // Night
+        6: { cellWidth: 20, halign: 'center' },  // Duration
+        7: { cellWidth: 15, halign: 'center' },  // Qty
+        8: { cellWidth: 20, halign: 'right' },   // Price
+        9: { cellWidth: 25, halign: 'right' },   // Total
       },
       theme: 'grid',
     });
 
-    // Total line
-    const afterTableY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 4 : yPos + 10;
-    
-    doc.setDrawColor(180);
-    doc.setLineWidth(0.4);
-    doc.line(pageWidth - 70, afterTableY, pageWidth - margin, afterTableY);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Total: $${totalAmount.toFixed(2)}`, pageWidth - margin, afterTableY + 5, { align: 'right' });
+    // === TOTAL SECTION ===
+    const afterTableY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : currentY + 15;
 
-    // Footer note
-    const noteY = afterTableY + 14;
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(100, 100, 100);
-    doc.text('Note: Take medication as prescribed by doctor', margin, noteY);
+    // Total amount box
+    const totalBoxWidth = 60;
+    const totalBoxHeight = 15;
+    const totalBoxX = pageWidth - margin - totalBoxWidth;
+
+    doc.setFillColor(0, 102, 204);
+    doc.rect(totalBoxX, afterTableY, totalBoxWidth, totalBoxHeight, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`TOTAL: $${totalAmount.toFixed(2)}`, totalBoxX + totalBoxWidth/2, afterTableY + 10, { align: 'center' });
+
+    // === INSTRUCTIONS SECTION ===
+    const instructionsY = afterTableY + 30;
     doc.setTextColor(0, 0, 0);
-
-    // Bottom section - Signature and Doctor info
-    const bottomY = pageHeight - 22;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text('( Signature )', margin, bottomY);
-    doc.setLineWidth(0.3);
-    doc.line(margin, bottomY + 1.5, margin + 38, bottomY + 1.5);
-    
-    doc.text('DATE:', pageWidth - 68, bottomY);
-    doc.line(pageWidth - 54, bottomY + 1.5, pageWidth - margin, bottomY + 1.5);
-    
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('Dr. IM SOKLEAN', pageWidth - margin, bottomY + 7, { align: 'right' });
+    doc.text('INSTRUCTIONS:', margin, instructionsY);
+
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text('Tel: 0975111789', pageWidth - margin, bottomY + 11, { align: 'right' });
+    doc.setTextColor(80, 80, 80);
+    doc.text('• Take medication exactly as prescribed', margin, instructionsY + 8);
+    doc.text('• Complete the full course even if you feel better', margin, instructionsY + 16);
+    doc.text('• Contact doctor if you experience any side effects', margin, instructionsY + 24);
+
+    // === SIGNATURE SECTION ===
+    const signatureY = pageHeight - 40;
+
+    // Patient signature
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Patient Signature:', margin, signatureY);
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(150, 150, 150);
+    doc.line(margin + 35, signatureY + 2, margin + 100, signatureY + 2);
+
+    // Date
+    doc.text('Date:', margin, signatureY + 15);
+    doc.line(margin + 15, signatureY + 17, margin + 60, signatureY + 17);
+
+    // Doctor info
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('Dr. IM SOKLEAN', pageWidth - margin, signatureY, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Licensed Pharmacist', pageWidth - margin, signatureY + 6, { align: 'right' });
+    doc.text('Tel: 0975111789', pageWidth - margin, signatureY + 12, { align: 'right' });
+    doc.text('PUNLEUKREK PHARMACY', pageWidth - margin, signatureY + 18, { align: 'right' });
 
     return { doc, fileName };
   };
