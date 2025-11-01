@@ -385,11 +385,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
     {
       title: "OPD",
       icon: <IconPages />,
-      link: "#",
-      subMenu: [
-        { title: "List Patient", link: "/opd/patients" },
-        { title: "Add Patient", link: "/opd/register" },
-      ],
+      link: "/opd/patients",
     },
   ], []);
   
