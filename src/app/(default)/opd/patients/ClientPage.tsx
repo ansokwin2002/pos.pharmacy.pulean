@@ -4,6 +4,7 @@ import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton }
 import { faker } from '@faker-js/faker';
 import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient } from '@/utilities/api/podPatients';
 import { PageHeading } from '@/components/common/PageHeading';
+import { PatientActionsMenu, PatientNameWithMenu } from '@/components/common/PatientActionsMenu';
 import { Search, Plus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
 import { SortableHeader } from '@/components/common/SortableHeader';
 import Pagination from '@/components/common/Pagination';
@@ -539,21 +540,27 @@ export default function PatientListPage() {
           {currentItems.map((patient) => (
             <Table.Row key={patient.id}>
               <Table.Cell>{String(patient.id).substring(0,8)}</Table.Cell>
-              <Table.RowHeaderCell>{patient.name}</Table.RowHeaderCell>
+              <Table.RowHeaderCell>
+                <Flex align="center" justify="between">
+                  <PatientNameWithMenu
+                    patient={patient}
+                    onEdit={handleEditPatient}
+                    onDelete={handleDeletePatient}
+                  />
+                  <PatientActionsMenu
+                    patient={patient}
+                    onEdit={handleEditPatient}
+                    onDelete={handleDeletePatient}
+                  />
+                </Flex>
+              </Table.RowHeaderCell>
               <Table.Cell>{patient.email || '-'}</Table.Cell>
               <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
               <Table.Cell>{patient.address || '-'}</Table.Cell>
               <Table.Cell>{patient.city || '-'}</Table.Cell>
               <Table.Cell>{patient.gender || '-'}</Table.Cell>
               <Table.Cell>
-                <Flex gap="3">
-                  <IconButton size="1" variant="outline" color="gray" onClick={() => handleEditPatient(patient)}>
-                    <Pencil size={14} />
-                  </IconButton>
-                  <IconButton size="1" variant="soft" color="red" onClick={() => handleDeletePatient(patient)}>
-                    <Trash2 size={14} />
-                  </IconButton>
-                </Flex>
+                {/* Actions moved to dropdown menu in patient name column */}
               </Table.Cell>
             </Table.Row>
           ))}

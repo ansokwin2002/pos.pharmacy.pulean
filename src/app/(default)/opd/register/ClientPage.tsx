@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, IconButton, Dialog } from "@radix-ui/themes";
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, IconButton, Dialog, Tabs } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
-import { Plus } from 'lucide-react';
+import { Plus, User, Pill, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
@@ -45,7 +46,65 @@ export default function RegisterPatientPage() {
   const [signOfLife, setSignOfLife] = useState<'BP' | 'P' | 'T' | 'RR' | ''>('');
   const [symptom, setSymptom] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
-  
+
+  // Prescription entries
+  type Presc = {
+    id: string;
+    name: string;
+    price: number;
+    morning: number;
+    afternoon: number;
+    evening: number;
+    night: number;
+    period: string; // e.g., 5 days
+    qty: number;
+    afterMeal: boolean;
+    beforeMeal: boolean;
+  };
+
+  const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
+
+  // Tab management
+  const [currentTab, setCurrentTab] = useState<'patient-info' | 'prescription' | 'complete'>('patient-info');
+  const [completedTabs, setCompletedTabs] = useState<Set<string>>(() => new Set());
+
+  // Get search params for secure patient ID lookup
+  const searchParams = useSearchParams();
+
+  // Extract patient ID from URL parameters (secure approach)
+  const patientIdParam = searchParams.get('id');
+
+  // Find patient by ID for secure auto-fill
+  const selectedPatient = patientIdParam ? fakePatients.find(p => p.id === patientIdParam) : null;
+
+  // Auto-fill form when patient ID is provided (secure approach)
+  useEffect(() => {
+    if (selectedPatient && patientIdParam) {
+      // React 18 automatically batches these state updates
+      setName(selectedPatient.name);
+      setGender(selectedPatient.gender);
+      setAge(String(selectedPatient.age));
+
+      // Ensure telephone meets validation requirements (8-12 digits)
+      let validTelephone = selectedPatient.telephone;
+      if (validTelephone && /^\d+$/.test(validTelephone)) {
+        // Pad with leading zeros if too short, truncate if too long
+        if (validTelephone.length < 8) {
+          validTelephone = validTelephone.padStart(8, '0');
+        } else if (validTelephone.length > 12) {
+          validTelephone = validTelephone.slice(0, 12);
+        }
+      }
+      setTelephone(validTelephone);
+
+      setAddress(selectedPatient.address);
+      setSignOfLife(selectedPatient.signOfLife);
+      setSymptom(selectedPatient.symptom);
+      setDiagnosis(selectedPatient.diagnosis);
+      setErrors({});
+    }
+  }, [selectedPatient, patientIdParam]);
+
   // Form validation state
   const [errors, setErrors] = useState<{ 
     name?: string;
@@ -58,7 +117,7 @@ export default function RegisterPatientPage() {
     diagnosis?: string;
   }>({});
 
-  const validateAll = () => {
+  const validatePatientInfo = useCallback(() => {
     const e: typeof errors = {};
     if (!name.trim()) e.name = 'Name is required';
     if (!gender) e.gender = 'Gender is required';
@@ -72,7 +131,80 @@ export default function RegisterPatientPage() {
     if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
     setErrors(e);
     return Object.keys(e).length === 0;
+  }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+
+  // Memoized validation result for use in render (without side effects)
+  const isPatientInfoValid = useMemo(() => {
+    if (!name.trim()) return false;
+    if (!gender) return false;
+    const ageNum = Number(age);
+    if (!age || isNaN(ageNum) || ageNum <= 0) return false;
+    if (!telephone.trim()) return false;
+    if (!/^\d{8,12}$/.test(telephone.trim())) return false;
+    if (!address.trim()) return false;
+    if (!signOfLife) return false;
+    if (!symptom.trim()) return false;
+    if (!diagnosis.trim()) return false;
+    return true;
+  }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+
+  const validateAll = () => {
+    return validatePatientInfo();
   };
+
+  // Tab navigation functions
+  const canProceedToTab = useCallback((tabId: string): boolean => {
+    switch (tabId) {
+      case 'patient-info':
+        return true;
+      case 'prescription':
+        return isPatientInfoValid;
+      case 'complete':
+        return isPatientInfoValid && prescriptions.length > 0;
+      default:
+        return false;
+    }
+  }, [isPatientInfoValid, prescriptions.length]);
+
+  const handleTabChange = useCallback((tabId: string) => {
+    if (canProceedToTab(tabId)) {
+      setCurrentTab(tabId as 'patient-info' | 'prescription' | 'complete');
+
+      // Mark previous tabs as completed
+      if (tabId === 'prescription' && isPatientInfoValid) {
+        setCompletedTabs(prev => new Set([...prev, 'patient-info']));
+      } else if (tabId === 'complete' && isPatientInfoValid && prescriptions.length > 0) {
+        setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription']));
+      }
+    } else {
+      // Show validation errors
+      if (tabId === 'prescription') {
+        validatePatientInfo();
+        toast.error('Please complete patient information first');
+      } else if (tabId === 'complete') {
+        if (!isPatientInfoValid) {
+          validatePatientInfo();
+          toast.error('Please complete patient information first');
+        } else if (prescriptions.length === 0) {
+          toast.error('Please add at least one prescription');
+        }
+      }
+    }
+  }, [canProceedToTab, isPatientInfoValid, prescriptions.length, validatePatientInfo]);
+
+  const proceedToNextTab = useCallback(() => {
+    if (currentTab === 'patient-info' && isPatientInfoValid) {
+      // Call validatePatientInfo to set errors state, but we already know it's valid
+      validatePatientInfo();
+      setCompletedTabs(prev => new Set([...prev, 'patient-info']));
+      handleTabChange('prescription');
+      toast.success('Patient information completed!');
+    } else if (currentTab === 'prescription' && prescriptions.length > 0) {
+      setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription']));
+      handleTabChange('complete');
+      toast.success('Prescription completed!');
+    }
+  }, [currentTab, isPatientInfoValid, prescriptions.length, validatePatientInfo, handleTabChange]);
 
   // Fake drugs dataset
   const baseDrugOptions = [
@@ -98,23 +230,7 @@ export default function RegisterPatientPage() {
     { id: 'D020', name: 'Clopidogrel 75mg', price: 3.20 },
   ];
 
-  // Prescription entries
-  type Presc = {
-    id: string;
-    name: string;
-    price: number;
-    morning: number;
-    afternoon: number;
-    evening: number;
-    night: number;
-    period: string; // e.g., 5 days
-    qty: number;
-    afterMeal: boolean;
-    beforeMeal: boolean;
-  };
-
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
-  const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
 
   // Manual drug dialog state
   const [isManualDrugOpen, setManualDrugOpen] = useState(false);
@@ -126,7 +242,7 @@ export default function RegisterPatientPage() {
   // Prescription form validation (drug select)
   const [prescErrors, setPrescErrors] = useState<{ drug?: string; meal?: string }>({});
 
-  const allDrugOptions = [...customDrugs, ...baseDrugOptions];
+  const allDrugOptions = useMemo(() => [...customDrugs, ...baseDrugOptions], [customDrugs]);
 
   const addManualDrug = () => {
     const name = manualDrugName.trim();
@@ -528,9 +644,8 @@ export default function RegisterPatientPage() {
       const { createPodPatient } = await import('@/utilities/api/podPatients');
       const saved = await createPodPatient(payload as any);
       setHasSaved(true);
-      toast.success('Patient saved');
-      // optionally reset prescriptions after save
-      // setPrescriptions([]);
+      setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
+      toast.success('Patient saved successfully!');
       // Update selectedPatientId to new id if backend returns it
       if (saved?.id) setSelectedPatientId(String(saved.id));
     } catch (e: any) {
@@ -554,12 +669,135 @@ export default function RegisterPatientPage() {
   };
 
 
+  const isAutoFilled = selectedPatient !== null;
+
+  // Progress calculation
+  const getProgressPercentage = useCallback(() => {
+    const steps = ['patient-info', 'prescription', 'complete'];
+    const currentIndex = steps.indexOf(currentTab);
+    const completedCount = Array.from(completedTabs).length;
+    return Math.max(((currentIndex + 1) / steps.length) * 100, (completedCount / steps.length) * 100);
+  }, [currentTab, completedTabs]);
+
+  const getStepStatus = useCallback((step: string) => {
+    if (completedTabs.has(step)) return 'completed';
+    if (step === currentTab) return 'current';
+    return 'pending';
+  }, [completedTabs, currentTab]);
+
   return (
     <Box className="space-y-4 w-full px-4">
-      <PageHeading title="Add New Patient" description="Fill in the details of the new patient." />
+      <PageHeading
+        title={isAutoFilled ? "Add New Patient (Auto-filled)" : "Add New Patient"}
+        description={isAutoFilled ? "Patient information has been auto-filled. Review and modify as needed." : "Complete the patient registration process step by step."}
+      />
+
+      {/* Progress Indicator */}
+      <Card>
+        <Box p="3">
+          <Flex justify="between" align="center" mb="2">
+            <Text size="2" weight="bold">Progress</Text>
+            <Text size="2" color="gray">{Math.round(getProgressPercentage())}% Complete</Text>
+          </Flex>
+
+          {/* Progress Bar */}
+          <Box style={{ backgroundColor: 'var(--gray-3)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+            <Box
+              style={{
+                backgroundColor: 'var(--blue-9)',
+                height: '100%',
+                width: `${getProgressPercentage()}%`,
+                transition: 'width 0.3s ease'
+              }}
+            />
+          </Box>
+
+          {/* Step Indicators */}
+          <Flex justify="between" mt="3">
+            <Flex align="center" gap="1">
+              {getStepStatus('patient-info') === 'completed' ? (
+                <CheckCircle size={16} color="green" />
+              ) : getStepStatus('patient-info') === 'current' ? (
+                <User size={16} color="blue" />
+              ) : (
+                <User size={16} color="gray" />
+              )}
+              <Text size="1" color={getStepStatus('patient-info') === 'pending' ? 'gray' : undefined}>
+                Patient Info
+              </Text>
+            </Flex>
+
+            <Flex align="center" gap="1">
+              {getStepStatus('prescription') === 'completed' ? (
+                <CheckCircle size={16} color="green" />
+              ) : getStepStatus('prescription') === 'current' ? (
+                <Pill size={16} color="blue" />
+              ) : (
+                <Pill size={16} color="gray" />
+              )}
+              <Text size="1" color={getStepStatus('prescription') === 'pending' ? 'gray' : undefined}>
+                Prescription
+              </Text>
+            </Flex>
+
+            <Flex align="center" gap="1">
+              {getStepStatus('complete') === 'completed' ? (
+                <CheckCircle size={16} color="green" />
+              ) : getStepStatus('complete') === 'current' ? (
+                <FileText size={16} color="blue" />
+              ) : (
+                <FileText size={16} color="gray" />
+              )}
+              <Text size="1" color={getStepStatus('complete') === 'pending' ? 'gray' : undefined}>
+                Complete
+              </Text>
+            </Flex>
+          </Flex>
+        </Box>
+      </Card>
       <Card style={{ width: '100%' }}>
         <Box p="4">
-          <Flex direction="column" gap="3">
+          {isAutoFilled && (
+            <Box mb="4" p="3" style={{ backgroundColor: 'var(--blue-2)', borderRadius: '6px', border: '1px solid var(--blue-6)' }}>
+              <Text size="2" style={{ color: 'var(--blue-11)' }}>
+                ℹ️ Patient information has been auto-filled from the patient list. You can modify any field as needed.
+              </Text>
+            </Box>
+          )}
+
+          <Tabs.Root value={currentTab} onValueChange={handleTabChange}>
+            <Tabs.List>
+              <Tabs.Trigger value="patient-info">
+                <Flex align="center" gap="2">
+                  <User size={16} />
+                  <Text>Patient Info</Text>
+                  {completedTabs.has('patient-info') && <CheckCircle size={14} color="green" />}
+                </Flex>
+              </Tabs.Trigger>
+              <Tabs.Trigger value="prescription" disabled={!canProceedToTab('prescription')}>
+                <Flex align="center" gap="2">
+                  <Pill size={16} />
+                  <Text>Prescription</Text>
+                  {completedTabs.has('prescription') && <CheckCircle size={14} color="green" />}
+                </Flex>
+              </Tabs.Trigger>
+              <Tabs.Trigger value="complete" disabled={!canProceedToTab('complete')}>
+                <Flex align="center" gap="2">
+                  <FileText size={16} />
+                  <Text>Complete</Text>
+                  {completedTabs.has('complete') && <CheckCircle size={14} color="green" />}
+                </Flex>
+              </Tabs.Trigger>
+            </Tabs.List>
+
+            <Tabs.Content value="patient-info">
+              <Box mt="4">
+                <Box mb="4" p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px' }}>
+                  <Text size="2" color="gray">
+                    📋 <strong>Step 1:</strong> Enter patient information. All fields marked with * are required to proceed to the next step.
+                  </Text>
+                </Box>
+                <Flex direction="column" gap="3">
             {/* Existing Patient */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Existing Patient</Text>
@@ -611,7 +849,7 @@ export default function RegisterPatientPage() {
 
             {/* Name */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Name</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Name *</Text>
               <TextField.Root
                 value={name}
                 onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({...prev, name: undefined})); }}
@@ -623,7 +861,7 @@ export default function RegisterPatientPage() {
 
             {/* Gender */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Gender</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Gender *</Text>
               <Flex direction="column" align="start" className="w-full">
                 <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => { setGender(value); if (errors.gender) setErrors(prev => ({...prev, gender: undefined})); }}>
                   <Select.Trigger placeholder="Select gender" />
@@ -640,7 +878,7 @@ export default function RegisterPatientPage() {
 
             {/* Age */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Age</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Age *</Text>
               <TextField.Root
                 type="number"
                 value={age}
@@ -714,9 +952,25 @@ export default function RegisterPatientPage() {
               />
               {errors.diagnosis && <Text size="1" className="text-red-500">{errors.diagnosis}</Text>}
             </label>
-          </Flex>
+                </Flex>
 
-          {/* Drug selection */}
+                {/* Tab Navigation */}
+                <Flex justify="end" mt="4" gap="2">
+                  <Button onClick={proceedToNextTab} disabled={!isPatientInfoValid}>
+                    Next: Prescription
+                  </Button>
+                </Flex>
+              </Box>
+            </Tabs.Content>
+
+            <Tabs.Content value="prescription">
+              <Box mt="4">
+                <Box mb="4" p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px' }}>
+                  <Text size="2" color="gray">
+                    💊 <strong>Step 2:</strong> Add medications to the prescription. Select drugs, set dosages, and specify meal timing. At least one medication is required.
+                  </Text>
+                </Box>
+                {/* Drug selection */}
           <Box mt="5">
             <Text as="div" size="3" weight="bold" mb="3">Prescription</Text>
             <Box className="rounded-md border" style={{ borderColor: 'var(--gray-3)' }}>
@@ -889,18 +1143,83 @@ export default function RegisterPatientPage() {
             </Box>
           </Box>
 
-          <Flex gap="3" mt="4" justify="end">
-            <Button variant="soft" color="gray">
-              Cancel
+          {/* Tab Navigation */}
+          <Flex justify="between" mt="4">
+            <Button variant="soft" onClick={() => handleTabChange('patient-info')}>
+              Back: Patient Info
             </Button>
-            <Button onClick={handleSubmit}>Save</Button>
-            {hasSaved && (
-              <>
-                <Button variant="outline" onClick={downloadPdf}>Export</Button>
-                <Button variant="soft" onClick={previewPrintPdf}>Download PDF / Print</Button>
-              </>
-            )}
+            <Button onClick={proceedToNextTab} disabled={prescriptions.length === 0}>
+              Next: Complete
+            </Button>
           </Flex>
+        </Box>
+            </Tabs.Content>
+
+            <Tabs.Content value="complete">
+              <Box mt="4">
+                <Box mb="4" p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px' }}>
+                  <Text size="2" color="gray">
+                    ✅ <strong>Step 3:</strong> Review the patient information and prescription details. Save the patient record and export/print the prescription.
+                  </Text>
+                </Box>
+                {/* Summary Section */}
+                <Box mb="4">
+                  <Text size="4" weight="bold" mb="3">Summary</Text>
+
+                  {/* Patient Summary */}
+                  <Card mb="3">
+                    <Box p="3">
+                      <Text size="3" weight="bold" mb="2">Patient Information</Text>
+                      <Flex direction="column" gap="1">
+                        <Text size="2"><strong>Name:</strong> {name}</Text>
+                        <Text size="2"><strong>Gender:</strong> {gender}</Text>
+                        <Text size="2"><strong>Age:</strong> {age}</Text>
+                        <Text size="2"><strong>Phone:</strong> {telephone}</Text>
+                        <Text size="2"><strong>Address:</strong> {address}</Text>
+                        <Text size="2"><strong>Signs of Life:</strong> {signOfLife}</Text>
+                        <Text size="2"><strong>Symptom:</strong> {symptom}</Text>
+                        <Text size="2"><strong>Diagnosis:</strong> {diagnosis}</Text>
+                      </Flex>
+                    </Box>
+                  </Card>
+
+                  {/* Prescription Summary */}
+                  <Card mb="3">
+                    <Box p="3">
+                      <Text size="3" weight="bold" mb="2">Prescription Summary</Text>
+                      <Text size="2" mb="2">Total Medications: {prescriptions.length}</Text>
+                      <Text size="2" weight="bold">Total Cost: ${prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0).toFixed(2)}</Text>
+                    </Box>
+                  </Card>
+                </Box>
+
+                {/* Action Buttons */}
+                <Flex gap="3" mt="4" justify="between">
+                  <Button variant="soft" onClick={() => handleTabChange('prescription')}>
+                    Back: Prescription
+                  </Button>
+                  <Flex gap="2">
+                    <Button variant="soft" color="gray">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSubmit}>Save Patient</Button>
+                  </Flex>
+                </Flex>
+
+                {hasSaved && (
+                  <Box mt="4" p="3" style={{ backgroundColor: 'var(--green-2)', borderRadius: '6px', border: '1px solid var(--green-6)' }}>
+                    <Text size="2" style={{ color: 'var(--green-11)' }} mb="2">
+                      ✅ Patient saved successfully! You can now export or print the prescription.
+                    </Text>
+                    <Flex gap="2" mt="2">
+                      <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>
+                      <Button variant="soft" onClick={previewPrintPdf}>Print Prescription</Button>
+                    </Flex>
+                  </Box>
+                )}
+              </Box>
+            </Tabs.Content>
+          </Tabs.Root>
         </Box>
       </Card>
     </Box>
