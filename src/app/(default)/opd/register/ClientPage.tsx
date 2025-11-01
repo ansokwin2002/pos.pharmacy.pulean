@@ -74,19 +74,74 @@ export default function RegisterPatientPage() {
   // Extract patient ID from URL parameters (secure approach)
   const patientIdParam = searchParams.get('id');
 
-  // Find patient by ID for secure auto-fill
+  // State for real patient data from API
+  const [realPatient, setRealPatient] = useState<any>(null);
+
+  // Find patient by ID - first check fake patients, then try to load from API
   const selectedPatient = patientIdParam ? fakePatients.find(p => p.id === patientIdParam) : null;
 
-  // Auto-fill form when patient ID is provided (secure approach)
+  // If not found in fake patients, try to load from API
   useEffect(() => {
-    if (selectedPatient && patientIdParam) {
-      // React 18 automatically batches these state updates
-      setName(selectedPatient.name);
-      setGender(selectedPatient.gender);
-      setAge(String(selectedPatient.age));
+    if (patientIdParam && !selectedPatient) {
+      console.log('Loading patient from API with ID:', patientIdParam);
 
-      // Ensure telephone meets validation requirements (8-12 digits)
-      let validTelephone = selectedPatient.telephone;
+      const loadPatientFromAPI = async () => {
+        try {
+          // Try to load patient from API - first try without search to get all patients
+          const { listPodPatients } = await import('@/utilities/api/podPatients');
+          const response = await listPodPatients();
+          const patients = Array.isArray(response?.data) ? response.data : response;
+
+          console.log('API response:', patients);
+
+          // Try to find patient by exact ID match
+          let patient = patients?.find((p: any) => String(p.id) === patientIdParam);
+
+          // If not found by exact ID, try to find by partial ID match
+          if (!patient) {
+            patient = patients?.find((p: any) => String(p.id).includes(patientIdParam));
+          }
+
+          console.log('Found patient:', patient);
+
+          if (patient) {
+            setRealPatient(patient);
+          } else {
+            console.log('Patient not found in API response');
+          }
+        } catch (error) {
+          console.error('Failed to load patient from API:', error);
+        }
+      };
+
+      loadPatientFromAPI();
+    }
+  }, [patientIdParam, selectedPatient]);
+
+  // Auto-fill form when patient data is available (secure approach)
+  useEffect(() => {
+    const patient = selectedPatient || realPatient;
+
+    console.log('Auto-fill effect triggered:', { selectedPatient, realPatient, patient, patientIdParam });
+
+    if (patient && patientIdParam) {
+      console.log('Auto-filling with patient data:', patient);
+      // React 18 automatically batches these state updates
+      setName(patient.name || '');
+
+      // Handle gender field (API uses string, fake uses 'male'|'female')
+      const genderValue = patient.gender;
+      if (genderValue === 'male' || genderValue === 'female') {
+        setGender(genderValue);
+      } else {
+        setGender('');
+      }
+
+      setAge(String(patient.age || ''));
+
+      // Handle telephone field (API might use 'telephone' or 'phone')
+      const phoneValue = patient.telephone || patient.phone || '';
+      let validTelephone = String(phoneValue);
       if (validTelephone && /^\d+$/.test(validTelephone)) {
         // Pad with leading zeros if too short, truncate if too long
         if (validTelephone.length < 8) {
@@ -97,13 +152,21 @@ export default function RegisterPatientPage() {
       }
       setTelephone(validTelephone);
 
-      setAddress(selectedPatient.address);
-      setSignOfLife(selectedPatient.signOfLife);
-      setSymptom(selectedPatient.symptom);
-      setDiagnosis(selectedPatient.diagnosis);
+      setAddress(patient.address || '');
+
+      // Handle signOfLife field (API uses 'signs_of_life', fake uses 'signOfLife')
+      const signOfLifeValue = patient.signOfLife || patient.signs_of_life;
+      if (['BP', 'P', 'T', 'RR'].includes(signOfLifeValue)) {
+        setSignOfLife(signOfLifeValue as 'BP' | 'P' | 'T' | 'RR');
+      } else {
+        setSignOfLife('BP'); // Default value
+      }
+
+      setSymptom(patient.symptom || '');
+      setDiagnosis(patient.diagnosis || '');
       setErrors({});
     }
-  }, [selectedPatient, patientIdParam]);
+  }, [selectedPatient, realPatient, patientIdParam]);
 
   // Form validation state
   const [errors, setErrors] = useState<{ 
@@ -340,311 +403,143 @@ export default function RegisterPatientPage() {
 
     const doc = new jsPDF();
 
-    // Register Khmer font dynamically from public folder
-    const registerKhmerFonts = async () => {
-      async function fetchAsBase64(url: string): Promise<string> {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to load font: ${url}`);
-        const blob = await res.blob();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(((reader.result || '') as string).split(',')[1] || '');
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      }
-      try {
-        const regularBase64 = await fetchAsBase64('/fonts/khmer/NotoSansKhmer-Regular.ttf');
-        (doc as any).addFileToVFS('NotoSansKhmer-Regular.ttf', regularBase64);
-        (doc as any).addFont('NotoSansKhmer-Regular.ttf', 'NotoSansKhmer', 'normal');
-      } catch (e) {
-        console.warn('Khmer Regular font not found, Khmer may not render correctly', e);
-      }
-      try {
-        const boldBase64 = await fetchAsBase64('/fonts/khmer/NotoSansKhmer-Bold.ttf');
-        (doc as any).addFileToVFS('NotoSansKhmer-Bold.ttf', boldBase64);
-        (doc as any).addFont('NotoSansKhmer-Bold.ttf', 'NotoSansKhmer', 'bold');
-      } catch {
-        // Bold is optional; fallback to normal
-      }
-      try { doc.setFont('NotoSansKhmer', 'normal'); } catch {}
-    };
-    await registerKhmerFonts();
+    // Use standard fonts for cleaner output
+    doc.setFont('helvetica', 'normal');
 
     const now = new Date();
-    const fileName = `prescription-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.pdf`;
+    const fileName = `prescription-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`;
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
+    const margin = 20;
 
-    // === HEADER SECTION ===
-    let currentY = 20;
+    // Simple header
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('PUNLEUKREK PHARMACY', pageWidth / 2, 25, { align: 'center' });
 
-    // Try to load logo
-    try {
-      const res = await fetch('/images/invoice/logo.png');
-      if (res.ok) {
-        const blob = await res.blob();
-        const reader = new FileReader();
-        const dataUrl: string = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        doc.addImage(dataUrl, 'PNG', margin, 15, 30, 12);
-      }
-    } catch (e) {
-      console.warn('Failed to load logo for PDF header', e);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'normal');
+    doc.text('PRESCRIPTION', pageWidth / 2, 35, { align: 'center' });
+
+    // Date
+    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+    doc.setFontSize(10);
+    doc.text(`Date: ${dateStr}`, pageWidth - margin, 45, { align: 'right' });
+
+    // Simple line separator
+    doc.setLineWidth(0.5);
+    doc.line(margin, 50, pageWidth - margin, 50);
+
+    // Patient information - simple and clean
+    let y = 65;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PATIENT:', margin, y);
+
+    y += 10;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${name || 'N/A'}, ${gender || 'N/A'}, Age ${age || 'N/A'}`, margin, y);
+
+    y += 8;
+    doc.text(`Phone: ${telephone || 'N/A'}`, margin, y);
+
+    y += 8;
+    doc.text(`Address: ${address || 'N/A'}`, margin, y);
+
+    if (symptom || diagnosis) {
+      y += 8;
+      doc.text(`Condition: ${symptom || ''} ${diagnosis ? '(' + diagnosis + ')' : ''}`, margin, y);
     }
 
-    // Pharmacy name and title
-    doc.setTextColor(0, 102, 204); // Professional blue
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PUNLEUKREK PHARMACY', pageWidth / 2, currentY, { align: 'center' });
+    // Prescription section
+    y += 20;
 
-    currentY += 8;
     doc.setFontSize(12);
-    doc.setTextColor(100, 100, 100);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Medical Prescription / បង្កាន់ដៃថ្នាំ', pageWidth / 2, currentY, { align: 'center' });
-
-    // Date and prescription number
-    currentY += 15;
-    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-    const prescriptionNo = `RX-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Date: ${dateStr}`, pageWidth - margin, currentY, { align: 'right' });
-    doc.text(`Prescription No: ${prescriptionNo}`, pageWidth - margin, currentY + 5, { align: 'right' });
-
-    // === PATIENT INFORMATION SECTION ===
-    currentY += 15;
-
-    // Section title
-    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 102, 204);
-    doc.text('PATIENT INFORMATION', margin, currentY);
+    doc.text('MEDICATIONS:', margin, y);
 
-    // Underline
-    currentY += 2;
-    doc.setDrawColor(0, 102, 204);
-    doc.setLineWidth(0.5);
-    doc.line(margin, currentY, margin + 60, currentY);
+    y += 10;
 
-    currentY += 10;
+    // Simple table with only essential columns
+    const head = [['Medication', 'Dosage', 'Duration', 'Qty', 'Price']];
+    const body = prescriptions.map((p) => {
+      // Create simple dosage string
+      const dosage = [];
+      if (p.morning) dosage.push(`${p.morning} morning`);
+      if (p.afternoon) dosage.push(`${p.afternoon} afternoon`);
+      if (p.evening) dosage.push(`${p.evening} evening`);
+      if (p.night) dosage.push(`${p.night} night`);
 
-    // Patient info in a clean grid layout
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
+      let dosageStr = dosage.join(', ') || 'As directed';
 
-    const leftCol = margin;
-    const rightCol = pageWidth / 2 + 10;
-    const lineHeight = 8;
-
-    // Left column
-    doc.setFont('helvetica', 'bold');
-    doc.text('Name:', leftCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(name || '-', leftCol + 20, currentY);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Gender:', rightCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(gender || '-', rightCol + 20, currentY);
-
-    currentY += lineHeight;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Age:', leftCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(age || '-', leftCol + 20, currentY);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Phone:', rightCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(telephone || '-', rightCol + 20, currentY);
-
-    currentY += lineHeight;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Address:', leftCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(address || '-', leftCol + 20, currentY);
-
-    currentY += lineHeight;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Vital Signs:', leftCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${signOfLife || '-'}`, leftCol + 30, currentY);
-
-    currentY += lineHeight;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Symptoms:', leftCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(symptom || '-', leftCol + 25, currentY);
-
-    currentY += lineHeight;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Diagnosis:', leftCol, currentY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(diagnosis || '-', leftCol + 25, currentY);
-
-    // === PRESCRIPTION SECTION ===
-    currentY += 20;
-
-    // Section title
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 102, 204);
-    doc.text('PRESCRIPTION DETAILS', margin, currentY);
-
-    // Underline
-    currentY += 2;
-    doc.setDrawColor(0, 102, 204);
-    doc.setLineWidth(0.5);
-    doc.line(margin, currentY, margin + 70, currentY);
-
-    currentY += 10;
-
-    // Simplified table headers - focus on essential information
-    const head = [['No.', 'Medication', 'Morning', 'Afternoon', 'Evening', 'Night', 'Duration', 'Qty', 'Price', 'Total']];
-    const body = prescriptions.map((p, idx) => {
-      // Add meal timing info to medication name if specified
-      let medicationName = p.name;
-      const mealTiming = [];
-      if (p.beforeMeal) mealTiming.push('Before meal');
-      if (p.afterMeal) mealTiming.push('After meal');
-      if (mealTiming.length > 0) {
-        medicationName += `\n(${mealTiming.join(', ')})`;
-      }
+      // Add meal timing
+      if (p.beforeMeal) dosageStr += ' (before meal)';
+      if (p.afterMeal) dosageStr += ' (after meal)';
 
       return [
-        idx + 1,
-        medicationName,
-        p.morning || '-',
-        p.afternoon || '-',
-        p.evening || '-',
-        p.night || '-',
+        p.name,
+        dosageStr,
         p.period ? `${p.period} days` : '-',
         p.qty || '-',
-        `$${p.price.toFixed(2)}`,
         `$${(p.price * p.qty).toFixed(2)}`,
       ];
     });
 
-    // Add minimum empty rows for consistent layout
-    while (body.length < 5) {
-      body.push(['', '', '', '', '', '', '', '', '', '']);
-    }
-
     const totalAmount = prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0);
 
-    // Generate clean table
+    // Simple, clean table
     // @ts-ignore
     autoTable(doc, {
       head,
       body,
-      startY: currentY,
+      startY: y,
       margin: { left: margin, right: margin },
       styles: {
         font: 'helvetica',
-        fontSize: 9,
-        cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
-        lineColor: [220, 220, 220],
-        lineWidth: 0.3,
-        halign: 'center',
-        valign: 'middle',
-        overflow: 'linebreak',
+        fontSize: 10,
+        cellPadding: 5,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.5,
       },
       headStyles: {
-        fillColor: [0, 102, 204],
-        textColor: [255, 255, 255],
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
         fontStyle: 'bold',
-        halign: 'center',
-        minCellHeight: 12,
-      },
-      bodyStyles: {
-        textColor: [50, 50, 50],
-        minCellHeight: 10,
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 15, halign: 'center' },  // No.
-        1: { cellWidth: 45, halign: 'left' },    // Medication
-        2: { cellWidth: 18, halign: 'center' },  // Morning
-        3: { cellWidth: 18, halign: 'center' },  // Afternoon
-        4: { cellWidth: 18, halign: 'center' },  // Evening
-        5: { cellWidth: 18, halign: 'center' },  // Night
-        6: { cellWidth: 20, halign: 'center' },  // Duration
-        7: { cellWidth: 15, halign: 'center' },  // Qty
-        8: { cellWidth: 20, halign: 'right' },   // Price
-        9: { cellWidth: 25, halign: 'right' },   // Total
+        0: { cellWidth: 60, halign: 'left' },    // Medication
+        1: { cellWidth: 50, halign: 'left' },    // Dosage
+        2: { cellWidth: 25, halign: 'center' },  // Duration
+        3: { cellWidth: 20, halign: 'center' },  // Qty
+        4: { cellWidth: 25, halign: 'right' },   // Price
       },
       theme: 'grid',
     });
 
-    // === TOTAL SECTION ===
-    const afterTableY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : currentY + 15;
+    // Total
+    const afterTableY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : y + 15;
 
-    // Total amount box
-    const totalBoxWidth = 60;
-    const totalBoxHeight = 15;
-    const totalBoxX = pageWidth - margin - totalBoxWidth;
-
-    doc.setFillColor(0, 102, 204);
-    doc.rect(totalBoxX, afterTableY, totalBoxWidth, totalBoxHeight, 'F');
-
-    doc.setTextColor(255, 255, 255);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(`TOTAL: $${totalAmount.toFixed(2)}`, totalBoxX + totalBoxWidth/2, afterTableY + 10, { align: 'center' });
-
-    // === INSTRUCTIONS SECTION ===
-    const instructionsY = afterTableY + 30;
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INSTRUCTIONS:', margin, instructionsY);
+    doc.text(`TOTAL: $${totalAmount.toFixed(2)}`, pageWidth - margin, afterTableY, { align: 'right' });
 
+    // Instructions
+    const instructionsY = afterTableY + 20;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 80);
-    doc.text('• Take medication exactly as prescribed', margin, instructionsY + 8);
-    doc.text('• Complete the full course even if you feel better', margin, instructionsY + 16);
-    doc.text('• Contact doctor if you experience any side effects', margin, instructionsY + 24);
+    doc.text('Instructions: Take as directed by pharmacist', margin, instructionsY);
 
-    // === SIGNATURE SECTION ===
-    const signatureY = pageHeight - 40;
-
-    // Patient signature
-    doc.setTextColor(0, 0, 0);
+    // Simple footer
+    const footerY = pageHeight - 30;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Patient Signature:', margin, signatureY);
-    doc.setLineWidth(0.5);
-    doc.setDrawColor(150, 150, 150);
-    doc.line(margin + 35, signatureY + 2, margin + 100, signatureY + 2);
-
-    // Date
-    doc.text('Date:', margin, signatureY + 15);
-    doc.line(margin + 15, signatureY + 17, margin + 60, signatureY + 17);
-
-    // Doctor info
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('Dr. IM SOKLEAN', pageWidth - margin, signatureY, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Licensed Pharmacist', pageWidth - margin, signatureY + 6, { align: 'right' });
-    doc.text('Tel: 0975111789', pageWidth - margin, signatureY + 12, { align: 'right' });
-    doc.text('PUNLEUKREK PHARMACY', pageWidth - margin, signatureY + 18, { align: 'right' });
+    doc.text('Patient Signature: ________________________', margin, footerY);
+    doc.text('Dr. IM SOKLEAN - Tel: 0975111789', pageWidth - margin, footerY, { align: 'right' });
 
     return { doc, fileName };
   };
@@ -731,7 +626,7 @@ export default function RegisterPatientPage() {
   };
 
 
-  const isAutoFilled = selectedPatient !== null;
+  const isAutoFilled = selectedPatient !== null || realPatient !== null;
 
   // Progress calculation
   const getProgressPercentage = useCallback(() => {
