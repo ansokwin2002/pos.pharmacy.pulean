@@ -16,16 +16,31 @@ import { Edit, Trash2, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SortableHeader } from '@/components/common/SortableHeader';
 
+import { Checkbox } from '@radix-ui/themes';
+
 interface DrugsTableProps {
   drugs: Drug[];
+  selectedIds: string[];
   onEdit?: (drug: Drug) => void;
   onDelete?: (drug: Drug) => void;
   onView?: (drug: Drug) => void;
+  onSelectionChange: (id: string) => void;
+  onSelectAll: () => void;
 }
 
-export default function DrugsTable({ drugs, onEdit, onDelete, onView }: DrugsTableProps) {
+export default function DrugsTable({ 
+  drugs, 
+  selectedIds,
+  onEdit, 
+  onDelete, 
+  onView,
+  onSelectionChange,
+  onSelectAll
+}: DrugsTableProps) {
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const allVisibleSelected = drugs.length > 0 && selectedIds.length === drugs.length;
+
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -148,6 +163,13 @@ export default function DrugsTable({ drugs, onEdit, onDelete, onView }: DrugsTab
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeaderCell>
+              <Checkbox 
+                checked={allVisibleSelected}
+                onCheckedChange={onSelectAll}
+                aria-label="Select all rows"
+              />
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>
               <SortableHeader
                 label="Drug Name"
                 sortKey="name"
@@ -217,8 +239,15 @@ export default function DrugsTable({ drugs, onEdit, onDelete, onView }: DrugsTab
             </Table.Row>
           ) : (
             sortedDrugs.map(drug => (
-              <Table.Row key={drug.id} className="align-middle cursor-pointer hover:bg-slate-50 dark:hover:bg-neutral-800" onClick={() => handleViewDrug(drug)}>
-                <Table.Cell>
+              <Table.Row key={drug.id} className="align-middle">
+                <Table.Cell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox 
+                    checked={selectedIds.includes(drug.id)}
+                    onCheckedChange={() => onSelectionChange(drug.id)}
+                    aria-label={`Select row ${drug.id}`}
+                  />
+                </Table.Cell>
+                <Table.Cell onClick={() => handleViewDrug(drug)} className="cursor-pointer">
                   <Box>
                     <Text weight="medium" as="div">{drug.name}</Text>
                     {drug.barcode && (

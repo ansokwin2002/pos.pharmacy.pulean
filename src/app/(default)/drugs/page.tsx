@@ -16,7 +16,7 @@ import { Drug } from '@/types/inventory';
 import DrugsTable from '@/components/drugs/DrugsTable';
 import DrugForm from '@/components/drugs/DrugForm';
 import Pagination from '@/components/common/Pagination';
-import { Plus, Search, RefreshCcw } from 'lucide-react';
+import { Plus, Search, RefreshCcw, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -36,6 +36,9 @@ export default function DrugsPage() {
   const [refreshToggle, setRefreshToggle] = useState(false);
   const router = useRouter();
   
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -46,6 +49,45 @@ export default function DrugsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
+
+  const handleSelectionChange = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === drugsData.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(drugsData.map(d => d.id));
+    }
+  };
+
+  const [isDeleteSelectedDialogOpen, setIsDeleteSelectedDialogOpen] = useState(false);
+
+  const handleDeleteSelected = () => {
+    setIsDeleteSelectedDialogOpen(true);
+  };
+
+  const confirmDeleteSelected = async () => {
+    const originalDrugs = [...drugsData];
+    
+    // Optimistic UI update
+    setDrugsData(prev => prev.filter(d => !selectedIds.includes(d.id)));
+    setIsDeleteSelectedDialogOpen(false);
+
+    try {
+      await Promise.all(selectedIds.map(id => deleteDrug(id)));
+      toast.success(`${selectedIds.length} drugs deleted successfully!`);
+      setSelectedIds([]);
+    } catch (err: any) {
+      console.error('Failed to delete selected drugs:', err);
+      toast.error('Failed to delete one or more drugs.');
+      // Rollback on failure
+      setDrugsData(originalDrugs);
+    }
+  };
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -64,10 +106,8 @@ export default function DrugsPage() {
         const params: any = {
           page: currentPage,
           per_page: itemsPerPage,
-          // To show the newest drugs first, we should sort by created_at descending.
-          // This requires backend support for sorting.
-          // sort_by: 'created_at',
-          // sort_dir: 'desc',
+          sort_by: 'created_at',
+          sort_dir: 'desc',
         };
 
         if (searchTerm) params.search = searchTerm;
@@ -219,10 +259,17 @@ export default function DrugsPage() {
         mb="5"
       >
         <PageHeading title="Drugs" description="Manage your pharmaceutical inventory" noMarginBottom />
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus size={16} />
-          Add Drug
-        </Button>
+        {selectedIds.length > 0 ? (
+          <Button color="red" onClick={handleDeleteSelected}>
+            <Trash2 size={16} />
+            Delete Selected ({selectedIds.length})
+          </Button>
+        ) : (
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus size={16} />
+            Add Drug
+          </Button>
+        )}
       </Flex>
       
       {isLoading ? (
@@ -285,13 +332,15 @@ export default function DrugsPage() {
             </Callout.Text>
           </Callout.Root>
 
-          <DrugsTable
-            drugs={paginatedDrugs}
-            onEdit={handleEditDrug}
-            onDelete={handleDeleteDrug}
-            onView={handleViewDrug}
-          />
-
+                <DrugsTable
+                  drugs={paginatedDrugs}
+                  selectedIds={selectedIds}
+                  onEdit={handleEditDrug}
+                  onDelete={handleDeleteDrug}
+                  onView={handleViewDrug}
+                  onSelectionChange={handleSelectionChange}
+                  onSelectAll={handleSelectAll}
+                />
           {totalDrugs > 0 && (
             <Pagination
               currentPage={currentPage}
@@ -353,6 +402,29 @@ export default function DrugsPage() {
             <AlertDialog.Action asChild>
               <Button variant="solid" color="red" onClick={confirmDeleteDrug}>
                 Delete Drug
+              </Button>
+            </AlertDialog.Action>
+          </Flex>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
+
+      {/* Delete Selected Confirmation Dialog */}
+      <AlertDialog.Root open={isDeleteSelectedDialogOpen} onOpenChange={setIsDeleteSelectedDialogOpen}>
+        <AlertDialog.Content style={{ maxWidth: 450 }}>
+          <AlertDialog.Title>Delete Selected Drugs</AlertDialog.Title>
+          <AlertDialog.Description size="2">
+            Are you sure you want to delete <strong>{selectedIds.length}</strong> selected drug(s)? This action cannot be undone.
+          </AlertDialog.Description>
+
+          <Flex gap="3" mt="4" justify="end">
+            <AlertDialog.Cancel asChild>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action asChild>
+              <Button variant="solid" color="red" onClick={confirmDeleteSelected}>
+                Delete
               </Button>
             </AlertDialog.Action>
           </Flex>

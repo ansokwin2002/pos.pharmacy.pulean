@@ -13,6 +13,8 @@ export async function listDrugs(params?: {
   expiring_days?: number;
   page?: number;
   per_page?: number;
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
 }) {
   const qs = new URLSearchParams();
   if (params?.search) qs.set('search', params.search);
@@ -24,6 +26,8 @@ export async function listDrugs(params?: {
   if (params?.expiring_days) qs.set('expiring_days', String(params.expiring_days));
   if (params?.page) qs.set('page', String(params.page));
   if (params?.per_page) qs.set('per_page', String(params.per_page));
+  if (params?.sort_by) qs.set('sort_by', params.sort_by);
+  if (params?.sort_dir) qs.set('sort_dir', params.sort_dir);
 
   const res = await fetch(`${API_BASE}/drugs${qs.toString() ? `?${qs.toString()}` : ''}`, {
     headers: { Accept: 'application/json' },

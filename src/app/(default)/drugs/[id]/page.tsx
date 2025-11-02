@@ -13,7 +13,8 @@ import {
   Dialog,
   AlertDialog
 } from '@radix-ui/themes';
-import { mockDrugs } from '@/data/DrugData';
+import { getDrug, updateDrug, deleteDrug } from '@/utilities/api/drugs';
+import { toast } from 'sonner';
 import { Drug } from '@/types/inventory';
 import DrugForm from '@/components/drugs/DrugForm';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
@@ -31,38 +32,60 @@ export default function DrugDetailPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshToggle, setRefreshToggle] = useState(false); // New state
 
   usePageTitle(drug ? `${drug.name} - Drug Details` : 'Drug Details');
 
   useEffect(() => {
-    console.log('Drug detail page loading, drugId:', drugId);
-    // Simulate API call to fetch drug details
-    const foundDrug = mockDrugs.find(d => d.id === drugId);
-    console.log('Found drug:', foundDrug);
-    setDrug(foundDrug || null);
-    setIsLoading(false);
-  }, [drugId]);
+    if (!drugId) return;
 
-  const handleUpdateDrug = (drugData: Partial<Drug>) => {
-    console.log('Updating drug:', drugData);
-    // Here you would typically make an API call to update the drug
-    // For now, we'll just update the local state
-    if (drug) {
-      setDrug({ ...drug, ...drugData });
+    const fetchDrug = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedDrug = await getDrug(drugId);
+        setDrug({
+          ...fetchedDrug,
+          expiry_date: new Date(fetchedDrug.expiry_date),
+        });
+      } catch (error) {
+        console.error('Failed to fetch drug:', error);
+        setDrug(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDrug();
+  }, [drugId, refreshToggle]); // Added refreshToggle to dependencies
+
+  const handleUpdateDrug = async (drugData: Partial<Drug>) => {
+    if (!drug) return;
+    try {
+      await updateDrug(drug.id, drugData); // No need to use the returned updatedDrug here
+      toast.success('Drug updated successfully!');
+      setIsEditDialogOpen(false);
+      setRefreshToggle(prev => !prev); // Toggle refreshToggle
+    } catch (error) {
+      console.error('Failed to update drug:', error);
+      toast.error('Failed to update drug');
     }
-    setIsEditDialogOpen(false);
   };
 
   const handleDeleteDrug = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDeleteDrug = () => {
-    console.log('Deleting drug:', drug);
-    // Here you would typically make an API call to delete the drug
-    // For now, we'll just redirect to the drugs list
-    setIsDeleteDialogOpen(false);
-    router.push('/drugs');
+  const confirmDeleteDrug = async () => {
+    if (!drug) return;
+    try {
+      await deleteDrug(drug.id);
+      toast.success('Drug deleted successfully!');
+      setIsDeleteDialogOpen(false);
+      router.push('/drugs');
+    } catch (error) {
+      console.error('Failed to delete drug:', error);
+      toast.error('Failed to delete drug');
+    }
   };
 
   const getStatusBadge = (status: string) => {
