@@ -14,6 +14,7 @@ import {
   Switch
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
+import DateInput from '@/components/common/DateInput';
 
 interface DrugFormProps {
   drug?: Drug;
@@ -22,8 +23,8 @@ interface DrugFormProps {
   isLoading?: boolean;
 }
 
-export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }: DrugFormProps) {
-  const [formData, setFormData] = useState<Partial<Drug>>({
+const getInitialData = (drug?: Drug): Partial<Drug> => {
+  const defaults = {
     name: '',
     generic_name: '',
     brand_name: '',
@@ -37,18 +38,27 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     dosage: '',
     instructions: '',
     side_effects: '',
-    status: 'active'
-  });
+    status: 'active' as 'active' | 'inactive',
+  };
 
+  if (drug) {
+    return {
+      ...defaults,
+      ...drug,
+      unit: drug.unit || 'tablets',
+      expiry_date: new Date(drug.expiry_date),
+    };
+  }
+
+  return defaults;
+};
+
+export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }: DrugFormProps) {
+  const [formData, setFormData] = useState<Partial<Drug>>(getInitialData(drug));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (drug) {
-      setFormData({
-        ...drug,
-        expiry_date: new Date(drug.expiry_date)
-      });
-    }
+    setFormData(getInitialData(drug));
   }, [drug]);
 
   const handleInputChange = (field: keyof Drug, value: any) => {
@@ -107,7 +117,11 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     e.preventDefault();
     
     if (validateForm()) {
-      onSubmit(formData);
+      const dataToSubmit = { ...formData };
+      if (dataToSubmit.expiry_date) {
+        dataToSubmit.expiry_date = dataToSubmit.expiry_date.toISOString().split('T')[0] as any; // Format to YYYY-MM-DD string
+      }
+      onSubmit(dataToSubmit);
     }
   };
 
@@ -264,11 +278,9 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
               <Text as="label" size="2" weight="medium" className="block mb-1">
                 Expiry Date *
               </Text>
-              <TextField.Root
-                type="date"
-                value={formData.expiry_date ? formData.expiry_date.toISOString().split('T')[0] : ''}
-                onChange={(e) => handleInputChange('expiry_date', new Date(e.target.value))}
-                className={errors.expiry_date ? 'border-red-500' : ''}
+              <DateInput
+                value={formData.expiry_date}
+                onChange={(date) => handleInputChange('expiry_date', date)}
               />
               {errors.expiry_date && (
                 <Text size="1" color="red" className="mt-1">{errors.expiry_date}</Text>

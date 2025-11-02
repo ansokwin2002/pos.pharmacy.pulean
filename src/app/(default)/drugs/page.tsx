@@ -12,7 +12,6 @@ import {
   Dialog,
   AlertDialog
 } from '@radix-ui/themes';
-import { mockDrugs } from '@/data/DrugData';
 import { Drug } from '@/types/inventory';
 import DrugsTable from '@/components/drugs/DrugsTable';
 import DrugForm from '@/components/drugs/DrugForm';
@@ -21,15 +20,20 @@ import { Plus, Search, RefreshCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { listDrugs, createDrug, updateDrug, deleteDrug } from '@/utilities/api/drugs';
+import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function DrugsPage() {
   usePageTitle('Drugs');
-  const [drugs] = useState<Drug[]>(mockDrugs);
+  const [drugsData, setDrugsData] = useState<Drug[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE);
-  const [filteredDrugs, setFilteredDrugs] = useState<Drug[]>(drugs);
+  const [totalDrugs, setTotalDrugs] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToggle, setRefreshToggle] = useState(false);
   const router = useRouter();
   
   // Search and filter states
@@ -48,58 +52,94 @@ export default function DrugsPage() {
     setSearchTerm('');
     setStatusFilter('all');
     setStockFilter('all');
+    setCurrentPage(1); // Reset to first page on filter reset
   };
 
-  // Filter drugs when filters change
+  // Fetch drugs when filters or pagination change
   useEffect(() => {
-    let filtered = drugs;
-    
-    // Apply search term filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(drug => 
-        drug.name.toLowerCase().includes(term) || 
-        drug.generic_name.toLowerCase().includes(term) ||
-        (drug.brand_name && drug.brand_name.toLowerCase().includes(term)) ||
-        (drug.barcode && drug.barcode.toLowerCase().includes(term)) ||
-        (drug.manufacturer && drug.manufacturer.toLowerCase().includes(term))
-      );
-    }
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(drug => drug.status === statusFilter);
-    }
-    
-    // Apply stock filter
-    if (stockFilter !== 'all') {
-      filtered = filtered.filter(drug => {
-        switch (stockFilter) {
-          case 'out-of-stock':
-            return drug.quantity === 0;
-          case 'low-stock':
-            return drug.quantity > 0 && drug.quantity < 50;
-          case 'in-stock':
-            return drug.quantity >= 50;
-          default:
-            return true;
-        }
-      });
-    }
-    
-    setFilteredDrugs(filtered);
-    setCurrentPage(1);
-  }, [drugs, searchTerm, statusFilter, stockFilter]);
+    const fetchDrugs = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const params: any = {
+          page: currentPage,
+          per_page: itemsPerPage,
+          // To show the newest drugs first, we should sort by created_at descending.
+          // This requires backend support for sorting.
+          // sort_by: 'created_at',
+          // sort_dir: 'desc',
+        };
 
-  const totalPages = Math.ceil(filteredDrugs.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedDrugs = filteredDrugs.slice(startIndex, endIndex);
+        if (searchTerm) params.search = searchTerm;
+        if (statusFilter !== 'all') params.status = statusFilter;
+        if (stockFilter === 'in-stock') params.in_stock = true;
+        // The backend API doesn't directly support 'low-stock' or 'out-of-stock' as filters.
+        // This would require backend changes or client-side filtering after fetching all.
+        // For now, we'll only pass 'in_stock' if selected.
 
-  const handleAddDrug = (drugData: Partial<Drug>) => {
-    console.log('Adding drug:', drugData);
-    // Here you would typically make an API call to add the drug
+        const response = await listDrugs(params);
+        // Assuming the API returns a structure like { data: Drug[], total: number, current_page: number, per_page: number }
+        const drugs = response.data.map((drug: any) => ({
+          ...drug,
+          expiry_date: new Date(drug.expiry_date),
+          created_at: drug.created_at ? new Date(drug.created_at) : undefined,
+          updated_at: drug.updated_at ? new Date(drug.updated_at) : undefined,
+        }));
+        setDrugsData(drugs);
+        setTotalDrugs(response.total);
+      } catch (err: any) {
+        console.error('Failed to fetch drugs:', err);
+        setError(err.message || 'Failed to fetch drugs');
+        toast.error(err.detail?.message || err.message || 'Failed to fetch drugs');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDrugs();
+  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter, refreshToggle]);
+
+  const totalPages = Math.ceil(totalDrugs / itemsPerPage);
+  const paginatedDrugs = drugsData; // drugsData is already paginated by the API
+
+
+  const handleAddDrug = async (drugData: Partial<Drug>) => {
+    // Create a temporary drug object for optimistic update
+    const tempId = `temp-${Date.now()}`;
+    const newDrug: Drug = {
+      ...drugData,
+      id: tempId,
+      created_at: new Date(),
+      updated_at: new Date(),
+      // Ensure all required fields are present, even if partial
+      name: drugData.name || 'Unnamed Drug',
+      generic_name: drugData.generic_name || '',
+      unit: drugData.unit || 'units',
+      price: drugData.price || 0,
+      cost_price: drugData.cost_price || 0,
+      quantity: drugData.quantity || 0,
+      expiry_date: drugData.expiry_date ? new Date(drugData.expiry_date as any) : new Date(),
+      status: drugData.status || 'active',
+      slug: drugData.name ? drugData.name.toLowerCase().replace(/ /g, '-') : '',
+    };
+
+    // Optimistically add to the UI
+    setDrugsData(prev => [newDrug, ...prev]);
+    setTotalDrugs(prev => prev + 1);
     setIsAddDialogOpen(false);
+
+    try {
+      const savedDrug = await createDrug(drugData as any);
+      // Replace the temporary drug with the real one from the server
+      setDrugsData(prev => prev.map(d => d.id === tempId ? { ...savedDrug, expiry_date: new Date(savedDrug.expiry_date) } : d));
+      toast.success('Drug added successfully!');
+    } catch (err: any) {
+      console.error('Failed to add drug:', err);
+      toast.error(err.detail?.message || err.message || 'Failed to add drug');
+      // Rollback on failure
+      setDrugsData(prev => prev.filter(d => d.id !== tempId));
+      setTotalDrugs(prev => prev - 1);
+    }
   };
 
   const handleEditDrug = (drug: Drug) => {
@@ -107,11 +147,32 @@ export default function DrugsPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateDrug = (drugData: Partial<Drug>) => {
-    console.log('Updating drug:', drugData);
-    // Here you would typically make an API call to update the drug
+  const handleUpdateDrug = async (drugData: Partial<Drug>) => {
+    if (!selectedDrug?.id) return;
+
+    const originalDrugs = [...drugsData];
+    const updatedDrug = { 
+      ...selectedDrug, 
+      ...drugData,
+      // Ensure expiry_date is a Date object for optimistic update
+      expiry_date: drugData.expiry_date ? new Date(drugData.expiry_date as any) : selectedDrug.expiry_date,
+    };
+
+    // Optimistically update the UI
+    setDrugsData(prev => prev.map(d => d.id === selectedDrug.id ? updatedDrug : d));
     setIsEditDialogOpen(false);
     setSelectedDrug(null);
+
+    try {
+      // The drugData sent to the API should still have the string representation of the date
+      await updateDrug(selectedDrug.id, drugData as any);
+      toast.success('Drug updated successfully!');
+    } catch (err: any) {
+      console.error('Failed to update drug:', err);
+      toast.error(err.detail?.message || err.message || 'Failed to update drug');
+      // Rollback on failure
+      setDrugsData(originalDrugs);
+    }
   };
 
   const handleDeleteDrug = (drug: Drug) => {
@@ -119,12 +180,28 @@ export default function DrugsPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDeleteDrug = () => {
-    console.log('Deleting drug:', selectedDrug);
-    // Here you would typically make an API call to delete the drug
-    // For now, we'll just close the dialog
+  const confirmDeleteDrug = async () => {
+    if (!selectedDrug?.id) return;
+
+    const originalDrugs = [...drugsData];
+    const drugToDelete = selectedDrug;
+
+    // Optimistically update the UI
+    setDrugsData(prev => prev.filter(d => d.id !== drugToDelete.id));
+    setTotalDrugs(prev => prev - 1);
     setIsDeleteDialogOpen(false);
     setSelectedDrug(null);
+
+    try {
+      await deleteDrug(drugToDelete.id);
+      toast.success(`Drug "${drugToDelete.name}" deleted successfully!`);
+    } catch (err: any) {
+      console.error('Failed to delete drug:', err);
+      toast.error(err.detail?.message || err.message || 'Failed to delete drug');
+      // Rollback on failure
+      setDrugsData(originalDrugs);
+      setTotalDrugs(prev => prev + 1);
+    }
   };
 
   const handleViewDrug = (drug: Drug) => {
@@ -148,79 +225,89 @@ export default function DrugsPage() {
         </Button>
       </Flex>
       
-      <Flex gap="4" align="center" wrap="wrap" mb="4">
-        <Box className="flex-grow min-w-[250px]">
-          <TextField.Root
-            placeholder="Search by name, generic name, brand, barcode, or manufacturer..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          >
-            <TextField.Slot>
-              <Search size={16} />
-            </TextField.Slot>
-          </TextField.Root>
-        </Box>
-        
-        <Flex align="center" gap="2" className="flex-shrink-0">
-          <Select.Root value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
-            <Select.Trigger placeholder="All Status" />
-            <Select.Content>
-              <Select.Item value="all">All Status</Select.Item>
-              <Select.Item value="active">Active</Select.Item>
-              <Select.Item value="inactive">Inactive</Select.Item>
-            </Select.Content>
-          </Select.Root>
+      {isLoading ? (
+        <p>Loading drugs...</p>
+      ) : error ? (
+        <Callout.Root color="red" size="1" mb="4">
+          <Callout.Text>{error}</Callout.Text>
+        </Callout.Root>
+      ) : (
+        <>
+          <Flex gap="4" align="center" wrap="wrap" mb="4">
+            <Box className="flex-grow min-w-[250px]">
+              <TextField.Root
+                placeholder="Search by name, generic name, brand, barcode, or manufacturer..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              >
+                <TextField.Slot>
+                  <Search size={16} />
+                </TextField.Slot>
+              </TextField.Root>
+            </Box>
+            
+            <Flex align="center" gap="2" className="flex-shrink-0">
+              <Select.Root value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
+                <Select.Trigger placeholder="All Status" />
+                <Select.Content>
+                  <Select.Item value="all">All Status</Select.Item>
+                  <Select.Item value="active">Active</Select.Item>
+                  <Select.Item value="inactive">Inactive</Select.Item>
+                </Select.Content>
+              </Select.Root>
 
-          <Select.Root value={stockFilter} onValueChange={(value: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock') => setStockFilter(value)}>
-            <Select.Trigger placeholder="All Stock" />
-            <Select.Content>
-              <Select.Item value="all">All Stock</Select.Item>
-              <Select.Item value="in-stock">In Stock</Select.Item>
-              <Select.Item value="low-stock">Low Stock</Select.Item>
-              <Select.Item value="out-of-stock">Out of Stock</Select.Item>
-            </Select.Content>
-          </Select.Root>
-        </Flex>
+              <Select.Root value={stockFilter} onValueChange={(value: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock') => setStockFilter(value)}>
+                <Select.Trigger placeholder="All Stock" />
+                <Select.Content>
+                  <Select.Item value="all">All Stock</Select.Item>
+                  <Select.Item value="in-stock">In Stock</Select.Item>
+                  <Select.Item value="low-stock">Low Stock</Select.Item>
+                  <Select.Item value="out-of-stock">Out of Stock</Select.Item>
+                </Select.Content>
+              </Select.Root>
+            </Flex>
 
-        <Button
-          variant="soft"
-          color={(statusFilter !== 'all' || stockFilter !== 'all' || searchTerm !== '') ? 'red' : 'gray'}
-          onClick={handleResetFilters}
-          className="flex-shrink-0"
-          disabled={(statusFilter === 'all' && stockFilter === 'all' && searchTerm === '')}
-        >
-          <RefreshCcw size={16} />
-          Reset Filters
-        </Button>
-      </Flex>
+            <Button
+              variant="soft"
+              color={(statusFilter !== 'all' || stockFilter !== 'all' || searchTerm !== '') ? 'red' : 'gray'}
+              onClick={handleResetFilters}
+              className="flex-shrink-0"
+              disabled={(statusFilter === 'all' && stockFilter === 'all' && searchTerm === '')}
+            >
+              <RefreshCcw size={16} />
+              Reset Filters
+            </Button>
+          </Flex>
 
-      <Callout.Root color="blue" size="1" mb="4">
-        <Callout.Text>
-          Manage your pharmaceutical inventory. Track drug quantities, expiry dates, and maintain accurate records.
-        </Callout.Text>
-      </Callout.Root>
+          <Callout.Root color="blue" size="1" mb="4">
+            <Callout.Text>
+              Manage your pharmaceutical inventory. Track drug quantities, expiry dates, and maintain accurate records.
+            </Callout.Text>
+          </Callout.Root>
 
-      <DrugsTable
-        drugs={paginatedDrugs}
-        onEdit={handleEditDrug}
-        onDelete={handleDeleteDrug}
-        onView={handleViewDrug}
-      />
+          <DrugsTable
+            drugs={paginatedDrugs}
+            onEdit={handleEditDrug}
+            onDelete={handleDeleteDrug}
+            onView={handleViewDrug}
+          />
 
-      {filteredDrugs.length > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredDrugs.length}
-          startIndex={startIndex + 1}
-          endIndex={Math.min(endIndex, filteredDrugs.length)}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={(newSize) => {
-            setItemsPerPage(newSize);
-            setCurrentPage(1);
-          }}
-        />
+          {totalDrugs > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              totalItems={totalDrugs}
+              startIndex={(currentPage - 1) * itemsPerPage + 1}
+              endIndex={Math.min(currentPage * itemsPerPage, totalDrugs)}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(newSize) => {
+                setItemsPerPage(newSize);
+                setCurrentPage(1);
+              }}
+            />
+          )}
+        </>
       )}
 
       {/* Add Drug Dialog */}

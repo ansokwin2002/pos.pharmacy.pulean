@@ -125,7 +125,7 @@ export default function DrugDetailPage() {
     <Box className="space-y-6">
       {/* Header Section */}
       <Box>
-        <Button variant="ghost" onClick={() => router.push('/drugs')} className="mb-4">
+        <Button variant="ghost" onClick={() => router.push('/drugs')} className="mb-8">
           <ArrowLeft size={16} />
           Back to Drugs
         </Button>
