@@ -147,13 +147,13 @@ export default function DrugDetailPage() {
   return (
     <Box className="space-y-6">
       {/* Header Section */}
-      <Box>
+      <Box mb="5">
         <Button variant="ghost" onClick={() => router.push('/drugs')} className="mb-8">
           <ArrowLeft size={16} />
           Back to Drugs
         </Button>
 
-        <Flex align="start" justify="between" gap="4">
+        <Flex align="start" justify="between" gap="4" mt="8">
           <Box className="flex-1">
             <Flex align="center" gap="3" mb="2">
               <Text size="6" weight="bold">{drug.name}</Text>

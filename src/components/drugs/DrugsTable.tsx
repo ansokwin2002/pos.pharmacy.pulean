@@ -115,6 +115,10 @@ export default function DrugsTable({
       let bValue: any;
 
       switch (sortConfig.key) {
+        case 'id':
+          aValue = a.id;
+          bValue = b.id;
+          break;
         case 'name':
           aValue = a.name;
           bValue = b.name;
@@ -167,6 +171,14 @@ export default function DrugsTable({
                 checked={allVisibleSelected}
                 onCheckedChange={onSelectAll}
                 aria-label="Select all rows"
+              />
+            </Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>
+              <SortableHeader
+                label="ID"
+                sortKey="id"
+                currentSort={sortConfig}
+                onSort={handleSort}
               />
             </Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>
@@ -233,7 +245,7 @@ export default function DrugsTable({
         <Table.Body>
           {sortedDrugs.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={9}>
+              <Table.Cell colSpan={10}>
                 <Text align="center" className="py-4 text-slate-500">No drugs found</Text>
               </Table.Cell>
             </Table.Row>
@@ -246,6 +258,9 @@ export default function DrugsTable({
                     onCheckedChange={() => onSelectionChange(drug.id)}
                     aria-label={`Select row ${drug.id}`}
                   />
+                </Table.Cell>
+                <Table.Cell onClick={() => handleViewDrug(drug)} className="cursor-pointer">
+                  <Text size="2">{drug.id}</Text>
                 </Table.Cell>
                 <Table.Cell onClick={() => handleViewDrug(drug)} className="cursor-pointer">
                   <Box>
