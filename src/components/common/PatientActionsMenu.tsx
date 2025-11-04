@@ -21,11 +21,9 @@ interface Patient {
 
 interface PatientActionsMenuProps {
   patient: Patient;
-  onEdit?: (patient: Patient) => void;
-  onDelete?: (patient: Patient) => void;
 }
 
-export function PatientActionsMenu({ patient, onEdit, onDelete }: PatientActionsMenuProps) {
+export function PatientActionsMenu({ patient }: PatientActionsMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -64,19 +62,10 @@ export function PatientActionsMenu({ patient, onEdit, onDelete }: PatientActions
           <Activity size={14} />
           AA
         </DropdownMenu.Item>
-        {onEdit && (
-          <>
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item onClick={() => onEdit(patient)}>
-              Edit
-            </DropdownMenu.Item>
-          </>
-        )}
-        {onDelete && (
-          <DropdownMenu.Item onClick={() => onDelete(patient)} color="red">
-            Delete
-          </DropdownMenu.Item>
-        )}
+        <DropdownMenu.Item onClick={() => router.push(`/opd/patients/${patient.id}/history`)}>
+          <Activity size={14} /> {/* Using Activity icon for now, can change later */}
+          History
+        </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );
@@ -85,11 +74,9 @@ export function PatientActionsMenu({ patient, onEdit, onDelete }: PatientActions
 // Component for patient name with right-click context menu
 interface PatientNameWithMenuProps {
   patient: Patient;
-  onEdit?: (patient: Patient) => void;
-  onDelete?: (patient: Patient) => void;
 }
 
-export function PatientNameWithMenu({ patient, onEdit, onDelete }: PatientNameWithMenuProps) {
+export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -146,19 +133,10 @@ export function PatientNameWithMenu({ patient, onEdit, onDelete }: PatientNameWi
           <Activity size={14} />
           AA
         </DropdownMenu.Item>
-        {onEdit && (
-          <>
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item onClick={() => { onEdit(patient); setIsOpen(false); }}>
-              Edit
-            </DropdownMenu.Item>
-          </>
-        )}
-        {onDelete && (
-          <DropdownMenu.Item onClick={() => { onDelete(patient); setIsOpen(false); }} color="red">
-            Delete
-          </DropdownMenu.Item>
-        )}
+        <DropdownMenu.Item onClick={() => { router.push(`/opd/patients/${patient.id}/history`); setIsOpen(false); }}>
+          <Activity size={14} /> {/* Using Activity icon for now, can change later */}
+          History
+        </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

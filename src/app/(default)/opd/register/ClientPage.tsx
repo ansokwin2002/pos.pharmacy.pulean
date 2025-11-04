@@ -119,102 +119,97 @@ export default function RegisterPatientPage() {
   }, [patientIdParam, selectedPatient]);
 
   // Auto-fill form when patient data is available (secure approach)
-  useEffect(() => {
-    const patient = selectedPatient || realPatient;
-
-    console.log('Auto-fill effect triggered:', { selectedPatient, realPatient, patient, patientIdParam });
-
-    if (patient && patientIdParam) {
-      console.log('Auto-filling with patient data:', patient);
-      // React 18 automatically batches these state updates
-      setName(patient.name || '');
-
-      // Handle gender field (API uses string, fake uses 'male'|'female')
-      const genderValue = patient.gender;
-      if (genderValue === 'male' || genderValue === 'female') {
-        setGender(genderValue);
-      } else {
-        setGender('');
-      }
-
-      setAge(String(patient.age || ''));
-
-      // Handle telephone field (API might use 'telephone' or 'phone')
-      const phoneValue = patient.telephone || patient.phone || '';
-      let validTelephone = String(phoneValue);
-      if (validTelephone && /^\d+$/.test(validTelephone)) {
-        // Pad with leading zeros if too short, truncate if too long
-        if (validTelephone.length < 8) {
-          validTelephone = validTelephone.padStart(8, '0');
-        } else if (validTelephone.length > 12) {
-          validTelephone = validTelephone.slice(0, 12);
+      useEffect(() => {
+        const patient = selectedPatient || realPatient;
+    
+        console.log('Auto-fill effect triggered. patientIdParam:', patientIdParam, 'selectedPatient:', selectedPatient, 'realPatient:', realPatient);
+    
+        if (patient && patientIdParam) {
+          console.log('Auto-filling with patient data:', patient);
+          // React 18 automatically batches these state updates
+          setName(patient.name || 'N/A');
+    
+          // Handle gender field (API uses string, fake uses 'male'|'female')
+          const genderValue = patient.gender;
+          if (genderValue === 'male' || genderValue === 'female') {
+            setGender(genderValue);
+          } else {
+            setGender('male'); // Default to 'male' if not specified
+          }
+    
+          setAge(String(patient.age || '1')); // Default to '1' if not specified
+    
+          // Handle telephone field (API might use 'telephone' or 'phone')
+          const phoneValue = patient.telephone || patient.phone || '';
+          let validTelephone = String(phoneValue);
+          if (validTelephone && /^\d+$/.test(validTelephone)) {
+            // Pad with leading zeros if too short, truncate if too long
+            if (validTelephone.length < 8) {
+              validTelephone = validTelephone.padStart(8, '0');
+            } else if (validTelephone.length > 12) {
+              validTelephone = validTelephone.slice(0, 12);
+            }
+          }
+          setTelephone(validTelephone || '00000000'); // Default to a valid 8-digit number
+    
+          setAddress(patient.address || 'N/A');
+    
+          // Handle signOfLife field (API uses 'signs_of_life', fake uses 'signOfLife')
+          const signOfLifeValue = patient.signOfLife || patient.signs_of_life;
+          if (['BP', 'P', 'T', 'RR'].includes(signOfLifeValue)) {
+            setSignOfLife(signOfLifeValue as 'BP' | 'P' | 'T' | 'RR');
+          } else {
+            setSignOfLife('BP'); // Default value
+          }
+    
+          setSymptom(patient.symptom || 'N/A'); // Changed this
+          setDiagnosis(patient.diagnosis || 'N/A'); // Changed this
+          setErrors({});
+          console.log('Auto-fill completed. Current state:', { name, gender, age, telephone, address, signOfLife, symptom, diagnosis });
+        } else {
+          console.log('Auto-fill skipped. patient or patientIdParam is missing.');
         }
-      }
-      setTelephone(validTelephone);
-
-      setAddress(patient.address || '');
-
-      // Handle signOfLife field (API uses 'signs_of_life', fake uses 'signOfLife')
-      const signOfLifeValue = patient.signOfLife || patient.signs_of_life;
-      if (['BP', 'P', 'T', 'RR'].includes(signOfLifeValue)) {
-        setSignOfLife(signOfLifeValue as 'BP' | 'P' | 'T' | 'RR');
-      } else {
-        setSignOfLife('BP'); // Default value
-      }
-
-      setSymptom(patient.symptom || '');
-      setDiagnosis(patient.diagnosis || '');
-      setErrors({});
-    }
-  }, [selectedPatient, realPatient, patientIdParam]);
-
-  // Form validation state
-  const [errors, setErrors] = useState<{ 
-    name?: string;
-    gender?: string;
-    age?: string;
-    telephone?: string;
-    address?: string;
-    signOfLife?: string;
-    symptom?: string;
-    diagnosis?: string;
-  }>({});
-
-  const validatePatientInfo = useCallback(() => {
-    const e: typeof errors = {};
-    if (!name.trim()) e.name = 'Name is required';
-    if (!gender) e.gender = 'Gender is required';
-    const ageNum = Number(age);
-    if (!age || isNaN(ageNum) || ageNum <= 0) e.age = 'Age must be greater than 0';
-    if (!telephone.trim()) e.telephone = 'Telephone is required';
-    else if (!/^\d{8,12}$/.test(telephone.trim())) e.telephone = 'Telephone must be 8–12 digits';
-    if (!address.trim()) e.address = 'Address is required';
-    if (!signOfLife) e.signOfLife = 'Please select a sign of life';
-    if (!symptom.trim()) e.symptom = 'Symptom is required';
-    if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
-
-  // Memoized validation result for use in render (without side effects)
-  const isPatientInfoValid = useMemo(() => {
-    if (!name.trim()) return false;
-    if (!gender) return false;
-    const ageNum = Number(age);
-    if (!age || isNaN(ageNum) || ageNum <= 0) return false;
-    if (!telephone.trim()) return false;
-    if (!/^\d{8,12}$/.test(telephone.trim())) return false;
-    if (!address.trim()) return false;
-    if (!signOfLife) return false;
-    if (!symptom.trim()) return false;
-    if (!diagnosis.trim()) return false;
-    return true;
-  }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
-
-  const validateAll = () => {
-    return validatePatientInfo();
-  };
-
+      }, [selectedPatient, realPatient, patientIdParam, name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+    
+      // Form validation state
+      const [errors, setErrors] = useState<{
+        name?: string;
+        gender?: string;
+        age?: string;
+        telephone?: string;
+        address?: string;
+        signOfLife?: string;
+        symptom?: string;
+        diagnosis?: string;
+      }>({});
+    
+      const validatePatientInfo = useCallback(() => {
+        const e: typeof errors = {};
+        if (!name.trim()) e.name = 'Name is required';
+        if (!gender) e.gender = 'Gender is required';
+        const ageNum = Number(age);
+        if (!age || isNaN(ageNum) || ageNum <= 0) e.age = 'Age must be greater than 0';
+        if (!telephone.trim()) e.telephone = 'Telephone is required';
+        else if (!/^\d{8,12}$/.test(telephone.trim())) e.telephone = 'Telephone must be 8–12 digits';
+        if (!address.trim()) e.address = 'Address is required';
+        if (!signOfLife) e.signOfLife = 'Please select a sign of life';
+        if (!symptom.trim()) e.symptom = 'Symptom is required';
+        if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+    
+      // Memoized validation result for use in render (without side effects)
+      const isPatientInfoValid = useMemo(() => {
+        const isValid = !name.trim() && !!gender && !!age && !isNaN(Number(age)) && Number(age) > 0 && !!telephone.trim() && /^\d{8,12}$/.test(telephone.trim()) && !!address.trim() && !!signOfLife && !!symptom.trim() && !!diagnosis.trim();
+        console.log('isPatientInfoValid check:', { name, gender, age, telephone, address, signOfLife, symptom, diagnosis, isValid });
+        return isValid;
+      }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+    
+      const validateAll = () => {
+        return validatePatientInfo();
+      };
+    
   // Tab navigation functions
   const canProceedToTab = useCallback((tabId: string): boolean => {
     switch (tabId) {
@@ -269,29 +264,27 @@ export default function RegisterPatientPage() {
     }
   }, [currentTab, isPatientInfoValid, prescriptions.length, validatePatientInfo, handleTabChange]);
 
-  // Fake drugs dataset
-  const baseDrugOptions = [
-    { id: 'D001', name: 'Paracetamol 500mg', price: 1.00 },
-    { id: 'D002', name: 'Amoxicillin 500mg', price: 2.50 },
-    { id: 'D003', name: 'Ibuprofen 200mg', price: 1.20 },
-    { id: 'D004', name: 'Metformin 500mg', price: 3.10 },
-    { id: 'D005', name: 'Amlodipine 5mg', price: 2.20 },
-    { id: 'D006', name: 'Losartan 50mg', price: 2.80 },
-    { id: 'D007', name: 'Omeprazole 20mg', price: 1.90 },
-    { id: 'D008', name: 'Cetirizine 10mg', price: 0.90 },
-    { id: 'D009', name: 'Azithromycin 500mg', price: 4.50 },
-    { id: 'D010', name: 'Atorvastatin 10mg', price: 3.80 },
-    { id: 'D011', name: 'Diclofenac 50mg', price: 1.70 },
-    { id: 'D012', name: 'Doxycycline 100mg', price: 2.60 },
-    { id: 'D013', name: 'Ciprofloxacin 500mg', price: 3.40 },
-    { id: 'D014', name: 'Loratadine 10mg', price: 1.10 },
-    { id: 'D015', name: 'Pantoprazole 40mg', price: 2.00 },
-    { id: 'D016', name: 'Vitamin C 500mg', price: 0.80 },
-    { id: 'D017', name: 'Calcium 600mg', price: 2.10 },
-    { id: 'D018', name: 'Ferrous Sulfate 325mg', price: 1.50 },
-    { id: 'D019', name: 'Metoprolol 50mg', price: 2.70 },
-    { id: 'D020', name: 'Clopidogrel 75mg', price: 3.20 },
-  ];
+  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number }[]>([]);
+
+  useEffect(() => {
+    const fetchDrugs = async () => {
+      try {
+        const { listDrugs } = await import('@/utilities/api/drugs');
+        const response = await listDrugs({ per_page: 100 }); // Fetch a large number of drugs
+        const drugs = response.data.map((drug: any) => ({
+          id: drug.id,
+          name: drug.name,
+          price: Number(drug.price), // Ensure price is a number
+        }));
+        setDrugOptions(drugs);
+      } catch (error) {
+        console.error('Failed to fetch drugs:', error);
+        toast.error('Failed to load drug options');
+      }
+    };
+
+    fetchDrugs();
+  }, []);
 
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
 
@@ -305,7 +298,7 @@ export default function RegisterPatientPage() {
   // Prescription form validation (drug select)
   const [prescErrors, setPrescErrors] = useState<{ drug?: string; meal?: string }>({});
 
-  const allDrugOptions = useMemo(() => [...customDrugs, ...baseDrugOptions], [customDrugs]);
+  const allDrugOptions = useMemo(() => [...customDrugs, ...drugOptions], [customDrugs, drugOptions]);
 
   const addManualDrug = () => {
     const name = manualDrugName.trim();
@@ -644,6 +637,7 @@ export default function RegisterPatientPage() {
 
   return (
     <Box className="space-y-4 w-full px-4">
+      {console.log('ClientPage rendering. isPatientInfoValid:', isPatientInfoValid)}
       <PageHeading
         title={isAutoFilled ? "Add New Patient (Auto-filled)" : "Add New Patient"}
         description={isAutoFilled ? "Patient information has been auto-filled. Review and modify as needed." : "Complete the patient registration process step by step."}
@@ -913,7 +907,7 @@ export default function RegisterPatientPage() {
 
                 {/* Tab Navigation */}
                 <Flex justify="end" mt="4" gap="2">
-                  <Button onClick={proceedToNextTab} disabled={!isPatientInfoValid}>
+                  <Button onClick={proceedToNextTab}>
                     Next: Prescription
                   </Button>
                 </Flex>

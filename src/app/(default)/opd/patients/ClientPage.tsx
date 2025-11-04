@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton } from "@radix-ui/themes";
+import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton, Tooltip } from "@radix-ui/themes";
 import { faker } from '@faker-js/faker';
 import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient } from '@/utilities/api/podPatients';
 import { PageHeading } from '@/components/common/PageHeading';
@@ -544,13 +544,6 @@ export default function PatientListPage() {
                 <Flex align="center" justify="between">
                   <PatientNameWithMenu
                     patient={patient}
-                    onEdit={handleEditPatient}
-                    onDelete={handleDeletePatient}
-                  />
-                  <PatientActionsMenu
-                    patient={patient}
-                    onEdit={handleEditPatient}
-                    onDelete={handleDeletePatient}
                   />
                 </Flex>
               </Table.RowHeaderCell>
@@ -560,7 +553,28 @@ export default function PatientListPage() {
               <Table.Cell>{patient.city || '-'}</Table.Cell>
               <Table.Cell>{patient.gender || '-'}</Table.Cell>
               <Table.Cell>
-                {/* Actions moved to dropdown menu in patient name column */}
+                <Flex gap="2">
+                  <Tooltip content="Edit Patient">
+                    <IconButton
+                      size="1"
+                      variant="ghost"
+                      color="blue"
+                      onClick={() => handleEditPatient(patient)}
+                    >
+                      <Pencil size={14} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip content="Delete Patient">
+                    <IconButton
+                      size="1"
+                      variant="ghost"
+                      color="red"
+                      onClick={() => handleDeletePatient(patient)}
+                    >
+                      <Trash2 size={14} />
+                    </IconButton>
+                  </Tooltip>
+                </Flex>
               </Table.Cell>
             </Table.Row>
           ))}
