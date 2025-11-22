@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { ChevronDown, X } from 'lucide-react'
-import { Box, ScrollArea, Flex, IconButton } from "@radix-ui/themes";
+import { Box, ScrollArea, Flex, IconButton, Spinner, Text } from "@radix-ui/themes";
 import Image from "next/image";
 import BrandLogo from "./BrandLogo";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import clsx from 'clsx';
 import {
@@ -44,7 +44,8 @@ const MenuLink = ({
   className, 
   target, 
   level = 1,
-  onClose
+  onClose,
+  onLoadingStart
 }: { 
   href: string; 
   isActive: boolean; 
@@ -54,8 +55,21 @@ const MenuLink = ({
   target?: string;
   level?: number;
   onClose?: () => void;
+  onLoadingStart?: (title: string) => void;
 }) => {
   const padding = level === 1 ? "px-4" : level === 2 ? "pl-6 pr-4" : "pl-12 pr-4";
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only show loading for OPD and Drugs pages
+    if (href.includes('/opd/') || href.includes('/drugs')) {
+      if (onLoadingStart) {
+        onLoadingStart(title);
+      }
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
 
   return (
     <Link
@@ -68,7 +82,7 @@ const MenuLink = ({
       )}
       target={target || undefined}
       rel={target === "_blank" ? "noopener noreferrer" : undefined}
-      onClick={onClose}
+      onClick={handleClick}
     >
       {level === 1 ? (
         <span
@@ -159,7 +173,8 @@ const MenuGroup = ({
   isActive,
   isBottomGroup = false,
   allExternalLinks = false,
-  onClose
+  onClose,
+  onLoadingStart
 }: { 
   title: string; 
   menuData: MenuItem[]; 
@@ -171,6 +186,7 @@ const MenuGroup = ({
   isBottomGroup?: boolean;
   allExternalLinks?: boolean;
   onClose?: () => void;
+  onLoadingStart?: (title: string) => void;
 }) => {
   return (
     <Box mb={isBottomGroup ? undefined : "5"}>
@@ -193,6 +209,7 @@ const MenuGroup = ({
                         level={1}
                         target={subItem.target || (allExternalLinks ? "_blank" : undefined)}
                         onClose={onClose}
+                        onLoadingStart={onLoadingStart}
                       />
                     ))}
                   </div>
@@ -225,6 +242,7 @@ const MenuGroup = ({
                                     level={3}
                                     target={allExternalLinks ? "_blank" : undefined}
                                     onClose={onClose}
+                                    onLoadingStart={onLoadingStart}
                                   />
                                 ))}
                               </Accordion>
@@ -238,6 +256,7 @@ const MenuGroup = ({
                               level={2}
                               target={subItem.target || (allExternalLinks ? "_blank" : undefined)}
                               onClose={onClose}
+                              onLoadingStart={onLoadingStart}
                             />
                           )}
                         </div>
@@ -255,6 +274,7 @@ const MenuGroup = ({
                   title={menuItem.title}
                   target={allExternalLinks ? "_blank" : undefined}
                   onClose={onClose}
+                  onLoadingStart={onLoadingStart}
                 />
               </Box>
             )}
@@ -273,8 +293,16 @@ interface SidebarProps {
 export default function Sidebar({ width, onClose }: SidebarProps) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingPage, setLoadingPage] = useState<string>('');
   const pathname = usePathname();
+  const router = useRouter();
   const { theme } = useTheme();
+
+  // Reset loading state when pathname changes
+  useEffect(() => {
+    setIsLoading(false);
+  }, [pathname]);
 
   // Application menu group
   const applicationMenuData: MenuItem[] = useMemo(() => [
@@ -556,17 +584,63 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
     return pathname.startsWith(link);
   };
 
+  // Handler for loading state
+  const handleLoadingStart = (title: string) => {
+    setLoadingPage(title);
+    setIsLoading(true);
+  };
+
   return (
-    <Box
-      position="fixed"
-      top="0"
-      className="border-r z-20"
-      style={{
-        backgroundColor: 'var(--color-panel-solid)',
-        borderRightColor: 'var(--gray-3)',
-        width: width
-      }}
-    >
+    <>
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--color-panel-solid)',
+              padding: '40px 60px',
+              borderRadius: '16px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+              textAlign: 'center',
+              minWidth: '300px',
+            }}
+          >
+            <Flex direction="column" gap="4" align="center">
+              <Spinner size="3" />
+              <Text size="5" weight="bold">
+                Loading {loadingPage}...
+              </Text>
+              <Text size="2" style={{ color: 'var(--gray-11)' }}>
+                Please wait
+              </Text>
+            </Flex>
+          </div>
+        </div>
+      )}
+
+      <Box
+        position="fixed"
+        top="0"
+        className="border-r z-20"
+        style={{
+          backgroundColor: 'var(--color-panel-solid)',
+          borderRightColor: 'var(--gray-3)',
+          width: width
+        }}
+      >
       <Flex gap="3" justify="between" align="center" px="4" py="4">
         <Box>
           <Link href="/" aria-label="punleukrek">
@@ -592,6 +666,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
               setOpenSubMenu={setOpenSubMenu} 
               isActive={isActive}
               onClose={onClose}
+              onLoadingStart={handleLoadingStart}
             />
             {/* OPD Menu Group (moved to top) */}
             <MenuGroup
@@ -603,6 +678,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
               setOpenSubMenu={setOpenSubMenu}
               isActive={isActive}
               onClose={onClose}
+              onLoadingStart={handleLoadingStart}
             />
 
             {/* Product Management Menu Group */}
@@ -622,6 +698,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
               setOpenSubMenu={setOpenSubMenu}
               isActive={isActive}
               onClose={onClose}
+              onLoadingStart={handleLoadingStart}
             />
 
             {/* Application Menu Group - hidden per request */}
@@ -634,6 +711,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
           {/* Resources Menu Group removed per request (keep only top OPD) */}
         </Box>
       </ScrollArea>
-    </Box>
+      </Box>
+    </>
   );
 }

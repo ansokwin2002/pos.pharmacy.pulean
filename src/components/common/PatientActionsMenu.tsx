@@ -1,6 +1,6 @@
 'use client';
-import { DropdownMenu, IconButton, Text } from "@radix-ui/themes";
-import { MoreVertical, UserPlus, TestTube, Activity } from 'lucide-react';
+import { DropdownMenu, IconButton, Text, Spinner, Flex } from "@radix-ui/themes";
+import { MoreVertical, UserPlus, TestTube, Activity, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -80,11 +80,15 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
   console.log('Patient prop in PatientNameWithMenu:', patient);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<string>('');
 
   const handleOPDClick = () => {
+    setLoadingAction('OPD');
+    setIsLoading(true);
+    setIsOpen(false);
     // Navigate to register page with secure patient ID
     router.push(`/opd/register?id=${patient.id}`);
-    setIsOpen(false);
   };
 
   const handleBBClick = () => {
@@ -99,45 +103,92 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
     setIsOpen(false);
   };
 
+  const handleHistoryClick = () => {
+    setLoadingAction('History');
+    setIsLoading(true);
+    setIsOpen(false);
+    router.push(`/opd/patients/${patient.id}/history`);
+  };
+
   const handleRightClick = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsOpen(true);
   };
 
   return (
-    <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger asChild>
-        <span
-          onContextMenu={handleRightClick}
+    <>
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div
           style={{
-            cursor: 'context-menu',
-            userSelect: 'none',
-            display: 'inline-block'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
           }}
-          className="hover:bg-gray-100 dark:hover:bg-gray-800 px-1 py-0.5 rounded transition-colors"
-          title="Right-click for quick actions (OPD, BB, AA)"
         >
-          <Text>{patient.name || 'N/A'}</Text>
-        </span>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content>
-        <DropdownMenu.Item onClick={handleOPDClick}>
-          <UserPlus size={14} />
-          OPD
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onClick={handleBBClick}>
-          <TestTube size={14} />
-          BB
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onClick={handleAAClick}>
-          <Activity size={14} />
-          AA
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onClick={() => { router.push(`/opd/patients/${patient.id}/history`); setIsOpen(false); }}>
-          <Activity size={14} /> {/* Using Activity icon for now, can change later */}
-          History
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '32px 48px',
+              borderRadius: '12px',
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+              textAlign: 'center',
+            }}
+          >
+            <Flex direction="column" gap="4" align="center">
+              <Spinner size="3" />
+              <Text size="4" weight="medium">
+                Loading {loadingAction}...
+              </Text>
+              <Text size="2" color="gray">
+                Please wait while we prepare the page
+              </Text>
+            </Flex>
+          </div>
+        </div>
+      )}
+
+      <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenu.Trigger asChild>
+          <span
+            onContextMenu={handleRightClick}
+            style={{
+              cursor: 'context-menu',
+              userSelect: 'none',
+              display: 'inline-block'
+            }}
+            className="hover:bg-gray-100 dark:hover:bg-gray-800 px-1 py-0.5 rounded transition-colors"
+            title="Right-click for quick actions (OPD, BB, AA, History)"
+          >
+            <Text>{patient.name || 'N/A'}</Text>
+          </span>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item onClick={handleOPDClick}>
+            <UserPlus size={14} />
+            OPD
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onClick={handleBBClick}>
+            <TestTube size={14} />
+            BB
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onClick={handleAAClick}>
+            <Activity size={14} />
+            AA
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onClick={handleHistoryClick}>
+            <History size={14} />
+            History
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    </>
   );
 }

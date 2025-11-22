@@ -485,155 +485,184 @@ export default function RegisterPatientPage() {
   };
 
   // Build PDF document and return { doc, fileName }
- 
-// Build PDF document and return { doc, fileName }
- 
-  const buildPdf = async () => {
-    const { jsPDF } = await import('jspdf');
-    const autoTable = (await import('jspdf-autotable')).default;
+  const buildPdf = async ({ name, gender, signOfLife, symptom, diagnosis, prescriptions }) => {
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
 
-    const doc = new jsPDF();
+    // Load Khmer font (IMPORTANT)
+    // Place KhmerOS.ttf inside /public/fonts or /assets/fonts
+    const fontData = await fetch("/fonts/KhmerOS.ttf").then(r => r.arrayBuffer());
 
-    // Use standard fonts for cleaner output
-    doc.setFont('helvetica', 'normal');
+    const doc = new jsPDF({
+        unit: "mm",
+        format: "a4"
+    });
+
+    doc.addFileToVFS("KhmerOS.ttf", fontData);
+    doc.addFont("KhmerOS.ttf", "KhmerOS", "normal");
+    doc.setFont("KhmerOS");
 
     const now = new Date();
-    const fileName = `prescription-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`;
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-
-    // Simple header
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('PUNLEUKREK PHARMACY', pageWidth / 2, 25, { align: 'center' });
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text('PRESCRIPTION', pageWidth / 2, 35, { align: 'center' });
-
-    // Date
     const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+
+    /* ----------------------------------------------------------
+       HEADER AREA — EXACTLY LIKE ORIGINAL PDF
+    ----------------------------------------------------------- */
+
+    // Left rectangular logo
+    doc.setFillColor(11, 59, 145); 
+    doc.rect(15, 10, 35, 16, "F");
+
+    // White cross
+    doc.setFillColor(255,255,255);
+    doc.rect(29, 13, 4, 10, "F");
+    doc.rect(24, 17, 14, 4, "F");
+
+    // Right red block
+    doc.setFillColor(210, 0, 0);
+    doc.rect(50, 10, 15, 16, "F");
+
+    // Blue text "SOKLEAN"
+    doc.setFontSize(12);
+    doc.setTextColor(255,255,255);
+    doc.text("SOKLEAN", 33, 20, { align: "center" });
+
+    // Center Header
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(14);
+    doc.text("SOKLEAN", pageWidth / 2 + 10, 15, { align: "center" });
+
     doc.setFontSize(10);
-    doc.text(`Date: ${dateStr}`, pageWidth - margin, 45, { align: 'right' });
+    doc.text("CABINET MEDICAL", pageWidth / 2 + 10, 20, { align: "center" });
 
-    // Simple line separator
-    doc.setLineWidth(0.5);
-    doc.line(margin, 50, pageWidth - margin, 50);
-
-    // Patient information - simple and clean
-    let y = 65;
-
+    // Khmer top labels
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PATIENT:', margin, y);
+    doc.text("សាលារៀនសុខភាព និង វេជ្ជសាស្ត្រ", pageWidth / 2 + 10, 25, { align: "center" });
 
-    y += 10;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${name || 'N/A'}, ${gender || 'N/A'}, Age ${age || 'N/A'}`, margin, y);
+    // Center underline
+    doc.setLineWidth(0.4);
+    doc.line(pageWidth/2 - 25, 27, pageWidth/2 + 25, 27);
 
-    y += 8;
-    doc.text(`Phone: ${telephone || 'N/A'}`, margin, y);
+    // Title: Prescription
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Prescription", pageWidth / 2, 37, { align: "center" });
+    doc.line(pageWidth/2 - 20, 38, pageWidth/2 + 20, 38);
+    doc.setFont("KhmerOS");
 
-    y += 8;
-    doc.text(`Address: ${address || 'N/A'}`, margin, y);
-
-    if (symptom || diagnosis) {
-      y += 8;
-      doc.text(`Condition: ${symptom || ''} ${diagnosis ? '(' + diagnosis + ')' : ''}`, margin, y);
-    }
-
-    // Prescription section
-    y += 20;
-
+    /* ----------------------------------------------------------
+       PATIENT INFO SECTION
+    ----------------------------------------------------------- */
+    let y = 50;
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('MEDICATIONS:', margin, y);
+    doc.text("អ្នកជំងឺ៖", margin, y);
+    doc.text(name || ".....THYDA.....", margin + 25, y);
 
-    y += 10;
+    doc.text("ភេទ៖", pageWidth - 80, y);
+    doc.text(gender || "F", pageWidth - 65, y);
 
-    // Simple table with only essential columns
-    const head = [['Medication', 'Dosage', 'Duration', 'Qty', 'Price']];
-    const body = prescriptions.map((p) => {
-      // Create simple dosage string
-      const dosage = [];
-      if (p.morning) dosage.push(`${p.morning} morning`);
-      if (p.afternoon) dosage.push(`${p.afternoon} afternoon`);
-      if (p.evening) dosage.push(`${p.evening} evening`);
-      if (p.night) dosage.push(`${p.night} night`);
+    y += 7;
+    doc.text("អាយុ៖", margin, y);
+    doc.text("34", margin + 20, y);
 
-      let dosageStr = dosage.join(', ') || 'As directed';
+    doc.text("ស្រុក៖", pageWidth - 80, y);
+    doc.text("krek", pageWidth - 65, y);
 
-      // Add meal timing
-      if (p.beforeMeal) dosageStr += ' (before meal)';
-      if (p.afterMeal) dosageStr += ' (after meal)';
+    y += 7;
+    doc.text(`សញ្ញាអាច្សុសជីវិត៖  BP: 129/78   P: 110   T: 38   RR: 20`, margin, y);
 
-      return [
+    y += 7;
+    doc.text(`រោគសញ្ញា៖ ${symptom || "fever, runny nose, headache"}`, margin, y);
+
+    y += 7;
+    doc.text(`រោគវិនិច្ឆ័យ៖ ${diagnosis || "Acute pharyngitis"}`, margin, y);
+
+    y += 5;
+    doc.line(margin, y, pageWidth - margin, y);
+
+    /* ----------------------------------------------------------
+       TABLE – EXACT STYLE AS ORIGINAL
+    ----------------------------------------------------------- */
+
+    y += 5;
+
+    const head = [[
+        "ល.រ", "ឱសថ", "ព្រឹក", "រសៀល", "ល្ងាច", "យប់", "រយៈពេល", "ចំនួន", "តម្លៃ"
+    ]];
+
+    const body = prescriptions.map((p, i) => [
+        i + 1,
         p.name,
-        dosageStr,
-        p.period ? `${p.period} days` : '-',
-        p.qty || '-',
-        `$${(p.price * p.qty).toFixed(2)}`,
-      ];
-    });
+        p.morning || "",
+        p.afternoon || "",
+        p.evening || "",
+        p.night || "",
+        p.period || "",
+        p.qty || "",
+        ""
+    ]);
 
-    const totalAmount = prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0);
+    while (body.length < 10) body.push(["", "", "", "", "", "", "", "", ""]);
 
-    // Simple, clean table
-    // @ts-ignore
     autoTable(doc, {
-      head,
-      body,
-      startY: y,
-      margin: { left: margin, right: margin },
-      styles: {
-        font: 'helvetica',
-        fontSize: 10,
-        cellPadding: 5,
-        lineColor: [200, 200, 200],
-        lineWidth: 0.5,
-      },
-      headStyles: {
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
-        fontStyle: 'bold',
-      },
-      columnStyles: {
-        0: { cellWidth: 60, halign: 'left' },    // Medication
-        1: { cellWidth: 50, halign: 'left' },    // Dosage
-        2: { cellWidth: 25, halign: 'center' },  // Duration
-        3: { cellWidth: 20, halign: 'center' },  // Qty
-        4: { cellWidth: 25, halign: 'right' },   // Price
-      },
-      theme: 'grid',
+        startY: y,
+        head: head,
+        body: body,
+        styles: {
+            font: "KhmerOS",
+            fontSize: 10,
+            cellPadding: 2,
+            lineWidth: 0.3,
+            lineColor: [0,0,0]
+        },
+        headStyles: {
+            fillColor: [255,255,255],
+            textColor: [0,0,0],
+            halign: "center",
+            fontStyle: "bold"
+        },
+        columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 45 },
+            2: { cellWidth: 15, halign: "center" },
+            3: { cellWidth: 15, halign: "center" },
+            4: { cellWidth: 15, halign: "center" },
+            5: { cellWidth: 15, halign: "center" },
+            6: { cellWidth: 18, halign: "center" },
+            7: { cellWidth: 15, halign: "center" },
+            8: { cellWidth: 20, halign: "right" }
+        }
     });
 
-    // Total
-    const afterTableY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : y + 15;
+    const afterTable = doc.lastAutoTable.finalY + 8;
 
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text(`TOTAL: $${totalAmount.toFixed(2)}`, pageWidth - margin, afterTableY, { align: 'right' });
-
-    // Instructions
-    const instructionsY = afterTableY + 20;
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Instructions: Take as directed by pharmacist', margin, instructionsY);
+    doc.text("សំគាល់៖  សូមអនុវត្តតាមការណែនាំរបស់វេជ្ជបណ្ឌិត ឬ មន្ត្រីឱសថ", margin, afterTable);
 
-    // Simple footer
-    const footerY = pageHeight - 30;
+    /* ----------------------------------------------------------
+       FOOTER — EXACT SAME LAYOUT
+    ----------------------------------------------------------- */
+
+    const footerY = doc.internal.pageSize.height - 20;
+
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Patient Signature: ________________________', margin, footerY);
-    doc.text('Dr. IM SOKLEAN - Tel: 0975111789', pageWidth - margin, footerY, { align: 'right' });
+    doc.text("No. St. 7  PHUM KREK TBONG, KHOM KREK, PONHEA KREK, CAMBODIA.", margin, footerY);
+    doc.text(`DATE: ${dateStr}`, pageWidth - 60, footerY);
+
+    doc.text("TEL: 010511178", margin, footerY + 6);
+    doc.text("Dr. IM SOKLEAN", pageWidth - 60, footerY + 6);
+
+    /* ----------------------------------------------------------
+       RETURN FILE
+    ----------------------------------------------------------- */
+
+    const fileName = `prescription-${dateStr.replace(/\//g,"")}.pdf`;
 
     return { doc, fileName };
-  };
+};
+
   
   const downloadPdf = async () => {
     try {
