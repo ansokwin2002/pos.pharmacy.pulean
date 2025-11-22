@@ -16,7 +16,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { ArrowLeft, FileText, Download } from 'lucide-react';
-import { listPatientHistories } from '@/utilities/api/patientHistories';
+import { getPatientHistoriesByPatientId } from '@/utilities/api/patientHistories';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -53,9 +53,13 @@ interface PrescriptionDrug {
 }
 
 interface HistoryData {
-  patient_info: PatientInfo;
-  prescription: PrescriptionDrug[];
-  total: number;
+  // Support both old and new formats
+  patient_info?: PatientInfo;
+  patient?: PatientInfo;
+  prescription?: PrescriptionDrug[];
+  prescriptions?: PrescriptionDrug[];
+  total?: number;
+  totalAmount?: number;
 }
 
 export default function PatientHistoryPage() {
@@ -78,8 +82,15 @@ export default function PatientHistoryPage() {
     const fetchHistories = async () => {
       setIsLoading(true);
       try {
-        const response = await listPatientHistories(patientId);
-        setHistories(response);
+        // Use new backend endpoint that filters by patient ID using JSON extraction
+        const response = await getPatientHistoriesByPatientId(patientId);
+        console.log('Fetched patient histories for ID', patientId, ':', response?.length || 0);
+        
+        // Filter by OPD type (backend already filtered by patient ID)
+        const opdHistories = Array.isArray(response) ? response.filter((h: PatientHistoryRecord) => h.type === 'opd') : [];
+        console.log('OPD histories count:', opdHistories.length);
+        
+        setHistories(opdHistories);
       } catch (err: any) {
         console.error('Failed to fetch patient histories:', err);
         setError(err.message || 'Failed to fetch histories');
@@ -111,8 +122,13 @@ export default function PatientHistoryPage() {
     const doc = new jsPDF();
     doc.setFont('helvetica', 'normal');
 
+    // Support both data formats
+    const patientInfo = data.patient || data.patient_info;
+    const prescriptions = data.prescriptions || data.prescription || [];
+    const totalAmount = data.totalAmount ?? data.total ?? 0;
+
     const now = new Date(recordCreatedAt || Date.now()); // Use history created_at or current time
-    const fileName = `prescription-${data.patient_info.name.replace(/\s/g, '_')}-${format(now, 'yyyyMMdd')}.pdf`;
+    const fileName = `prescription-${(patientInfo?.name || 'patient').replace(/\s/g, '_')}-${format(now, 'yyyyMMdd')}.pdf`;
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -142,17 +158,17 @@ export default function PatientHistoryPage() {
     y += 10;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${data.patient_info.name || 'N/A'}, ${data.patient_info.gender || 'N/A'}, Age ${data.patient_info.age || 'N/A'}`, margin, y);
+    doc.text(`${patientInfo?.name || 'N/A'}, ${patientInfo?.gender || 'N/A'}, Age ${patientInfo?.age || 'N/A'}`, margin, y);
 
     y += 8;
-    doc.text(`Phone: ${data.patient_info.telephone || 'N/A'}`, margin, y);
+    doc.text(`Phone: ${patientInfo?.telephone || 'N/A'}`, margin, y);
 
     y += 8;
-    doc.text(`Address: ${data.patient_info.address || 'N/A'}`, margin, y);
+    doc.text(`Address: ${patientInfo?.address || 'N/A'}`, margin, y);
 
-    if (data.patient_info.symptom || data.patient_info.diagnosis) {
+    if (patientInfo?.symptom || patientInfo?.diagnosis) {
       y += 8;
-      doc.text(`Condition: ${data.patient_info.symptom || ''} ${data.patient_info.diagnosis ? '(' + data.patient_info.diagnosis + ')' : ''}`, margin, y);
+      doc.text(`Condition: ${patientInfo.symptom || ''} ${patientInfo.diagnosis ? '(' + patientInfo.diagnosis + ')' : ''}`, margin, y);
     }
 
     y += 20;
@@ -163,7 +179,7 @@ export default function PatientHistoryPage() {
     y += 10;
 
     const head = [['Medication', 'Dosage', 'Duration', 'Qty', 'Price']];
-    const body = data.prescription.map((p) => {
+    const body = prescriptions.map((p) => {
       const dosage = [];
       if (p.morning) dosage.push(`${p.morning} morning`);
       if (p.afternoon) dosage.push(`${p.afternoon} afternoon`);
@@ -217,7 +233,7 @@ export default function PatientHistoryPage() {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
-    doc.text(`TOTAL: $${data.total.toFixed(2)}`, pageWidth - margin, afterTableY, { align: 'right' });
+    doc.text(`TOTAL: ${totalAmount.toFixed(2)}`, pageWidth - margin, afterTableY, { align: 'right' });
 
     const instructionsY = afterTableY + 20;
     doc.setFontSize(10);
@@ -320,12 +336,14 @@ export default function PatientHistoryPage() {
             ) : (
               histories.map((history) => {
                 const data: HistoryData = JSON.parse(history.json_data);
+                const patientInfo = data.patient || data.patient_info;
+                const totalAmount = data.totalAmount ?? data.total ?? 0;
                 return (
                   <Table.Row key={history.id}>
                     <Table.Cell>{history.id}</Table.Cell>
                     <Table.Cell>{history.type}</Table.Cell>
-                    <Table.Cell>{data.patient_info && data.patient_info.name ? data.patient_info.name : 'N/A'}</Table.Cell>
-                    <Table.Cell>${data.total ? data.total.toFixed(2) : 'N/A'}</Table.Cell>
+                    <Table.Cell>{patientInfo?.name || 'N/A'}</Table.Cell>
+                    <Table.Cell>${totalAmount.toFixed(2)}</Table.Cell>
                     <Table.Cell>{new Date(history.created_at).toLocaleDateString()}</Table.Cell>
                     <Table.Cell>
                       <Flex gap="2">
@@ -355,33 +373,39 @@ export default function PatientHistoryPage() {
           <Dialog.Description size="2" mb="4">
             Review the prescription details before downloading or printing.
           </Dialog.Description>
-          {selectedHistoryData && (
-            <Box>
-              <Text size="3" weight="bold">Patient: {selectedHistoryData.patient_info?.name || 'N/A'}</Text><br/>
-              <Text size="3" weight="bold">Total: ${selectedHistoryData.total ? selectedHistoryData.total.toFixed(2) : 'N/A'}</Text>
-              {/* Add more summary details here if needed */}
-              <Table.Root variant="surface" mt="3">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeaderCell>Medication</Table.ColumnHeaderCell>
-                    <Table.ColumnHeaderCell>Dosage</Table.ColumnHeaderCell>
-                    <Table.ColumnHeaderCell>Qty</Table.ColumnHeaderCell>
-                    <Table.ColumnHeaderCell>Price</Table.ColumnHeaderCell>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {selectedHistoryData.prescription && Array.isArray(selectedHistoryData.prescription) && selectedHistoryData.prescription.map((p, idx) => (
-                    <Table.Row key={idx}>
-                      <Table.Cell>{p.name}</Table.Cell>
-                      <Table.Cell>{`${p.morning}-${p.afternoon}-${p.evening}-${p.night}`}</Table.Cell>
-                      <Table.Cell>{p.qty}</Table.Cell>
-                      <Table.Cell>${p.price.toFixed(2)}</Table.Cell>
+          {selectedHistoryData && (() => {
+            const patientInfo = selectedHistoryData.patient || selectedHistoryData.patient_info;
+            const prescriptions = selectedHistoryData.prescriptions || selectedHistoryData.prescription || [];
+            const totalAmount = selectedHistoryData.totalAmount ?? selectedHistoryData.total ?? 0;
+            
+            return (
+              <Box>
+                <Text size="3" weight="bold">Patient: {patientInfo?.name || 'N/A'}</Text><br/>
+                <Text size="3" weight="bold">Total: ${totalAmount.toFixed(2)}</Text>
+                {/* Add more summary details here if needed */}
+                <Table.Root variant="surface" mt="3">
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeaderCell>Medication</Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell>Dosage</Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell>Qty</Table.ColumnHeaderCell>
+                      <Table.ColumnHeaderCell>Price</Table.ColumnHeaderCell>
                     </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
-            </Box>
-          )}
+                  </Table.Header>
+                  <Table.Body>
+                    {Array.isArray(prescriptions) && prescriptions.map((p, idx) => (
+                      <Table.Row key={idx}>
+                        <Table.Cell>{p.name}</Table.Cell>
+                        <Table.Cell>{`${p.morning}-${p.afternoon}-${p.evening}-${p.night}`}</Table.Cell>
+                        <Table.Cell>{p.qty}</Table.Cell>
+                        <Table.Cell>${p.price.toFixed(2)}</Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              </Box>
+            );
+          })()}
           <Flex gap="3" mt="4" justify="end">
             <Dialog.Close>
               <Button variant="soft" color="gray">Close</Button>

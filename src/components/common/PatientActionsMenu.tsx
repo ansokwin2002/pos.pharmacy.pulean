@@ -106,20 +106,19 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
 
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger>
-        <Text asChild
+      <DropdownMenu.Trigger asChild>
+        <span
           onContextMenu={handleRightClick}
           style={{
             cursor: 'context-menu',
             userSelect: 'none',
-            borderBottom: '1px dotted var(--gray-8)',
-            paddingBottom: '1px'
+            display: 'inline-block'
           }}
-          className="hover:bg-orange-100 hover:text-orange-900 dark:hover:bg-orange-900 dark:hover:text-orange-100 px-1 py-0.5 rounded transition-colors"
+          className="hover:bg-gray-100 dark:hover:bg-gray-800 px-1 py-0.5 rounded transition-colors"
           title="Right-click for quick actions (OPD, BB, AA)"
         >
-          {patient.name || 'N/A'}
-        </Text>
+          <Text>{patient.name || 'N/A'}</Text>
+        </span>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>
         <DropdownMenu.Item onClick={handleOPDClick}>

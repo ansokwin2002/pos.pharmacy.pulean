@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs } from "@radix-ui/themes";
+import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs, IconButton } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
-import { User, Pill, CheckCircle, FileText } from 'lucide-react';
+import { User, Pill, CheckCircle, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
@@ -52,6 +52,8 @@ export default function RegisterPatientPage() {
   };
 
   const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
+  const [tempPrescriptionId, setTempPrescriptionId] = useState<string | null>(null);
+  const [renderKey, setRenderKey] = useState(0);
 
   // Tab management
   const [currentTab, setCurrentTab] = useState<'patient-info' | 'prescription' | 'complete'>('patient-info');
@@ -71,6 +73,11 @@ export default function RegisterPatientPage() {
       localStorage.setItem('currentRegisterTab', currentTab);
     }
   }, [currentTab]);
+
+  // Load temp drugs on mount
+  useEffect(() => {
+    loadTempDrugs();
+  }, []);
 
   // Get search params for secure patient ID lookup
   const searchParams = useSearchParams();
@@ -307,10 +314,10 @@ export default function RegisterPatientPage() {
 
 
   // Dosing & quantity
-  const [doseMorning, setDoseMorning] = useState<string>('0');
-  const [doseAfternoon, setDoseAfternoon] = useState<string>('0');
-  const [doseEvening, setDoseEvening] = useState<string>('0');
-  const [doseNight, setDoseNight] = useState<string>('0');
+  const [doseMorning, setDoseMorning] = useState<string>('');
+  const [doseAfternoon, setDoseAfternoon] = useState<string>('');
+  const [doseEvening, setDoseEvening] = useState<string>('');
+  const [doseNight, setDoseNight] = useState<string>('');
   const [period, setPeriod] = useState<string>('');
   const [qty, setQty] = useState<string>('');
 
@@ -332,6 +339,44 @@ export default function RegisterPatientPage() {
   // Show export actions only after successful save
   const [hasSaved, setHasSaved] = useState(false);
 
+  const saveDrugToTempAPI = async (drug: Presc) => {
+    try {
+      const { createTempPrescription } = await import('@/utilities/api/tempPrescriptions');
+      const payload = {
+        json_data: JSON.stringify(drug)
+      };
+      
+      const result = await createTempPrescription(payload);
+      console.log('Saved drug to temp API:', result);
+      return result;
+    } catch (error: any) {
+      console.warn('Temp API not available, using local storage:', error.message);
+      // Fall back to local state only
+      return null;
+    }
+  };
+
+  const loadTempDrugs = async () => {
+    try {
+      const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
+      const temps = await listTempPrescriptions();
+      if (temps && temps.length > 0) {
+        // Parse each temp prescription and build prescriptions array
+        const drugs = temps.map((temp: any) => {
+          const drug = JSON.parse(temp.json_data);
+          return { ...drug, tempId: temp.id }; // Add tempId for deletion
+        });
+        setPrescriptions(drugs);
+        console.log('Loaded temp drugs:', drugs);
+      }
+    } catch (error: any) {
+      // Silently fail if API is not available or returns error
+      console.warn('Temp prescriptions API not available:', error.message);
+      // Keep prescriptions as empty array
+      setPrescriptions([]);
+    }
+  };
+
   const addDrugToTable = () => {
     // Validate required Drug selection
     const d = allDrugOptions.find(x => x.id === selectedDrugId);
@@ -339,37 +384,104 @@ export default function RegisterPatientPage() {
       setPrescErrors(prev => ({ ...prev, drug: 'Drug is required' }));
       return;
     }
-    // Require at least one meal selection
-    if (!afterMeal && !beforeMeal) {
-      setPrescErrors(prev => ({ ...prev, meal: 'Please choose After Meal or Before Meal' }));
+    // Validate required Period
+    if (!period || Number(period) <= 0) {
+      setPrescErrors(prev => ({ ...prev, period: 'Period (days) is required' }));
+      toast.error('Please enter the period (days) for this medication');
       return;
     }
+    // Meal selection is now optional - users can add drugs without choosing
     setPrescErrors({});
+    
+    const morning = Number(doseMorning) || 0;
+    const afternoon = Number(doseAfternoon) || 0;
+    const evening = Number(doseEvening) || 0;
+    const night = Number(doseNight) || 0;
+    const days = Number(period) || 0;
+    
+    // Auto-calculate quantity if not provided: (morning + afternoon + evening + night) * days
+    let quantity = Number(qty) || 0;
+    if (quantity === 0 && days > 0) {
+      const dailyDose = morning + afternoon + evening + night;
+      // If no dosages entered, default to 1 per day
+      quantity = dailyDose > 0 ? dailyDose * days : days;
+    }
+    
+    console.log('Adding drug:', {
+      name: d.name,
+      morning, afternoon, evening, night,
+      days,
+      quantity,
+      price: d.price,
+      total: d.price * quantity
+    });
+    
     const entry: Presc = {
       id: d.id,
       name: d.name,
       price: d.price,
-      morning: Number(doseMorning) || 0,
-      afternoon: Number(doseAfternoon) || 0,
-      evening: Number(doseEvening) || 0,
-      night: Number(doseNight) || 0,
+      morning,
+      afternoon,
+      evening,
+      night,
       period: period || '',
-      qty: Number(qty) || 0,
+      qty: quantity,
       afterMeal,
       beforeMeal,
     };
-    setPrescriptions(prev => [...prev, entry]);
+
+    // Save to temp API first
+    saveDrugToTempAPI(entry).then((result) => {
+      if (result) {
+        // API save successful, reload from API
+        loadTempDrugs();
+      } else {
+        // API not available, use local state
+        setPrescriptions(prev => [...prev, entry]);
+      }
+      toast.success('Medication added');
+    });
 
     // reset inputs
     setSelectedDrugId('');
-    setDoseMorning('0');
-    setDoseAfternoon('0');
-    setDoseEvening('0');
-    setDoseNight('0');
+    setDoseMorning('');
+    setDoseAfternoon('');
+    setDoseEvening('');
+    setDoseNight('');
     setPeriod('');
     setQty('');
     setAfterMeal(false);
     setBeforeMeal(false);
+  };
+
+  const removeDrug = (index: number) => {
+    console.log('=== REMOVE DRUG START ===');
+    console.log('Removing drug at index:', index);
+    console.log('Current prescriptions:', prescriptions.length);
+    console.log('Current drugs:', prescriptions.map((p, i) => `${i}: ${p.name}`));
+    
+    // Immediately update local state
+    const newPrescriptions = prescriptions.filter((_, i) => i !== index);
+    console.log('After filter:', newPrescriptions.length);
+    console.log('New drugs:', newPrescriptions.map((p, i) => `${i}: ${p.name}`));
+    
+    // Update state
+    setPrescriptions(newPrescriptions);
+    setRenderKey(prev => prev + 1);
+    
+    console.log('=== REMOVE DRUG END ===');
+    toast.success('Medication removed');
+    
+    // Try to delete from API in background (don't wait)
+    const drug = prescriptions[index];
+    const tempId = (drug as any).tempId;
+    if (tempId) {
+      import('@/utilities/api/tempPrescriptions').then(({ deleteTempPrescription }) => {
+        deleteTempPrescription(tempId).catch(err => {
+          console.warn('Background API deletion failed:', err);
+        });
+      });
+    }
   };
 
   // Build PDF document and return { doc, fileName }
@@ -565,25 +677,77 @@ export default function RegisterPatientPage() {
     const ok = validateAll();
     if (!ok) return;
     try {
-      const { normalizePatientPayload } = await import('@/utilities/api/normalizePatient');
-      const raw = {
+      // Prepare patient data
+      const patientData = {
+        id: selectedPatientId || patientIdParam || undefined, // Include patient ID
         name,
         gender,
-        age,
+        age: Number(age),
         telephone,
         address,
         signs_of_life: signOfLife,
         symptom,
         diagnosis,
       };
-      const payload = normalizePatientPayload(raw);
-      const { createPodPatient } = await import('@/utilities/api/podPatients');
-      const saved = await createPodPatient(payload as any);
+
+      // Prepare prescription data with all medications
+      const prescriptionData = prescriptions.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        morning: p.morning,
+        afternoon: p.afternoon,
+        evening: p.evening,
+        night: p.night,
+        period: p.period,
+        qty: p.qty,
+        afterMeal: p.afterMeal,
+        beforeMeal: p.beforeMeal,
+        total: p.price * p.qty,
+      }));
+
+      // Calculate total amount
+      const totalAmount = prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0);
+
+      // Combine all data into json_data
+      const historyData = {
+        patient: patientData,
+        prescriptions: prescriptionData,
+        totalAmount,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save to patient-histories API
+      const { createPatientHistory } = await import('@/utilities/api/patientHistories');
+      const payload = {
+        type: 'opd',
+        json_data: JSON.stringify(historyData),
+        patient_id: selectedPatientId || patientIdParam || undefined, // Add patient_id for database filtering
+      };
+      
+      const saved = await createPatientHistory(payload);
       setHasSaved(true);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
-      toast.success('Patient saved successfully!');
-      // Update selectedPatientId to new id if backend returns it
-      if (saved?.id) setSelectedPatientId(String(saved.id));
+      
+      // Clear all temp prescriptions after successful save
+      try {
+        const { listTempPrescriptions, deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
+        const temps = await listTempPrescriptions();
+        
+        // Delete all temp prescriptions
+        for (const temp of temps) {
+          await deleteTempPrescription(temp.id);
+        }
+        
+        setPrescriptions([]);
+        setTempPrescriptionId(null);
+        console.log('Cleared all temp prescriptions');
+      } catch (error) {
+        console.error('Failed to clear temp prescriptions:', error);
+      }
+      
+      toast.success('OPD history saved successfully!');
+      console.log('Saved patient history:', saved);
     } catch (e: any) {
       console.error(e);
       if (e?.detail && typeof e.detail === 'object') {
@@ -600,7 +764,7 @@ export default function RegisterPatientPage() {
         if (be?.diagnosis) newErrs.diagnosis = String(be.diagnosis);
         setErrors(newErrs);
       }
-      toast.error('Failed to save patient');
+      toast.error('Failed to save OPD history');
     }
   };
 
@@ -703,26 +867,65 @@ export default function RegisterPatientPage() {
           )}
 
           <Tabs.Root value={currentTab} onValueChange={handleTabChange}>
-            <Tabs.List>
-              <Tabs.Trigger value="patient-info">
+            <Tabs.List style={{ gap: '8px', backgroundColor: 'transparent', borderBottom: 'none' }}>
+              <Tabs.Trigger 
+                value="patient-info"
+                style={{
+                  backgroundColor: currentTab === 'patient-info' ? 'var(--blue-9)' : completedTabs.has('patient-info') ? 'var(--green-9)' : 'var(--gray-3)',
+                  color: currentTab === 'patient-info' || completedTabs.has('patient-info') ? 'white' : 'var(--gray-11)',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: currentTab === 'patient-info' ? '3px solid var(--blue-9)' : completedTabs.has('patient-info') ? '3px solid var(--green-9)' : '3px solid var(--gray-3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontWeight: '500'
+                }}
+              >
                 <Flex align="center" gap="2">
                   <User size={16} />
                   <Text>Patient Info</Text>
-                  {completedTabs.has('patient-info') && <CheckCircle size={14} color="green" />}
+                  {completedTabs.has('patient-info') && <CheckCircle size={14} />}
                 </Flex>
               </Tabs.Trigger>
-              <Tabs.Trigger value="prescription">
+              <Tabs.Trigger 
+                value="prescription"
+                style={{
+                  backgroundColor: currentTab === 'prescription' ? 'var(--blue-9)' : completedTabs.has('prescription') ? 'var(--green-9)' : 'var(--gray-3)',
+                  color: currentTab === 'prescription' || completedTabs.has('prescription') ? 'white' : 'var(--gray-11)',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: currentTab === 'prescription' ? '3px solid var(--blue-9)' : completedTabs.has('prescription') ? '3px solid var(--green-9)' : '3px solid var(--gray-3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontWeight: '500'
+                }}
+              >
                 <Flex align="center" gap="2">
                   <Pill size={16} />
                   <Text>Prescription</Text>
-                  {completedTabs.has('prescription') && <CheckCircle size={14} color="green" />}
+                  {completedTabs.has('prescription') && <CheckCircle size={14} />}
                 </Flex>
               </Tabs.Trigger>
-              <Tabs.Trigger value="complete">
+              <Tabs.Trigger 
+                value="complete"
+                style={{
+                  backgroundColor: currentTab === 'complete' ? 'var(--blue-9)' : completedTabs.has('complete') ? 'var(--green-9)' : 'var(--gray-3)',
+                  color: currentTab === 'complete' || completedTabs.has('complete') ? 'white' : 'var(--gray-11)',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: currentTab === 'complete' ? '3px solid var(--blue-9)' : completedTabs.has('complete') ? '3px solid var(--green-9)' : '3px solid var(--gray-3)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontWeight: '500'
+                }}
+              >
                 <Flex align="center" gap="2">
                   <FileText size={16} />
                   <Text>Complete</Text>
-                  {completedTabs.has('complete') && <CheckCircle size={14} color="green" />}
+                  {completedTabs.has('complete') && <CheckCircle size={14} />}
                 </Flex>
               </Tabs.Trigger>
             </Tabs.List>
@@ -1086,7 +1289,7 @@ export default function RegisterPatientPage() {
             </Box>
 
             {/* Prescription table */}
-            <Box mt="4">
+            <Box mt="4" key={`prescription-table-${renderKey}`}>
               <Table.Root variant="surface" style={{ width: '100%' }}>
                 <Table.Header>
                   <Table.Row>
@@ -1106,9 +1309,22 @@ export default function RegisterPatientPage() {
                 </Table.Header>
                 <Table.Body>
                   {prescriptions.map((p, idx) => (
-                    <Table.Row key={idx}>
+                    <Table.Row key={`${p.id}-${p.name}-${idx}`}>
                       <Table.Cell>{idx + 1}</Table.Cell>
-                      <Table.Cell>{p.name}</Table.Cell>
+                      <Table.Cell>
+                        <Flex align="center" gap="2">
+                          <Text>{p.name}</Text>
+                          <IconButton
+                            size="1"
+                            variant="ghost"
+                            color="red"
+                            onClick={() => removeDrug(idx)}
+                            title="Remove medication"
+                          >
+                            <Trash2 size={14} />
+                          </IconButton>
+                        </Flex>
+                      </Table.Cell>
                       <Table.Cell>{p.morning}</Table.Cell>
                       <Table.Cell>{p.afternoon}</Table.Cell>
                       <Table.Cell>{p.evening}</Table.Cell>
@@ -1131,8 +1347,10 @@ export default function RegisterPatientPage() {
                 </Table.Body>
               </Table.Root>
               {/* Running total */}
-              <Flex justify="end" mt="3">
-                <Text weight="bold">Total: ${prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0).toFixed(2)}</Text>
+              <Flex justify="end" mt="4" p="3" style={{ backgroundColor: 'var(--blue-2)', borderRadius: '6px', border: '1px solid var(--blue-6)' }}>
+                <Text size="5" weight="bold" style={{ color: 'var(--blue-11)' }}>
+                  Total Amount: ${prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0).toFixed(2)}
+                </Text>
               </Flex>
             </Box>
           </Box>
@@ -1196,14 +1414,14 @@ export default function RegisterPatientPage() {
                     <Button variant="soft" color="gray">
                       Cancel
                     </Button>
-                    <Button onClick={handleSubmit}>Save Patient</Button>
+                    <Button onClick={handleSubmit}>Save OPD History</Button>
                   </Flex>
                 </Flex>
 
                 {hasSaved && (
                   <Box mt="4" p="3" style={{ backgroundColor: 'var(--green-2)', borderRadius: '6px', border: '1px solid var(--green-6)' }}>
                     <Text size="2" style={{ color: 'var(--green-11)' }} mb="2">
-                      ✅ Patient saved successfully! You can now export or print the prescription.
+                      ✅ OPD history saved successfully! You can now export or print the prescription.
                     </Text>
                     <Flex gap="2" mt="2">
                       <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>

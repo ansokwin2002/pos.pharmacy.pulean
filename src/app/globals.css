@@ -299,5 +299,19 @@ input[type="number"] {
   --secondary: #26272b;
 }
 
+/* Override Radix UI default tab border colors */
+.rt-TabsTrigger::before {
+  display: none !important;
+}
+
+.rt-TabsTrigger[data-state="active"]::before {
+  display: none !important;
+}
+
+/* Remove hover background from text inside tabs */
+.rt-TabsTrigger .rt-Text:hover {
+  background-color: transparent !important;
+}
+
 
 
