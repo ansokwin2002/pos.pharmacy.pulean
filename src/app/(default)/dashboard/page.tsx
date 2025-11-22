@@ -22,6 +22,7 @@ import { formatCurrency } from '@/utilities/';
 import { PageHeading } from '@/components/common/PageHeading';
 import CardHeading from '@/components/common/CardHeading';
 import { usePageTitle } from '@/hooks/usePageTitle'
+
 // Dynamically import ApexCharts with SSR disabled
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -105,7 +106,7 @@ export default function HQDashboard() {
   const [isRefreshingInventory, setIsRefreshingInventory] = useState(false);
   const [chartsLoading, setChartsLoading] = useState(true);
   const chartOptions = useChartOptions();
-  
+
   useEffect(() => {
     setIsClient(true);
     // Add a small delay to simulate chart loading

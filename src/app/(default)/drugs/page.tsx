@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Badge,
   Box,
   Button,
   Callout,
@@ -10,7 +9,8 @@ import {
   TextField,
   Select,
   Dialog,
-  AlertDialog
+  AlertDialog,
+  Text as RadixText
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import DrugsTable from '@/components/drugs/DrugsTable';
@@ -20,7 +20,7 @@ import { Plus, Search, RefreshCcw, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { listDrugs, createDrug, updateDrug, deleteDrug } from '@/utilities/api/drugs';
+import { listDrugs, createDrug, updateDrug, deleteDrug, getDrug } from '@/utilities/api/drugs';
 import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE = 10;
@@ -33,7 +33,6 @@ export default function DrugsPage() {
   const [totalDrugs, setTotalDrugs] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshToggle, setRefreshToggle] = useState(false);
   const router = useRouter();
   
   // Selection state
@@ -49,6 +48,28 @@ export default function DrugsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
+  const [isFetchingSingleDrug, setIsFetchingSingleDrug] = useState(false);
+
+  const handleEditDrug = async (drug: Drug) => {
+    setSelectedDrug(drug); // Set immediately for optimistic UI or to show old data
+    setIsEditDialogOpen(true);
+    setIsFetchingSingleDrug(true);
+    try {
+      const fetchedDrug = await getDrug(drug.id);
+      setSelectedDrug({
+        ...fetchedDrug,
+        expiry_date: new Date(fetchedDrug.expiry_date),
+        created_at: fetchedDrug.created_at ? new Date(fetchedDrug.created_at) : undefined,
+        updated_at: fetchedDrug.updated_at ? new Date(fetchedDrug.updated_at) : undefined,
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch single drug:', err);
+      toast.error(err.detail?.message || err.message || 'Failed to fetch drug details');
+      setIsEditDialogOpen(false); // Close dialog if fetch fails
+    } finally {
+      setIsFetchingSingleDrug(false);
+    }
+  };
 
   const handleSelectionChange = (id: string) => {
     setSelectedIds(prev => 
@@ -137,7 +158,7 @@ export default function DrugsPage() {
     };
 
     fetchDrugs();
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter, refreshToggle]);
+  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter]);
 
   const totalPages = Math.ceil(totalDrugs / itemsPerPage);
   const paginatedDrugs = drugsData; // drugsData is already paginated by the API
@@ -182,10 +203,7 @@ export default function DrugsPage() {
     }
   };
 
-  const handleEditDrug = (drug: Drug) => {
-    setSelectedDrug(drug);
-    setIsEditDialogOpen(true);
-  };
+
 
   const handleUpdateDrug = async (drugData: Partial<Drug>) => {
     if (!selectedDrug?.id) return;
@@ -374,14 +392,20 @@ export default function DrugsPage() {
       <Dialog.Root open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <Dialog.Content style={{ maxWidth: 800 }}>
           <Dialog.Title>Edit Drug</Dialog.Title>
-          <DrugForm
-            drug={selectedDrug || undefined}
-            onSubmit={handleUpdateDrug}
-            onCancel={() => {
-              setIsEditDialogOpen(false);
-              setSelectedDrug(null);
-            }}
-          />
+          {isFetchingSingleDrug ? (
+            <Flex justify="center" align="center" style={{ height: '200px' }}>
+              <RadixText size="4" color="gray">Loading drug details...</RadixText>
+            </Flex>
+          ) : (
+            <DrugForm
+              drug={selectedDrug || undefined}
+              onSubmit={handleUpdateDrug}
+              onCancel={() => {
+                setIsEditDialogOpen(false);
+                setSelectedDrug(null);
+              }}
+            />
+          )}
         </Dialog.Content>
       </Dialog.Root>
 
@@ -394,13 +418,13 @@ export default function DrugsPage() {
           </AlertDialog.Description>
 
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel asChild>
-              <Button variant="soft" color="gray">
+            <AlertDialog.Cancel>
+              <Button asChild variant="soft" color="gray">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
-            <AlertDialog.Action asChild>
-              <Button variant="solid" color="red" onClick={confirmDeleteDrug}>
+            <AlertDialog.Action>
+              <Button asChild variant="solid" color="red" onClick={confirmDeleteDrug}>
                 Delete Drug
               </Button>
             </AlertDialog.Action>
@@ -417,13 +441,13 @@ export default function DrugsPage() {
           </AlertDialog.Description>
 
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel asChild>
-              <Button variant="soft" color="gray">
+            <AlertDialog.Cancel>
+              <Button asChild variant="soft" color="gray">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
-            <AlertDialog.Action asChild>
-              <Button variant="solid" color="red" onClick={confirmDeleteSelected}>
+            <AlertDialog.Action>
+              <Button asChild variant="solid" color="red" onClick={confirmDeleteSelected}>
                 Delete
               </Button>
             </AlertDialog.Action>

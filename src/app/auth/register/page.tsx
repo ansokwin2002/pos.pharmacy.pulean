@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Box, Container, Flex, Heading, Text, Button, Link, Card, IconButton, TextField } from '@radix-ui/themes';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
-import Image from 'next/image';
+
 import BrandLogo from '@/components/common/BrandLogo';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { register as apiRegister, saveAuth } from '@/utilities/api/auth';
@@ -21,7 +21,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { theme } = useTheme();
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {

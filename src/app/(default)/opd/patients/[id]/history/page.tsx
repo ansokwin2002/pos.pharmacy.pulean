@@ -8,7 +8,6 @@ import {
   Flex,
   Table,
   Text,
-  Badge,
   Tooltip,
   IconButton,
   Dialog
@@ -18,6 +17,7 @@ import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { ArrowLeft, FileText, Download } from 'lucide-react';
 import { listPatientHistories } from '@/utilities/api/patientHistories';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 interface PatientHistoryRecord {
@@ -68,6 +68,7 @@ export default function PatientHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedHistoryData, setSelectedHistoryData] = useState<HistoryData | null>(null);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
+  const [selectedHistoryCreatedAt, setSelectedHistoryCreatedAt] = useState<string | null>(null);
 
   usePageTitle(patientId ? `History for Patient ${patientId}` : 'Patient History');
 
@@ -95,6 +96,7 @@ export default function PatientHistoryPage() {
     try {
       const data: HistoryData = JSON.parse(historyRecord.json_data);
       setSelectedHistoryData(data);
+      setSelectedHistoryCreatedAt(historyRecord.created_at);
       setIsPdfPreviewOpen(true);
     } catch (e) {
       console.error('Failed to parse history data:', e);
@@ -102,14 +104,14 @@ export default function PatientHistoryPage() {
     }
   };
 
-  const buildPdf = async (data: HistoryData) => {
+  const buildPdf = async (data: HistoryData, recordCreatedAt: string) => {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
 
     const doc = new jsPDF();
     doc.setFont('helvetica', 'normal');
 
-    const now = new Date(data.created_at || Date.now()); // Use history created_at or current time
+    const now = new Date(recordCreatedAt || Date.now()); // Use history created_at or current time
     const fileName = `prescription-${data.patient_info.name.replace(/\s/g, '_')}-${format(now, 'yyyyMMdd')}.pdf`;
 
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -232,9 +234,9 @@ export default function PatientHistoryPage() {
   };
 
   const downloadPdf = async () => {
-    if (!selectedHistoryData) return;
+    if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
     try {
-      const { doc, fileName } = await buildPdf(selectedHistoryData);
+      const { doc, fileName } = await buildPdf(selectedHistoryData, selectedHistoryCreatedAt);
       doc.save(fileName);
       toast.success('Prescription PDF downloaded');
     } catch (e) {
@@ -244,9 +246,9 @@ export default function PatientHistoryPage() {
   };
 
   const previewPrintPdf = async () => {
-    if (!selectedHistoryData) return;
+    if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
     try {
-      const { doc } = await buildPdf(selectedHistoryData);
+      const { doc } = await buildPdf(selectedHistoryData, selectedHistoryCreatedAt);
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
       const win = window.open(url);

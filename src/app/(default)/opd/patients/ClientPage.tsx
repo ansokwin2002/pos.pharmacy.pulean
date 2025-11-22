@@ -1,10 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton, Tooltip } from "@radix-ui/themes";
-import { faker } from '@faker-js/faker';
 import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient } from '@/utilities/api/podPatients';
 import { PageHeading } from '@/components/common/PageHeading';
-import { PatientActionsMenu, PatientNameWithMenu } from '@/components/common/PatientActionsMenu';
+import { PatientNameWithMenu } from '@/components/common/PatientActionsMenu';
 import { Search, Plus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
 import { SortableHeader } from '@/components/common/SortableHeader';
 import Pagination from '@/components/common/Pagination';
@@ -25,23 +24,6 @@ interface Patient {
   phone?: string;
   city?: string;
 }
-
-const generateFakePatients = (count: number): Patient[] => {
-  const patients: Patient[] = [];
-  for (let i = 0; i < count; i++) {
-    const gender = faker.person.sex() as 'male' | 'female';
-    patients.push({
-      id: faker.string.uuid(),
-      name: faker.person.fullName({ sex: gender }),
-      email: faker.internet.email(),
-      phone: faker.phone.number(),
-      address: faker.location.streetAddress(),
-      city: faker.location.city(),
-      gender: gender,
-    });
-  }
-  return patients;
-};
 
 const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
   const [name, setName] = useState('');
@@ -87,6 +69,11 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
             <TextField.Root
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyPress={(e) => {
+                if (/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Enter full name"
               required
             />
@@ -120,6 +107,11 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
             <TextField.Root
               value={address ?? ''}
               onChange={(e) => setAddress(e.target.value)}
+              onKeyPress={(e) => {
+                if (/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Enter address"
             />
           </label>
@@ -130,6 +122,11 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
             <TextField.Root
               value={symptom}
               onChange={(e) => setSymptom(e.target.value)}
+              onKeyPress={(e) => {
+                if (/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Enter symptom"
             />
           </label>
@@ -140,6 +137,11 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
             <TextField.Root
               value={diagnosis}
               onChange={(e) => setDiagnosis(e.target.value)}
+              onKeyPress={(e) => {
+                if (/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Enter diagnosis"
             />
           </label>
@@ -382,8 +384,22 @@ export default function PatientListPage() {
     setEditPatientDialogOpen(true);
   };
 
-  const handleUpdatePatient = (updatedPatient: Patient) => {
+  const handleUpdatePatient = async (updatedPatient: Patient) => {
+    const originalPatients = [...patientsData];
+    // Optimistic UI update
     setPatientsData(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
+    setEditPatientDialogOpen(false);
+    setPatientToEdit(null);
+
+    try {
+      await updatePodPatient(updatedPatient.id as string, updatedPatient);
+      toast.success('Patient updated successfully!');
+    } catch (e: any) {
+      console.error('Failed to update patient:', e);
+      toast.error(e.detail?.message || e.message || 'Failed to update patient');
+      // Rollback on failure
+      setPatientsData(originalPatients);
+    }
   };
 
   const handleDeletePatient = (patient: Patient) => {
@@ -474,129 +490,132 @@ export default function PatientListPage() {
         </Flex>
       </Box>
 
-      <Table.Root variant="surface" style={{ width: '100%' }}>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="ID"
-                sortKey="id"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="Name"
-                sortKey="name"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="Email"
-                sortKey="email"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="Phone"
-                sortKey="phone"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="Address"
-                sortKey="address"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="City"
-                sortKey="city"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="Gender"
-                sortKey="gender"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {currentItems.map((patient) => (
-            <Table.Row key={patient.id}>
-              <Table.Cell>{String(patient.id).substring(0,8)}</Table.Cell>
-              <Table.RowHeaderCell>
-                <Flex align="center" justify="between">
-                  <PatientNameWithMenu
-                    patient={patient}
-                  />
-                </Flex>
-              </Table.RowHeaderCell>
-              <Table.Cell>{patient.email || '-'}</Table.Cell>
-              <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
-              <Table.Cell>{patient.address || '-'}</Table.Cell>
-              <Table.Cell>{patient.city || '-'}</Table.Cell>
-              <Table.Cell>{patient.gender || '-'}</Table.Cell>
-              <Table.Cell>
-                <Flex gap="2">
-                  <Tooltip content="Edit Patient">
-                    <IconButton
-                      size="1"
-                      variant="ghost"
-                      color="blue"
-                      onClick={() => handleEditPatient(patient)}
-                    >
-                      <Pencil size={14} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip content="Delete Patient">
-                    <IconButton
-                      size="1"
-                      variant="ghost"
-                      color="red"
-                      onClick={() => handleDeletePatient(patient)}
-                    >
-                      <Trash2 size={14} />
-                    </IconButton>
-                  </Tooltip>
-                </Flex>
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
+            <Table.Root variant="surface" style={{ width: '100%' }}>
+              <Table.Header>
+                <Table.Row>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="ID"
+                      sortKey="id"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Name"
+                      sortKey="name"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
 
-      {filteredPatients.length > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredPatients.length}
-          startIndex={startIndex}
-          endIndex={endIndex}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={(newSize) => {
-            setItemsPerPage(newSize);
-            setCurrentPage(1);
-          }}
-        />
-      )}
-
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Phone"
+                      sortKey="phone"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Address"
+                      sortKey="address"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="City"
+                      sortKey="city"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Gender"
+                      sortKey="gender"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body>
+                {currentItems.length === 0 ? (
+                  <Table.Row>
+                    <Table.Cell colSpan={7} className="text-center">
+                      <Text size="3" color="gray">No patients found.</Text>
+                    </Table.Cell>
+                  </Table.Row>
+                ) : (
+                  currentItems.map((patient) => {
+                    console.log('Patient object in map:', patient);
+                    return (
+                      <Table.Row key={patient.id}>
+                        <Table.Cell>{String(patient.id).substring(0,8)}</Table.Cell>
+                        <Table.RowHeaderCell>
+                          <Flex align="center" justify="between">
+                            <PatientNameWithMenu
+                              patient={patient}
+                            />
+                          </Flex>
+                        </Table.RowHeaderCell>
+  
+                        <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
+                        <Table.Cell>{patient.address || '-'}</Table.Cell>
+                        <Table.Cell>{patient.city || '-'}</Table.Cell>
+                        <Table.Cell>{patient.gender || '-'}</Table.Cell>
+                        <Table.Cell>
+                          <Flex gap="2">
+                            <Tooltip content="Edit Patient">
+                              <IconButton
+                                size="1"
+                                variant="ghost"
+                                color="blue"
+                                onClick={() => handleEditPatient(patient)}
+                              >
+                                <Pencil size={14} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip content="Delete Patient">
+                              <IconButton
+                                size="1"
+                                variant="ghost"
+                                color="red"
+                                onClick={() => handleDeletePatient(patient)}
+                              >
+                                <Trash2 size={14} />
+                              </IconButton>
+                            </Tooltip>
+                          </Flex>
+                        </Table.Cell>
+                      </Table.Row>
+                    );
+                  })
+                )}
+              </Table.Body>
+            </Table.Root>
+      
+            {filteredPatients.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredPatients.length}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(newSize) => {
+                  setItemsPerPage(newSize);
+                  setCurrentPage(1);
+                }}
+              />
+            )}
       <AddPatientDialog 
         open={isAddPatientDialogOpen} 
         setOpen={setAddPatientDialogOpen}

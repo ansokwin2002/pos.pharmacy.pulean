@@ -542,7 +542,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
     setOpenMenu(activeMainMenuTitle);
     setOpenSubMenu(activeSubMenuTitle);
 
-  }, [pathname, applicationMenuData, uiPagesMenuData, documentationMenuData]);
+  }, [pathname, applicationMenuData, opdMenuData, uiPagesMenuData, documentationMenuData]);
 
 
   // Helper function to check if a menu item link is active for styling

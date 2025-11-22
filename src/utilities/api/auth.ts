@@ -20,6 +20,7 @@ export type AuthResponse = {
 };
 
 export async function register(payload: RegisterPayload): Promise<AuthResponse> {
+  console.log('Registering with AUTH_BASE:', `${AUTH_BASE}/register`);
   const res = await fetch(`${AUTH_BASE}/register`, {
     method: 'POST',
     headers: {
@@ -33,6 +34,7 @@ export async function register(payload: RegisterPayload): Promise<AuthResponse> 
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  console.log('Logging in with AUTH_BASE:', `${AUTH_BASE}/login`);
   const res = await fetch(`${AUTH_BASE}/login`, {
     method: 'POST',
     headers: {
@@ -46,7 +48,17 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
 }
 
 export function saveAuth(token: string) {
-  localStorage.setItem('auth_token', token);
+  setCookie('auth_token', token, 7);
+}
+
+function setCookie(name: string, value: string, days: number) {
+  let expires = "";
+  if (days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    expires = "; expires=" + date.toUTCString();
+  }
+  document.cookie = name + "=" + (value || "")  + expires + "; path=/";
 }
 
 async function toError(res: Response) {

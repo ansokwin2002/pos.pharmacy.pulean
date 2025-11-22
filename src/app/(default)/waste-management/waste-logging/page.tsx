@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Box, Flex, Button, Table, Text, Badge, Card, TextField, Select, IconButton } from '@radix-ui/themes';
 import { PlusIcon, Trash, Search, RefreshCcw, Edit, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -361,81 +361,83 @@ export default function WasteLoggingPage() {
   };
 
   return (
-    <Box>
-      <Flex 
-        direction={{ initial: "column", sm: "row" }} 
-        justify="between" 
-        align={{ initial: "stretch", sm: "center" }}
-        gap={{ initial: "4", sm: "0" }}
-        mb="5"
-      >
-        <PageHeading 
-          title="Waste Logging" 
-          description="Track and manage kitchen waste"
-          noMarginBottom
-        />
-        <Flex gap="3" width={{ initial: "full", sm: "auto" }}>
-          <Box width={{ initial: "full", sm: "auto" }}>
-            <Button onClick={handleAddWasteLog}>
-              <PlusIcon size={16} />
-              Log New Waste
-            </Button>
-          </Box>
-        </Flex>
-      </Flex>
-      
-      <Flex gap="4" align="center" wrap="wrap" mb="4">
-        <Box className="flex-grow min-w-[250px]">
-          <TextField.Root
-            placeholder="Search by product or staff name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          >
-            <TextField.Slot>
-              <Search size={16} />
-            </TextField.Slot>
-          </TextField.Root>
-        </Box>
-        
-        <Flex align="center" gap="2" className="flex-shrink-0">
-          <Select.Root value={reasonFilter} onValueChange={setReasonFilter}>
-            <Select.Trigger placeholder="All Reasons" />
-            <Select.Content>
-              <Select.Item value="all">All Reasons</Select.Item>
-              {wasteReasons.map(reason => (
-                <Select.Item key={reason.value} value={reason.value}>{reason.label}</Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </Flex>
-        
-        <Flex align="center" gap="2" className="flex-shrink-0">
-          <Select.Root value={sourceFilter} onValueChange={setSourceFilter}>
-            <Select.Trigger placeholder="All Sources" />
-            <Select.Content>
-              <Select.Item value="all">All Sources</Select.Item>
-              {wasteSources.map(source => (
-                <Select.Item key={source.value} value={source.value}>{source.label}</Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </Flex>
-        
-        <Button 
-          variant="soft" 
-          color={(reasonFilter !== 'all' || sourceFilter !== 'all' || searchTerm !== '') ? 'red' : 'gray'} 
-          onClick={handleResetFilters}
-          className="flex-shrink-0"
-          disabled={(reasonFilter === 'all' && sourceFilter === 'all' && searchTerm === '')}
-        >
-          <RefreshCcw size={16} />
-          Reset Filters
-        </Button>
-      </Flex>
-
+    <Suspense fallback={<div>Loading waste logs...</div>}>
       <Box>
-        {renderWasteLogsTable()}
+        <Flex 
+          direction={{ initial: "column", sm: "row" }} 
+          justify="between" 
+          align={{ initial: "stretch", sm: "center" }}
+          gap={{ initial: "4", sm: "0" }}
+          mb="5"
+        >
+          <PageHeading 
+            title="Waste Logging" 
+            description="Track and manage kitchen waste"
+            noMarginBottom
+          />
+          <Flex gap="3" width={{ initial: "full", sm: "auto" }}>
+            <Box width={{ initial: "full", sm: "auto" }}>
+              <Button onClick={handleAddWasteLog}>
+                <PlusIcon size={16} />
+                Log New Waste
+              </Button>
+            </Box>
+          </Flex>
+        </Flex>
+        
+        <Flex gap="4" align="center" wrap="wrap" mb="4">
+          <Box className="flex-grow min-w-[250px]">
+            <TextField.Root
+              placeholder="Search by product or staff name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            >
+              <TextField.Slot>
+                <Search size={16} />
+              </TextField.Slot>
+            </TextField.Root>
+          </Box>
+          
+          <Flex align="center" gap="2" className="flex-shrink-0">
+            <Select.Root value={reasonFilter} onValueChange={setReasonFilter}>
+              <Select.Trigger placeholder="All Reasons" />
+              <Select.Content>
+                <Select.Item value="all">All Reasons</Select.Item>
+                {wasteReasons.map(reason => (
+                  <Select.Item key={reason.value} value={reason.value}>{reason.label}</Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
+          </Flex>
+          
+          <Flex align="center" gap="2" className="flex-shrink-0">
+            <Select.Root value={sourceFilter} onValueChange={setSourceFilter}>
+              <Select.Trigger placeholder="All Sources" />
+              <Select.Content>
+                <Select.Item value="all">All Sources</Select.Item>
+                {wasteSources.map(source => (
+                  <Select.Item key={source.value} value={source.value}>{source.label}</Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
+          </Flex>
+          
+          <Button 
+            variant="soft" 
+            color={(reasonFilter !== 'all' || sourceFilter !== 'all' || searchTerm !== '') ? 'red' : 'gray'} 
+            onClick={handleResetFilters}
+            className="flex-shrink-0"
+            disabled={(reasonFilter === 'all' && sourceFilter === 'all' && searchTerm === '')}
+          >
+            <RefreshCcw size={16} />
+            Reset Filters
+          </Button>
+        </Flex>
+
+        <Box>
+          {renderWasteLogsTable()}
+        </Box>
       </Box>
-    </Box>
+    </Suspense>
   );
 }

@@ -77,6 +77,7 @@ interface PatientNameWithMenuProps {
 }
 
 export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
+  console.log('Patient prop in PatientNameWithMenu:', patient);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -105,8 +106,8 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
 
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenu.Trigger asChild>
-        <Text
+      <DropdownMenu.Trigger>
+        <Text asChild
           onContextMenu={handleRightClick}
           style={{
             cursor: 'context-menu',
@@ -114,10 +115,10 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
             borderBottom: '1px dotted var(--gray-8)',
             paddingBottom: '1px'
           }}
-          className="hover:bg-gray-100 px-1 py-0.5 rounded transition-colors"
+          className="hover:bg-orange-100 hover:text-orange-900 dark:hover:bg-orange-900 dark:hover:text-orange-100 px-1 py-0.5 rounded transition-colors"
           title="Right-click for quick actions (OPD, BB, AA)"
         >
-          {patient.name}
+          {patient.name || 'N/A'}
         </Text>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Box, Tabs, Flex, Text } from '@radix-ui/themes';
 import { Database, Clock } from 'lucide-react';
 import { PageHeading } from '@/components/common/PageHeading';
@@ -16,38 +16,40 @@ export default function BackupRestorePage() {
   usePageTitle('Backup & Restore');
 
   return (
-    <Box>
-      <PageHeading
-        title="Backup & Restore"
-        description="Configure system backup settings and manage data restoration"
-      />
+    <Suspense fallback={<div>Loading backup settings...</div>}>
+      <Box>
+        <PageHeading
+          title="Backup & Restore"
+          description="Configure system backup settings and manage data restoration"
+        />
 
-      <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
-        <Tabs.List>
-          <Tabs.Trigger value="manual">
-            <Flex gap="2" align="center">
-              <Database size={16} />
-              <Text>Manual Backup</Text>
-            </Flex>
-          </Tabs.Trigger>
-          <Tabs.Trigger value="scheduled">
-            <Flex gap="2" align="center">
-              <Clock size={16} />
-              <Text>Scheduled Backup</Text>
-            </Flex>
-          </Tabs.Trigger>
-        </Tabs.List>
-        
-        <Box mt="4">
-          <Tabs.Content value="manual">
-            <ManualBackup />
-          </Tabs.Content>
+        <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
+          <Tabs.List>
+            <Tabs.Trigger value="manual">
+              <Flex gap="2" align="center">
+                <Database size={16} />
+                <Text>Manual Backup</Text>
+              </Flex>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="scheduled">
+              <Flex gap="2" align="center">
+                <Clock size={16} />
+                <Text>Scheduled Backup</Text>
+              </Flex>
+            </Tabs.Trigger>
+          </Tabs.List>
           
-          <Tabs.Content value="scheduled">
-            <ScheduledBackup />
-          </Tabs.Content>
-        </Box>
-      </Tabs.Root>
-    </Box>
+          <Box mt="4">
+            <Tabs.Content value="manual">
+              <ManualBackup />
+            </Tabs.Content>
+            
+            <Tabs.Content value="scheduled">
+              <ScheduledBackup />
+            </Tabs.Content>
+          </Box>
+        </Tabs.Root>
+      </Box>
+    </Suspense>
   );
 }

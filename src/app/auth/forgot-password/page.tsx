@@ -3,10 +3,8 @@
 import { useState } from 'react';
 import { Box, Container, Flex, Heading, Text, Button, Card, TextField } from '@radix-ui/themes';
 import { ArrowLeft, Mail } from 'lucide-react';
-import Image from 'next/image';
 import BrandLogo from '@/components/common/BrandLogo';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function ForgotPasswordPage() {
@@ -15,7 +13,6 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { theme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

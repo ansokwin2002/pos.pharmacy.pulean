@@ -9,7 +9,6 @@ import {
   Flex,
   Grid,
   Text,
-  Separator,
   Dialog,
   AlertDialog
 } from '@radix-ui/themes';
@@ -19,7 +18,6 @@ import { Drug } from '@/types/inventory';
 import DrugForm from '@/components/drugs/DrugForm';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
-import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { formatCurrency } from '@/utilities';
 
@@ -283,13 +281,13 @@ export default function DrugDetailPage() {
           </AlertDialog.Description>
 
           <Flex gap="3" mt="4" justify="end">
-            <AlertDialog.Cancel asChild>
-              <Button variant="soft" color="gray">
+            <AlertDialog.Cancel>
+              <Button asChild variant="soft" color="gray">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
-            <AlertDialog.Action asChild>
-              <Button variant="solid" color="red" onClick={confirmDeleteDrug}>
+            <AlertDialog.Action>
+              <Button asChild variant="solid" color="red" onClick={confirmDeleteDrug}>
                 Delete Drug
               </Button>
             </AlertDialog.Action>

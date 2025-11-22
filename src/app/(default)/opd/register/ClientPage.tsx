@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, IconButton, Dialog, Tabs } from "@radix-ui/themes";
+import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
-import { Plus, User, Pill, CheckCircle, FileText } from 'lucide-react';
+import { User, Pill, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
@@ -19,22 +19,11 @@ export default function RegisterPatientPage() {
     signOfLife: 'BP' | 'P' | 'T' | 'RR';
     symptom: string;
     diagnosis: string;
+    phone?: string | null;
+    signs_of_life?: string | null;
   };
 
-  const fakePatients: Patient[] = Array.from({ length: 20 }).map((_, i) => {
-    const id = `P${String(i + 1).padStart(3, '0')}`;
-    const male = i % 2 === 0;
-    const names = male ? ['Sophea', 'Vannak', 'Rith', 'Borey', 'Dara', 'Sokchea'] : ['Sokha', 'Chantha', 'Sreymom', 'Leakena', 'Malika', 'Rachana'];
-    const name = `${names[i % names.length]} ${male ? 'Chan' : 'Kim'}`;
-    const age = 18 + (i % 50);
-    const telephone = `0975${String(111111 + i * 123).slice(0, 6)}`;
-    const address = `Street ${100 + i}, Phnom Penh`;
-    const sol: Patient['signOfLife'][] = ['BP', 'P', 'T', 'RR'];
-    const signOfLife = sol[i % sol.length];
-    const symptom = ['Headache', 'Cough', 'Fever', 'Stomach ache'][i % 4];
-    const diagnosis = ['Migraine', 'Flu', 'Common cold', 'Gastritis'][i % 4];
-    return { id, name, gender: male ? 'male' : 'female', age, telephone, address, signOfLife, symptom, diagnosis };
-  });
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
 
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
 
@@ -68,65 +57,61 @@ export default function RegisterPatientPage() {
   const [currentTab, setCurrentTab] = useState<'patient-info' | 'prescription' | 'complete'>('patient-info');
   const [completedTabs, setCompletedTabs] = useState<Set<string>>(() => new Set());
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedTab = localStorage.getItem('currentRegisterTab') as 'patient-info' | 'prescription' | 'complete';
+      if (storedTab) {
+        setCurrentTab(storedTab);
+      }
+    }
+  }, []); // Run once on client mount
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentRegisterTab', currentTab);
+    }
+  }, [currentTab]);
+
   // Get search params for secure patient ID lookup
   const searchParams = useSearchParams();
 
   // Extract patient ID from URL parameters (secure approach)
   const patientIdParam = searchParams.get('id');
+  const [isFetchingSelectedDrug, setIsFetchingSelectedDrug] = useState(false);
 
   // State for real patient data from API
-  const [realPatient, setRealPatient] = useState<any>(null);
+
 
   // Find patient by ID - first check fake patients, then try to load from API
-  const selectedPatient = patientIdParam ? fakePatients.find(p => p.id === patientIdParam) : null;
+  const selectedPatient = patientIdParam ? allPatients.find(p => String(p.id) === patientIdParam) : null;
 
-  // If not found in fake patients, try to load from API
+  // Fetch all patients from API on component mount
   useEffect(() => {
-    if (patientIdParam && !selectedPatient) {
-      console.log('Loading patient from API with ID:', patientIdParam);
+    const loadAllPatients = async () => {
+      try {
+        const { listPodPatients } = await import('@/utilities/api/podPatients');
+        const response = await listPodPatients();
+        const patients = Array.isArray(response?.data) ? response.data : response;
+        setAllPatients(patients || []);
+      } catch (error) {
+        console.error('Failed to load all patients:', error);
+        toast.error('Failed to load patient list');
+      }
+    };
 
-      const loadPatientFromAPI = async () => {
-        try {
-          // Try to load patient from API - first try without search to get all patients
-          const { listPodPatients } = await import('@/utilities/api/podPatients');
-          const response = await listPodPatients();
-          const patients = Array.isArray(response?.data) ? response.data : response;
-
-          console.log('API response:', patients);
-
-          // Try to find patient by exact ID match
-          let patient = patients?.find((p: any) => String(p.id) === patientIdParam);
-
-          // If not found by exact ID, try to find by partial ID match
-          if (!patient) {
-            patient = patients?.find((p: any) => String(p.id).includes(patientIdParam));
-          }
-
-          console.log('Found patient:', patient);
-
-          if (patient) {
-            setRealPatient(patient);
-          } else {
-            console.log('Patient not found in API response');
-          }
-        } catch (error) {
-          console.error('Failed to load patient from API:', error);
-        }
-      };
-
-      loadPatientFromAPI();
-    }
-  }, [patientIdParam, selectedPatient]);
+    loadAllPatients();
+  }, []);
 
   // Auto-fill form when patient data is available (secure approach)
       useEffect(() => {
-        const patient = selectedPatient || realPatient;
+        const patient = selectedPatient;
     
-        console.log('Auto-fill effect triggered. patientIdParam:', patientIdParam, 'selectedPatient:', selectedPatient, 'realPatient:', realPatient);
+        console.log('Auto-fill effect triggered. patientIdParam:', patientIdParam, 'selectedPatient:', selectedPatient);
     
         if (patient && patientIdParam) {
           console.log('Auto-filling with patient data:', patient);
           // React 18 automatically batches these state updates
+          setTimeout(() => setSelectedPatientId(String(patient.id)), 0);
           setName(patient.name || 'N/A');
     
           // Handle gender field (API uses string, fake uses 'male'|'female')
@@ -169,7 +154,7 @@ export default function RegisterPatientPage() {
         } else {
           console.log('Auto-fill skipped. patient or patientIdParam is missing.');
         }
-      }, [selectedPatient, realPatient, patientIdParam, name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+      }, [selectedPatient, patientIdParam, name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
     
       // Form validation state
       const [errors, setErrors] = useState<{
@@ -197,63 +182,47 @@ export default function RegisterPatientPage() {
         if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
         setErrors(e);
         return Object.keys(e).length === 0;
-      }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+      }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis, setErrors]);
     
-      // Memoized validation result for use in render (without side effects)
-      const isPatientInfoValid = useMemo(() => {
-        const isValid = !name.trim() && !!gender && !!age && !isNaN(Number(age)) && Number(age) > 0 && !!telephone.trim() && /^\d{8,12}$/.test(telephone.trim()) && !!address.trim() && !!signOfLife && !!symptom.trim() && !!diagnosis.trim();
-        console.log('isPatientInfoValid check:', { name, gender, age, telephone, address, signOfLife, symptom, diagnosis, isValid });
-        return isValid;
-      }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+
     
       const validateAll = () => {
         return validatePatientInfo();
       };
     
   // Tab navigation functions
-  const canProceedToTab = useCallback((tabId: string): boolean => {
-    switch (tabId) {
-      case 'patient-info':
-        return true;
-      case 'prescription':
-        return isPatientInfoValid;
-      case 'complete':
-        return isPatientInfoValid && prescriptions.length > 0;
-      default:
-        return false;
-    }
-  }, [isPatientInfoValid, prescriptions.length]);
+
 
   const handleTabChange = useCallback((tabId: string) => {
-    if (canProceedToTab(tabId)) {
-      setCurrentTab(tabId as 'patient-info' | 'prescription' | 'complete');
+    const isPatientInfoValid = validatePatientInfo();
 
-      // Mark previous tabs as completed
-      if (tabId === 'prescription' && isPatientInfoValid) {
-        setCompletedTabs(prev => new Set([...prev, 'patient-info']));
-      } else if (tabId === 'complete' && isPatientInfoValid && prescriptions.length > 0) {
-        setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription']));
-      }
-    } else {
-      // Show validation errors
-      if (tabId === 'prescription') {
-        validatePatientInfo();
-        toast.error('Please complete patient information first');
-      } else if (tabId === 'complete') {
-        if (!isPatientInfoValid) {
-          validatePatientInfo();
-          toast.error('Please complete patient information first');
-        } else if (prescriptions.length === 0) {
-          toast.error('Please add at least one prescription');
-        }
-      }
+    if (tabId === 'prescription' && !isPatientInfoValid) {
+      toast.error('Please complete patient information first');
+      return;
     }
-  }, [canProceedToTab, isPatientInfoValid, prescriptions.length, validatePatientInfo]);
+
+    if (tabId === 'complete' && (!isPatientInfoValid || prescriptions.length === 0)) {
+      if (!isPatientInfoValid) {
+        toast.error('Please complete patient information first');
+      } else {
+        toast.error('Please add at least one prescription');
+      }
+      return;
+    }
+
+    setCurrentTab(tabId as 'patient-info' | 'prescription' | 'complete');
+
+    // Mark previous tabs as completed
+    if (tabId === 'prescription' && isPatientInfoValid) {
+      setCompletedTabs(prev => new Set([...prev, 'patient-info']));
+    } else if (tabId === 'complete' && isPatientInfoValid && prescriptions.length > 0) {
+      setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription']));
+    }
+  }, [prescriptions.length, validatePatientInfo]);
 
   const proceedToNextTab = useCallback(() => {
+    const isPatientInfoValid = validatePatientInfo();
     if (currentTab === 'patient-info' && isPatientInfoValid) {
-      // Call validatePatientInfo to set errors state, but we already know it's valid
-      validatePatientInfo();
       setCompletedTabs(prev => new Set([...prev, 'patient-info']));
       handleTabChange('prescription');
       toast.success('Patient information completed!');
@@ -262,38 +231,55 @@ export default function RegisterPatientPage() {
       handleTabChange('complete');
       toast.success('Prescription completed!');
     }
-  }, [currentTab, isPatientInfoValid, prescriptions.length, validatePatientInfo, handleTabChange]);
+  }, [currentTab, prescriptions.length, validatePatientInfo, handleTabChange]);
 
-  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number }[]>([]);
+  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; manufacturer?: string; }[]>([]);
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchDrugs = async () => {
-      try {
-        const { listDrugs } = await import('@/utilities/api/drugs');
-        const response = await listDrugs({ per_page: 100 }); // Fetch a large number of drugs
-        const drugs = response.data.map((drug: any) => ({
-          id: drug.id,
-          name: drug.name,
-          price: Number(drug.price), // Ensure price is a number
-        }));
-        setDrugOptions(drugs);
-      } catch (error) {
-        console.error('Failed to fetch drugs:', error);
-        toast.error('Failed to load drug options');
-      }
-    };
-
-    fetchDrugs();
+  const fetchDrugs = useCallback(async () => {
+    try {
+      const { listDrugs } = await import('@/utilities/api/drugs');
+      const response = await listDrugs(); // Fetch all drugs
+      const drugs = response.data.map((drug: any) => ({
+        id: drug.id,
+        name: drug.name,
+        price: Number(drug.price), // Ensure price is a number
+        generic_name: drug.generic_name,
+        unit: drug.unit,
+        manufacturer: drug.manufacturer,
+      }));
+      setDrugOptions(drugs);
+    } catch (error) {
+      console.error('Failed to fetch drugs:', error);
+      toast.error('Failed to load drug options');
+    }
   }, []);
 
+  useEffect(() => {
+    fetchDrugs();
+  }, [fetchDrugs]);
+
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
+  const [drugSearchTerm, setDrugSearchTerm] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSelectOpen) {
+      // Defer focus to ensure the element is fully mounted
+      setTimeout(() => {
+        if (searchRef.current) {
+          searchRef.current.focus();
+        }
+      }, 0);
+    }
+  }, [isSelectOpen]);
 
   // Manual drug dialog state
   const [isManualDrugOpen, setManualDrugOpen] = useState(false);
   const [manualDrugName, setManualDrugName] = useState('');
   const [manualDrugPrice, setManualDrugPrice] = useState<string>('');
   const [manualErrors, setManualErrors] = useState<{ name?: string; price?: string }>({});
-  const [customDrugs, setCustomDrugs] = useState<{ id: string; name: string; price: number }[]>([]);
+  const [customDrugs, setCustomDrugs] = useState<{ id: string; name: string; price: number; generic_name?: string; manufacturer?: string; unit?: string; }[]>([]);
 
   // Prescription form validation (drug select)
   const [prescErrors, setPrescErrors] = useState<{ drug?: string; meal?: string }>({});
@@ -619,7 +605,7 @@ export default function RegisterPatientPage() {
   };
 
 
-  const isAutoFilled = selectedPatient !== null || realPatient !== null;
+  const isAutoFilled = selectedPatient !== null;
 
   // Progress calculation
   const getProgressPercentage = useCallback(() => {
@@ -637,7 +623,7 @@ export default function RegisterPatientPage() {
 
   return (
     <Box className="space-y-4 w-full px-4">
-      {console.log('ClientPage rendering. isPatientInfoValid:', isPatientInfoValid)}
+
       <PageHeading
         title={isAutoFilled ? "Add New Patient (Auto-filled)" : "Add New Patient"}
         description={isAutoFilled ? "Patient information has been auto-filled. Review and modify as needed." : "Complete the patient registration process step by step."}
@@ -725,14 +711,14 @@ export default function RegisterPatientPage() {
                   {completedTabs.has('patient-info') && <CheckCircle size={14} color="green" />}
                 </Flex>
               </Tabs.Trigger>
-              <Tabs.Trigger value="prescription" disabled={!canProceedToTab('prescription')}>
+              <Tabs.Trigger value="prescription">
                 <Flex align="center" gap="2">
                   <Pill size={16} />
                   <Text>Prescription</Text>
                   {completedTabs.has('prescription') && <CheckCircle size={14} color="green" />}
                 </Flex>
               </Tabs.Trigger>
-              <Tabs.Trigger value="complete" disabled={!canProceedToTab('complete')}>
+              <Tabs.Trigger value="complete">
                 <Flex align="center" gap="2">
                   <FileText size={16} />
                   <Text>Complete</Text>
@@ -757,7 +743,7 @@ export default function RegisterPatientPage() {
                   <Select.Root value={selectedPatientId} onValueChange={(val) => {
                     setSelectedPatientId(val);
                     if (!val) return;
-                    const p = fakePatients.find(x => x.id === val);
+                    const p = allPatients.find(x => String(x.id) === val);
                     if (p) {
                       setName(p.name);
                       setGender(p.gender);
@@ -774,8 +760,8 @@ export default function RegisterPatientPage() {
                     <Select.Content>
                       <Select.Group>
                         <Select.Label>Patients</Select.Label>
-                        {fakePatients.map(p => (
-                          <Select.Item key={p.id} value={p.id}>{p.id} — {p.name} ({p.gender}), {p.age}y</Select.Item>
+                        {allPatients.map(p => (
+                          <Select.Item key={p.id} value={String(p.id)}>{p.id} — {p.name} ({p.gender}), {p.age}y</Select.Item>
                         ))}
                       </Select.Group>
                     </Select.Content>
@@ -800,7 +786,7 @@ export default function RegisterPatientPage() {
 
             {/* Name */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Name *</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Name <Text color="red">*</Text></Text>
               <TextField.Root
                 value={name}
                 onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({...prev, name: undefined})); }}
@@ -812,7 +798,7 @@ export default function RegisterPatientPage() {
 
             {/* Gender */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Gender *</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Gender <Text color="red">*</Text></Text>
               <Flex direction="column" align="start" className="w-full">
                 <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => { setGender(value); if (errors.gender) setErrors(prev => ({...prev, gender: undefined})); }}>
                   <Select.Trigger placeholder="Select gender" />
@@ -829,7 +815,7 @@ export default function RegisterPatientPage() {
 
             {/* Age */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Age *</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Age <Text color="red">*</Text></Text>
               <TextField.Root
                 type="number"
                 value={age}
@@ -844,7 +830,7 @@ export default function RegisterPatientPage() {
 
             {/* Telephone */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Telephone</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Telephone <Text color="red">*</Text></Text>
               <TextField.Root
                 value={telephone}
                 onChange={(e) => { setTelephone(e.target.value); if (errors.telephone) setErrors(prev => ({...prev, telephone: undefined})); }}
@@ -856,7 +842,7 @@ export default function RegisterPatientPage() {
 
             {/* Address */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Address</Text>
+              <Text as="div" size="2" mb="1" weight="bold">Address <Text color="red">*</Text></Text>
               <TextField.Root
                 value={address}
                 onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors(prev => ({...prev, address: undefined})); }}
@@ -933,16 +919,67 @@ export default function RegisterPatientPage() {
                     <Flex align="center" gap="2">
                       <Box className="flex-1">
                         <Flex direction="column" align="start" className="w-full">
-                          <Select.Root value={selectedDrugId} onValueChange={(val) => {
+                          <Select.Root value={selectedDrugId} onValueChange={async (val) => {
                             if (val === '__add_custom__') {
                               setManualDrugOpen(true);
                               return;
                             }
                             setSelectedDrugId(val);
                             if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
+
+                            // Fetch latest drug data when selected
+                            if (val) {
+                              setIsFetchingSelectedDrug(true);
+                              try {
+                                const { getDrug } = await import('@/utilities/api/drugs');
+                                const fetchedDrug = await getDrug(val);
+                                // Update the specific drug in allDrugOptions with the latest data
+                                setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                  ...fetchedDrug,
+                                  price: Number(fetchedDrug.price),
+                                  generic_name: fetchedDrug.generic_name,
+                                  unit: fetchedDrug.unit,
+                                  manufacturer: fetchedDrug.manufacturer,
+                                } : d));
+                                setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                  ...fetchedDrug,
+                                  price: Number(fetchedDrug.price),
+                                  generic_name: fetchedDrug.generic_name,
+                                  unit: fetchedDrug.unit,
+                                  manufacturer: fetchedDrug.manufacturer,
+                                } : d));
+                              } catch (error) {
+                                console.error('Failed to fetch selected drug details:', error);
+                                toast.error('Failed to load selected drug details');
+                              } finally {
+                                setIsFetchingSelectedDrug(false);
+                              }
+                            }
+                          }} onOpenChange={(open) => {
+                            setIsSelectOpen(open);
+                            if (open) {
+                              fetchDrugs(); // Refetch drugs when the dropdown is opened
+                            }
                           }}>
                             <Select.Trigger placeholder="Select a drug" style={{ width: '100%' }} />
-                            <Select.Content>
+                            <Select.Content onPointerDown={(e) => {
+                              // Prevent closing the select when clicking inside the search input area
+                              if (searchRef.current && searchRef.current.contains(e.target as Node)) {
+                                // Do nothing, allow default behavior for the search input
+                              } else {
+                                e.preventDefault();
+                              }
+                            }}>
+                              <Box p="2">
+                                <div onPointerDown={(e) => { e.stopPropagation(); }}>
+                                  <TextField.Root
+                                    ref={searchRef}
+                                    placeholder="Search drugs..."
+                                    value={drugSearchTerm}
+                                    onChange={(e) => setDrugSearchTerm(e.target.value)}
+                                  />
+                                </div>
+                              </Box>
                               <Select.Group>
                                 <Select.Label>Actions</Select.Label>
                                 <Select.Item value="__add_custom__">➕ Add custom…</Select.Item>
@@ -950,12 +987,18 @@ export default function RegisterPatientPage() {
                               <Select.Separator />
                               <Select.Group>
                                 <Select.Label>Drugs</Select.Label>
-                                {allDrugOptions.map(d => (
-                                  <Select.Item key={d.id} value={d.id}>{d.name} — ${d.price.toFixed(2)}</Select.Item>
-                                ))}
+                                {(() => {
+                                  const filteredDrugOptions = allDrugOptions.filter(d => d.name.toLowerCase().includes(drugSearchTerm.toLowerCase()) || (d.generic_name && d.generic_name.toLowerCase().includes(drugSearchTerm.toLowerCase())) || (d.manufacturer && d.manufacturer.toLowerCase().includes(drugSearchTerm.toLowerCase())));
+                                  if (filteredDrugOptions.length === 0) {
+                                                                         return <Select.Item value="no-results" disabled>No results found</Select.Item>;                                  }
+                                  return filteredDrugOptions.map(d => (
+                                    <Select.Item key={d.id} value={d.id}>{d.name} {d.generic_name ? `(${d.generic_name})` : ''} {d.unit ? `(${d.unit})` : ''} — ${d.price.toFixed(2)}</Select.Item>
+                                  ));
+                                })()}
                               </Select.Group>
                             </Select.Content>
                           </Select.Root>
+                          {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
                           {prescErrors.drug && (
                             <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
                           )}

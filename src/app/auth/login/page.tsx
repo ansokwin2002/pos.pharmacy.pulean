@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Box, Container, Flex, Heading, Text, Button, Link, Card, IconButton, TextField } from '@radix-ui/themes';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
-import Image from 'next/image';
 import BrandLogo from '@/components/common/BrandLogo';
-import { useTheme } from 'next-themes';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { login as apiLogin, saveAuth } from '@/utilities/api/auth';
 import { useRouter } from 'next/navigation';
@@ -19,7 +17,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { theme } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,4 +131,4 @@ export default function LoginPage() {
         </Box>
       </Flex>
   );
-} 
+}

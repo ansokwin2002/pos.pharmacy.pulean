@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { 
   Box, 
   Flex, 
@@ -254,108 +254,110 @@ export default function WasteAnalyticsDashboard() {
   const topReasonPercentage = totalWasteCost > 0 ? Math.round((topWasteReason.cost / totalWasteCost) * 100) : 0;
 
   return (
-    <Box>
-      <Flex 
-        direction={{ initial: "column", sm: "row" }} 
-        justify="between" 
-        align={{ initial: "stretch", sm: "center" }}
-        gap={{ initial: "4", sm: "0" }}
-        mb="5"
-      >
-        <PageHeading title="Waste Analytics Dashboard" description="Track, analyze, and reduce food waste" noMarginBottom />
-        <PeriodSelect 
-          value={selectedTimePeriod} 
-          onChange={setSelectedTimePeriod} 
-          showLabel={true}
-        />
-      </Flex>
-      
-      {/* Key Metrics */}
-      <Grid columns={{ xs: "1", sm: "2", md: "4" }} gap="4" mb="6">
-        <MetricCard
-          title="Total Waste Cost"
-          value={<Text color="red">${totalWasteCost.toFixed(2)}</Text>}
-          description={getTimePeriodDisplay().charAt(0).toUpperCase() + getTimePeriodDisplay().slice(1).toLowerCase() + ' vs. previous period'}
-          trend="up"
-          trendValue={`12%`}
-          icon={<Banknote size={18} className="text-red-700" />}
-        />
-        
-        <MetricCard
-          title="Top Waste Reason"
-          value={topWasteReason.reason}
-          description={`${topReasonPercentage}% of total waste cost`}
-          icon={<CookingPot size={18} />}
-        />
-        
-        <MetricCard
-          title="Most Wasted Item"
-          value={topWastedItems[0]?.name || 'N/A'}
-          description={`${formatCurrency(topWastedItems[0]?.cost || 0)} in waste`}
-          icon={<Trash size={18} color="blue" />}
-        />
-        
-        <MetricCard
-          title="Items Expiring Soon"
-          value={expiringItems.length}
-          description="Need immediate attention"
-          trend="down"
-          trendValue={`3%`}
-          icon={<AlertTriangle size={18} color="orange" />}
-        />
-      </Grid>
-      
-      {/* Main Content with Tabs */}
-      <Tabs.Root defaultValue="analytics">
-        <Tabs.List>
-          <Tabs.Trigger value="analytics">
-            <Flex gap="2" align="center">
-              <BarChart2 size={16} />
-              <Text>Analytics & Insights</Text>
-            </Flex>
-          </Tabs.Trigger>
-          <Tabs.Trigger value="expiry">
-            <Flex gap="2" align="center">
-              <Clock size={16} />
-              <Text>Stock Expiry Alerts</Text>
-            </Flex>
-          </Tabs.Trigger>
-          <Tabs.Trigger value="production">
-            <Flex gap="2" align="center">
-              <Gauge size={16} />
-              <Text>Overproduction Controls</Text>
-            </Flex>
-          </Tabs.Trigger>
-        </Tabs.List>
-        
-        {/* --- Render Tab Components --- */}
-        <Tabs.Content value="analytics">
-          <AnalyticsTab 
-            isMounted={isMounted}
-            topWastedItems={topWastedItems}
-            wasteByReasonChartData={wasteByReasonChartData}
-            wasteByReason={wasteByReason}
-            wasteByTimeChartData={wasteByTimeChartData}
-            wasteByTimeCategories={wasteByTimeCategories}
-            insights={insights}
-            totalWasteCost={totalWasteCost}
-            chartOptions={chartOptions}
+    <Suspense fallback={<div>Loading dashboard...</div>}>
+      <Box>
+        <Flex 
+          direction={{ initial: "column", sm: "row" }} 
+          justify="between" 
+          align={{ initial: "stretch", sm: "center" }}
+          gap={{ initial: "4", sm: "0" }}
+          mb="5"
+        >
+          <PageHeading title="Waste Analytics Dashboard" description="Track, analyze, and reduce food waste" noMarginBottom />
+          <PeriodSelect 
+            value={selectedTimePeriod} 
+            onChange={setSelectedTimePeriod} 
+            showLabel={true}
           />
-        </Tabs.Content>
+        </Flex>
         
-        <Tabs.Content value="expiry">
-          <StockExpiryTab expiringItems={expiringItems} />
-        </Tabs.Content>
+        {/* Key Metrics */}
+        <Grid columns={{ xs: "1", sm: "2", md: "4" }} gap="4" mb="6">
+          <MetricCard
+            title="Total Waste Cost"
+            value={<Text color="red">${totalWasteCost.toFixed(2)}</Text>}
+            description={getTimePeriodDisplay().charAt(0).toUpperCase() + getTimePeriodDisplay().slice(1).toLowerCase() + ' vs. previous period'}
+            trend="up"
+            trendValue={`12%`}
+            icon={<Banknote size={18} className="text-red-700" />}
+          />
+          
+          <MetricCard
+            title="Top Waste Reason"
+            value={topWasteReason.reason}
+            description={`${topReasonPercentage}% of total waste cost`}
+            icon={<CookingPot size={18} />}
+          />
+          
+          <MetricCard
+            title="Most Wasted Item"
+            value={topWastedItems[0]?.name || 'N/A'}
+            description={`${formatCurrency(topWastedItems[0]?.cost || 0)} in waste`}
+            icon={<Trash size={18} color="blue" />}
+          />
+          
+          <MetricCard
+            title="Items Expiring Soon"
+            value={expiringItems.length}
+            description="Need immediate attention"
+            trend="down"
+            trendValue={`3%`}
+            icon={<AlertTriangle size={18} color="orange" />}
+          />
+        </Grid>
         
-        <Tabs.Content value="production">
-           <ProductionTab 
-             isMounted={isMounted} 
-             productionData={productionData} 
-             prepRecommendations={prepRecommendations}
-             chartOptions={chartOptions} 
-           />
-        </Tabs.Content>
-      </Tabs.Root>
-    </Box>
+        {/* Main Content with Tabs */}
+        <Tabs.Root defaultValue="analytics">
+          <Tabs.List>
+            <Tabs.Trigger value="analytics">
+              <Flex gap="2" align="center">
+                <BarChart2 size={16} />
+                <Text>Analytics & Insights</Text>
+              </Flex>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="expiry">
+              <Flex gap="2" align="center">
+                <Clock size={16} />
+                <Text>Stock Expiry Alerts</Text>
+              </Flex>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="production">
+              <Flex gap="2" align="center">
+                <Gauge size={16} />
+                <Text>Overproduction Controls</Text>
+              </Flex>
+            </Tabs.Trigger>
+          </Tabs.List>
+          
+          {/* --- Render Tab Components --- */}
+          <Tabs.Content value="analytics">
+            <AnalyticsTab 
+              isMounted={isMounted}
+              topWastedItems={topWastedItems}
+              wasteByReasonChartData={wasteByReasonChartData}
+              wasteByReason={wasteByReason}
+              wasteByTimeChartData={wasteByTimeChartData}
+              wasteByTimeCategories={wasteByTimeCategories}
+              insights={insights}
+              totalWasteCost={totalWasteCost}
+              chartOptions={chartOptions}
+            />
+          </Tabs.Content>
+          
+          <Tabs.Content value="expiry">
+            <StockExpiryTab expiringItems={expiringItems} />
+          </Tabs.Content>
+          
+          <Tabs.Content value="production">
+             <ProductionTab 
+               isMounted={isMounted} 
+               productionData={productionData} 
+               prepRecommendations={prepRecommendations}
+               chartOptions={chartOptions} 
+             />
+          </Tabs.Content>
+        </Tabs.Root>
+      </Box>
+    </Suspense>
   );
 }
