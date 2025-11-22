@@ -419,12 +419,12 @@ export default function DrugsPage() {
 
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button asChild variant="soft" color="gray">
+              <Button variant="soft" color="gray">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button asChild variant="solid" color="red" onClick={confirmDeleteDrug}>
+              <Button variant="solid" color="red" onClick={confirmDeleteDrug}>
                 Delete Drug
               </Button>
             </AlertDialog.Action>
@@ -442,12 +442,12 @@ export default function DrugsPage() {
 
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
-              <Button asChild variant="soft" color="gray">
+              <Button variant="soft" color="gray">
                 Cancel
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action>
-              <Button asChild variant="solid" color="red" onClick={confirmDeleteSelected}>
+              <Button variant="solid" color="red" onClick={confirmDeleteSelected}>
                 Delete
               </Button>
             </AlertDialog.Action>

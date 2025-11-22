@@ -1,6 +1,6 @@
 'use client';
 import { DropdownMenu, IconButton, Text, Spinner, Flex } from "@radix-ui/themes";
-import { MoreVertical, UserPlus, TestTube, Activity, History } from 'lucide-react';
+import { MoreVertical, UserPlus, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -32,16 +32,6 @@ export function PatientActionsMenu({ patient }: PatientActionsMenuProps) {
     router.push(`/opd/register?id=${patient.id}`);
   };
 
-  const handleBBClick = () => {
-    // TODO: Implement BB functionality
-    console.log('BB clicked for patient:', patient.name);
-  };
-
-  const handleAAClick = () => {
-    // TODO: Implement AA functionality
-    console.log('AA clicked for patient:', patient.name);
-  };
-
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenu.Trigger>
@@ -54,16 +44,8 @@ export function PatientActionsMenu({ patient }: PatientActionsMenuProps) {
           <UserPlus size={14} />
           OPD
         </DropdownMenu.Item>
-        <DropdownMenu.Item onClick={handleBBClick}>
-          <TestTube size={14} />
-          BB
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onClick={handleAAClick}>
-          <Activity size={14} />
-          AA
-        </DropdownMenu.Item>
         <DropdownMenu.Item onClick={() => router.push(`/opd/patients/${patient.id}/history`)}>
-          <Activity size={14} /> {/* Using Activity icon for now, can change later */}
+          <History size={14} />
           History
         </DropdownMenu.Item>
       </DropdownMenu.Content>
@@ -89,18 +71,6 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
     setIsOpen(false);
     // Navigate to register page with secure patient ID
     router.push(`/opd/register?id=${patient.id}`);
-  };
-
-  const handleBBClick = () => {
-    // TODO: Implement BB functionality
-    console.log('BB clicked for patient:', patient.name);
-    setIsOpen(false);
-  };
-
-  const handleAAClick = () => {
-    // TODO: Implement AA functionality
-    console.log('AA clicked for patient:', patient.name);
-    setIsOpen(false);
   };
 
   const handleHistoryClick = () => {
@@ -165,7 +135,7 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
               display: 'inline-block'
             }}
             className="hover:bg-gray-100 dark:hover:bg-gray-800 px-1 py-0.5 rounded transition-colors"
-            title="Right-click for quick actions (OPD, BB, AA, History)"
+            title="Right-click for quick actions (OPD, History)"
           >
             <Text>{patient.name || 'N/A'}</Text>
           </span>
@@ -174,14 +144,6 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
           <DropdownMenu.Item onClick={handleOPDClick}>
             <UserPlus size={14} />
             OPD
-          </DropdownMenu.Item>
-          <DropdownMenu.Item onClick={handleBBClick}>
-            <TestTube size={14} />
-            BB
-          </DropdownMenu.Item>
-          <DropdownMenu.Item onClick={handleAAClick}>
-            <Activity size={14} />
-            AA
           </DropdownMenu.Item>
           <DropdownMenu.Item onClick={handleHistoryClick}>
             <History size={14} />
