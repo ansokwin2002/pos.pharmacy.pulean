@@ -422,7 +422,11 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
     {
       title: "OPD",
       icon: <IconPages />,
-      link: "/opd/patients",
+      link: "#",
+      subMenu: [
+        { title: "Patients", link: "/opd/patients" },
+        { title: "All History OPD", link: "/opd/all-history" },
+      ],
     },
   ], []);
   
