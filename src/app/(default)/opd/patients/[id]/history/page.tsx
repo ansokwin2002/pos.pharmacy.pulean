@@ -446,21 +446,18 @@ export default function PatientHistoryPage() {
   };
 
   const printPdf = async () => {
-    if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
+    if (!pdfPreviewUrl) return;
     try {
-      const { doc } = await buildPdf(selectedHistoryData, selectedHistoryCreatedAt);
-      const blob = doc.output('blob');
-      const url = URL.createObjectURL(blob);
-      const win = window.open(url);
-      if (!win) {
-        toast.error('Popup blocked. Allow popups to print.');
-        return;
-      }
-      // Just open in new window - user can print manually using browser's print button
-      toast.success('PDF opened in new window');
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = pdfPreviewUrl;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
+      };
     } catch (e) {
       console.error(e);
-      toast.error('Failed to open PDF');
+      toast.error('Failed to print PDF');
     }
   };
 
@@ -688,34 +685,50 @@ export default function PatientHistoryPage() {
 
       {/* PDF Preview Modal */}
       <Dialog.Root open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
-        <Dialog.Content style={{ maxWidth: '900px', maxHeight: '90vh' }}>
-          <Dialog.Title>Prescription Preview</Dialog.Title>
-          <Dialog.Description size="2" mb="4">
-            Review the prescription details.
-          </Dialog.Description>
-          
-          {pdfPreviewUrl && (
-            <Box style={{ height: '600px', border: '1px solid var(--gray-6)', borderRadius: '8px', overflow: 'hidden' }}>
-              <iframe
-                src={pdfPreviewUrl}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                title="PDF Preview"
-              />
+        <Dialog.Content style={{ maxWidth: '90vw', maxHeight: '90vh', padding: 0 }}>
+          <Flex direction="column" style={{ height: '90vh' }}>
+            <Flex justify="between" align="center" p="4" style={{ borderBottom: '1px solid var(--gray-6)' }}>
+              <Dialog.Title>View Prescription PDF</Dialog.Title>
+              <Flex gap="2">
+                <Button size="2" variant="soft" color="gray" onClick={() => setIsPdfPreviewOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="2" variant="soft" onClick={downloadPdf}>
+                  <Download size={16} />
+                  Download
+                </Button>
+                <Button size="2" variant="soft" onClick={printPdf}>
+                  <Printer size={16} />
+                  Print
+                </Button>
+              </Flex>
+            </Flex>
+            <Box style={{ flex: 1, position: 'relative' }}>
+              {isGeneratingPdf ? (
+                <Flex justify="center" align="center" style={{ height: '100%' }}>
+                  <Flex direction="column" align="center" gap="3">
+                    <Box className="animate-spin" style={{
+                      width: '48px',
+                      height: '48px',
+                      border: '4px solid var(--gray-6)',
+                      borderTopColor: 'var(--blue-9)',
+                      borderRadius: '50%'
+                    }} />
+                    <Text>Generating PDF...</Text>
+                  </Flex>
+                </Flex>
+              ) : pdfPreviewUrl ? (
+                <iframe
+                  src={pdfPreviewUrl}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  title="PDF Preview"
+                />
+              ) : null}
             </Box>
-          )}
-
-          <Flex gap="3" mt="4" justify="end">
-            <Dialog.Close>
-              <Button variant="soft" color="gray">
-                <X size={16} /> Close
-              </Button>
-            </Dialog.Close>
-            <Button onClick={downloadPdf} variant="outline">
-              <Download size={16} /> Download PDF
-            </Button>
-            <Button onClick={printPdf}>
-              <Printer size={16} /> Print
-            </Button>
           </Flex>
         </Dialog.Content>
       </Dialog.Root>
