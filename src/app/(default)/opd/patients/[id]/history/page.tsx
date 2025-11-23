@@ -129,8 +129,9 @@ export default function PatientHistoryPage() {
       setSelectedHistoryData(data);
       setSelectedHistoryCreatedAt(historyRecord.created_at);
       
-      // Generate PDF preview
-      const { doc } = await buildPdf(data, historyRecord.created_at);
+      // Generate PDF preview using shared utility
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { doc } = await buildPrescriptionPdf(data, historyRecord.created_at);
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -144,7 +145,8 @@ export default function PatientHistoryPage() {
     }
   };
 
-  const buildPdf = async (data: HistoryData, recordCreatedAt: string) => {
+  // Removed buildPdf - now using shared utility from @/utilities/pdf
+  const buildPdf_OLD = async (data: HistoryData, recordCreatedAt: string) => {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
 
@@ -436,7 +438,8 @@ export default function PatientHistoryPage() {
   const downloadPdf = async () => {
     if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
     try {
-      const { doc, fileName } = await buildPdf(selectedHistoryData, selectedHistoryCreatedAt);
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { doc, fileName } = await buildPrescriptionPdf(selectedHistoryData, selectedHistoryCreatedAt);
       doc.save(fileName);
       toast.success('Prescription PDF downloaded');
     } catch (e) {

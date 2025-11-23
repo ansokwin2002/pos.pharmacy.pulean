@@ -187,7 +187,8 @@ export default function AllHistoryClientPage() {
     
     try {
       const data: HistoryData = JSON.parse(history.json_data);
-      const { doc } = await buildPdf(data, history.created_at);
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { doc } = await buildPrescriptionPdf(data, history.created_at);
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -221,7 +222,8 @@ export default function AllHistoryClientPage() {
     }
   };
 
-  const buildPdf = async (data: HistoryData, recordCreatedAt: string) => {
+  // Removed buildPdf - now using shared utility from @/utilities/pdf
+  const buildPdf_OLD = async (data: HistoryData, recordCreatedAt: string) => {
     const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
 

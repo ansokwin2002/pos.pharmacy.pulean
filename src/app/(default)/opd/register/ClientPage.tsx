@@ -517,7 +517,8 @@ export default function RegisterPatientPage() {
 
   // Build PDF document and return { doc, fileName }
 
-  const buildPdf = async (historyData?: any) => {
+  // Removed buildPdf - now using shared utility from @/utilities/pdf
+  const buildPdf_OLD = async (historyData?: any) => {
   // Use provided history data or current form state
   const pdfData = historyData || {
     patient: {
@@ -817,7 +818,9 @@ doc.setFont(khmerFontName);
         }
       }
       
-      const { doc, fileName } = await buildPdf(historyData);
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const createdAt = historyData?.created_at || new Date().toISOString();
+      const { doc, fileName } = await buildPrescriptionPdf(historyData, createdAt);
       doc.save(fileName);
       toast.success('Prescription PDF downloaded');
     } catch (e) {
@@ -844,25 +847,20 @@ doc.setFont(khmerFontName);
         }
       }
       
-      const { doc } = await buildPdf(historyData);
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const createdAt = historyData?.created_at || new Date().toISOString();
+      const { doc } = await buildPrescriptionPdf(historyData, createdAt);
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
-      const win = window.open(url);
-      if (!win) {
-        toast.error('Popup blocked. Allow popups to preview/print.');
-        return;
-      }
-      // Give the browser a bit of time to load before printing
-      const onLoad = () => {
-        win.focus();
-        win.print();
+      
+      // Create hidden iframe for printing (same as other pages)
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow?.print();
       };
-      // Some browsers fire load on window, some on document
-      win.addEventListener('load', onLoad);
-      // Fallback: try printing after short delay
-      setTimeout(() => {
-        try { win.focus(); win.print(); } catch {}
-      }, 800);
     } catch (e) {
       console.error(e);
       toast.error('Failed to preview/print PDF');
