@@ -202,6 +202,7 @@ export default function RegisterPatientPage() {
     
   // Show export actions only after successful save
   const [hasSaved, setHasSaved] = useState(false);
+  const [savedHistoryId, setSavedHistoryId] = useState<number | null>(null);
 
   // Tab navigation functions
 
@@ -516,7 +517,26 @@ export default function RegisterPatientPage() {
 
   // Build PDF document and return { doc, fileName }
 
-  const buildPdf = async () => {
+  const buildPdf = async (historyData?: any) => {
+  // Use provided history data or current form state
+  const pdfData = historyData || {
+    patient: {
+      name,
+      gender,
+      age,
+      telephone,
+      address,
+      signs_of_life: signOfLife,
+      symptom,
+      diagnosis
+    },
+    prescriptions,
+    totalAmount: prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0)
+  };
+
+  // Debug: Log PDF data
+  console.log('PDF Generation - Data:', pdfData);
+
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
 
@@ -642,26 +662,26 @@ doc.setFont(khmerFontName);
 
   doc.setFontSize(12);
   doc.text("Patient:", margin, y);
-  doc.text(name || ".....THYDA.....", margin + 25, y);
+  doc.text(pdfData.patient.name || ".....THYDA.....", margin + 25, y);
 
   doc.text("Gender:", pageWidth - 80, y);
-  doc.text(gender || "F", pageWidth - 58, y);
+  doc.text(pdfData.patient.gender || "F", pageWidth - 58, y);
 
   y += 7;
   doc.text("Age:", margin, y);
-  doc.text("34", margin + 20, y);
+  doc.text(String(pdfData.patient.age || "N/A"), margin + 20, y);
 
   doc.text("District:", pageWidth - 80, y);
-  doc.text("Krek", pageWidth - 58, y);
+  doc.text(pdfData.patient.address || "N/A", pageWidth - 58, y);
 
   y += 7;
-  doc.text(`Vital Signs:  BP: 129/78   P: 110   T: 38   RR: 20`, margin, y);
+  doc.text(`Vital Signs:  ${pdfData.patient.signs_of_life || "N/A"}`, margin, y);
 
   y += 7;
-  doc.text(`Symptoms: ${symptom || "fever, runny nose, headache"}`, margin, y);
+  doc.text(`Symptoms: ${pdfData.patient.symptom || "fever, runny nose, headache"}`, margin, y);
 
   y += 7;
-  doc.text(`Diagnosis: ${diagnosis || "Acute pharyngitis"}`, margin, y);
+  doc.text(`Diagnosis: ${pdfData.patient.diagnosis || "Acute pharyngitis"}`, margin, y);
 
   y += 5;
   doc.line(margin, y, pageWidth - margin, y);
@@ -672,10 +692,10 @@ doc.setFont(khmerFontName);
   y += 5;
 
   const head = [
-    ["No.", "Medication", "Morning", "Afternoon", "Evening", "Night", "Period", "QTY", "Price"]
+    ["No.", "Medication", "Morning", "Afternoon", "Evening", "Night", "Period", "QTY", "After Meal", "Before Meal", "Price"]
   ];
 
-  const body = prescriptions.map((p, i) => [
+  const body = (pdfData.prescriptions || []).map((p: any, i: number) => [
     i + 1,
     p.name,
     p.morning || "",
@@ -684,10 +704,12 @@ doc.setFont(khmerFontName);
     p.night || "",
     p.period || "",
     p.qty || "",
-    ""
+    p.afterMeal ? "Yes" : "No",
+    p.beforeMeal ? "Yes" : "No",
+    p.price ? `$${p.price.toFixed(2)}` : ""
   ]);
 
-  while (body.length < 10) body.push(["", "", "", "", "", "", "", "", ""]);
+  while (body.length < 10) body.push(["", "", "", "", "", "", "", "", "", "", ""]);
 
  autoTable(doc, {
     startY: y,
@@ -715,13 +737,39 @@ doc.setFont(khmerFontName);
         4: { halign: "center" },
         5: { halign: "center" },
         6: { halign: "center" },
-        7: { halign: "center" },
-        8: { halign: "right" }
+        7: { halign: "center" },        8: { halign: "center" },
+        9: { halign: "center" },
+        10: { halign: "right" }
     }
 });
 
+  // Calculate and display grand total
+  const grandTotal = (pdfData.prescriptions || []).reduce((sum: number, p: any) => {
+    return sum + ((p.price || 0) * (p.qty || 0));
+  }, 0);
 
-  const afterTable = doc.lastAutoTable.finalY + 8;
+  let afterTable = doc.lastAutoTable.finalY + 8;
+  
+  // Draw a box around the total amount for emphasis
+  const boxX = pageWidth - 95;
+  const boxY = afterTable - 5;
+  const boxWidth = 80;
+  const boxHeight = 12;
+  
+  doc.setFillColor(240, 240, 240); // Light gray background
+  doc.rect(boxX, boxY, boxWidth, boxHeight, "F");
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.rect(boxX, boxY, boxWidth, boxHeight, "S");
+  
+  // Add total amount text
+  doc.setFontSize(14);
+  doc.setFont(khmerFontName, "bold");
+  doc.text("Total Amount:", boxX + 3, afterTable + 2);
+  doc.text(`$${grandTotal.toFixed(2)}`, pageWidth - margin - 3, afterTable + 2, { align: "right" });
+  doc.setFont(khmerFontName, "normal");
+
+  afterTable = afterTable + 15;
 
   doc.setFontSize(10);
   doc.text("Note: Please follow your doctor’s instructions.", margin, afterTable);
@@ -753,7 +801,23 @@ doc.setFont(khmerFontName);
   
   const downloadPdf = async () => {
     try {
-      const { doc, fileName } = await buildPdf();
+      let historyData = null;
+      
+      // Fetch the latest patient history by patient ID
+      const patientId = selectedPatientId || patientIdParam;
+      if (patientId) {
+        const { getPatientHistoriesByPatientId } = await import('@/utilities/api/patientHistories');
+        const histories = await getPatientHistoriesByPatientId(patientId);
+        
+        if (histories && histories.length > 0) {
+          // Use the most recent history (first one, since it's ordered by created_at desc)
+          const latestHistory = histories[0];
+          historyData = JSON.parse(latestHistory.json_data);
+          console.log('Fetched latest history data for PDF:', historyData);
+        }
+      }
+      
+      const { doc, fileName } = await buildPdf(historyData);
       doc.save(fileName);
       toast.success('Prescription PDF downloaded');
     } catch (e) {
@@ -764,7 +828,23 @@ doc.setFont(khmerFontName);
 
   const previewPrintPdf = async () => {
     try {
-      const { doc } = await buildPdf();
+      let historyData = null;
+      
+      // Fetch the latest patient history by patient ID
+      const patientId = selectedPatientId || patientIdParam;
+      if (patientId) {
+        const { getPatientHistoriesByPatientId } = await import('@/utilities/api/patientHistories');
+        const histories = await getPatientHistoriesByPatientId(patientId);
+        
+        if (histories && histories.length > 0) {
+          // Use the most recent history (first one, since it's ordered by created_at desc)
+          const latestHistory = histories[0];
+          historyData = JSON.parse(latestHistory.json_data);
+          console.log('Fetched latest history data for PDF:', historyData);
+        }
+      }
+      
+      const { doc } = await buildPdf(historyData);
       const blob = doc.output('blob');
       const url = URL.createObjectURL(blob);
       const win = window.open(url);
@@ -843,6 +923,7 @@ doc.setFont(khmerFontName);
       
       const saved = await createPatientHistory(payload);
       setHasSaved(true);
+      setSavedHistoryId(saved.id); // Store the saved history ID
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
       // Clear prescriptions from UI immediately
@@ -1488,14 +1569,14 @@ doc.setFont(khmerFontName);
                             {removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
-                              `${p.price.toFixed(2)}`
+                              `$${p.price.toFixed(2)}`
                             )}
                           </Table.Cell>
                           <Table.Cell>
                             {removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
-                              `${(p.price * p.qty).toFixed(2)}`
+                              `$${(p.price * p.qty).toFixed(2)}`
                             )}
                           </Table.Cell>
                         </Table.Row>

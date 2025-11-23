@@ -52,6 +52,38 @@ export async function getPatientHistoriesByPatientId(patientId: string) {
   return res.json();
 }
 
+export async function getPatientHistory(id: number | string) {
+  console.log('Fetching patient history ID:', id);
+  console.log('API URL:', `${API_BASE}/patient-histories/${id}`);
+  
+  const res = await fetch(`${API_BASE}/patient-histories/${id}`, {
+    headers: { Accept: 'application/json' },
+  });
+  
+  console.log('Response status:', res.status);
+  
+  if (!res.ok) {
+    console.error('API Error:', res.status, res.statusText);
+    throw await toError(res);
+  }
+  
+  // Check if response has content
+  const text = await res.text();
+  console.log('Response text:', text);
+  
+  if (!text) {
+    console.error('Empty response from API');
+    throw new Error('Empty response from server - Laravel show() method may not be implemented');
+  }
+  
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('Invalid JSON response:', text);
+    throw new Error('Invalid JSON response from server');
+  }
+}
+
 async function toError(res: Response) {
   let detail: any = null;
   try { detail = await res.json(); } catch {}
