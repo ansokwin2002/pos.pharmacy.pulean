@@ -515,207 +515,240 @@ export default function RegisterPatientPage() {
   };
 
   // Build PDF document and return { doc, fileName }
+
   const buildPdf = async () => {
-    const { jsPDF } = await import("jspdf");
-    const autoTable = (await import("jspdf-autotable")).default;
+  const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
 
-    const doc = new jsPDF({
-        unit: "mm",
-        format: "a4"
-    });
+  const doc = new jsPDF({
+    unit: "mm",
+    format: "a4"
+  });
 
-    // Load Khmer font with proper base64 conversion
+  /* ----------------------------------------------------------
+     LOAD KHMER FONT (still needed for names, districts, etc.)
+  ----------------------------------------------------------- */
+  let fontLoaded = false;
+  let khmerFontName = "helvetica";
+
+  try {
+    const fontResponse = await fetch("/fonts/NotoSansKhmer-Regular.ttf");
+
+    if (fontResponse.ok) {
+      const fontArrayBuffer = await fontResponse.arrayBuffer();
+      const uint8Array = new Uint8Array(fontArrayBuffer);
+      let binaryString = "";
+      uint8Array.forEach((byte) => (binaryString += String.fromCharCode(byte)));
+      const base64Font = btoa(binaryString);
+
+      doc.addFileToVFS("NotoSansKhmer-Regular.ttf", base64Font);
+      doc.addFont("NotoSansKhmer-Regular.ttf", "NotoSansKhmer", "normal");
+      doc.setFont("NotoSansKhmer");
+      khmerFontName = "NotoSansKhmer";
+      fontLoaded = true;
+    }
+  } catch {}
+
+  if (!fontLoaded) {
     try {
       const fontResponse = await fetch("/fonts/KhmerOS.ttf");
-      
-      if (!fontResponse.ok) {
-        throw new Error(`Font file not found: ${fontResponse.status}`);
+
+      if (fontResponse.ok) {
+        const fontArrayBuffer = await fontResponse.arrayBuffer();
+        const uint8Array = new Uint8Array(fontArrayBuffer);
+        let binaryString = "";
+        uint8Array.forEach((byte) => (binaryString += String.fromCharCode(byte)));
+        const base64Font = btoa(binaryString);
+
+        doc.addFileToVFS("KhmerOS.ttf", base64Font);
+        doc.addFont("KhmerOS.ttf", "KhmerOS", "normal");
+        doc.setFont("KhmerOS");
+        khmerFontName = "KhmerOS";
+        fontLoaded = true;
       }
-      
-      const fontArrayBuffer = await fontResponse.arrayBuffer();
-      
-      if (!fontArrayBuffer || fontArrayBuffer.byteLength === 0) {
-        throw new Error('Font file is empty');
-      }
-      
-      // Convert ArrayBuffer to base64
-      const uint8Array = new Uint8Array(fontArrayBuffer);
-      let binaryString = '';
-      for (let i = 0; i < uint8Array.length; i++) {
-        binaryString += String.fromCharCode(uint8Array[i]);
-      }
-      const base64Font = btoa(binaryString);
-      
-      // Add font to PDF
-      doc.addFileToVFS("KhmerOS.ttf", base64Font);
-      doc.addFont("KhmerOS.ttf", "KhmerOS", "normal");
-      doc.setFont("KhmerOS");
-      console.log('Khmer font loaded successfully');
-    } catch (error) {
-      console.warn('Khmer font not available, using Helvetica. To enable Khmer support, add KhmerOS.ttf to public/fonts/', error);
-      doc.setFont("helvetica", "normal");
+    } catch {}
+  }
+
+  if (!fontLoaded) {
+    doc.setFont("helvetica", "normal");
+  }
+
+  /* ----------------------------------------------------------
+     BASE SETTINGS
+  ----------------------------------------------------------- */
+  const now = new Date();
+  const dateStr = `${String(now.getDate()).padStart(2, "0")}/${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}/${now.getFullYear()}`;
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+
+/* ----------------------------------------------------------
+   HEADER (Correct drawing order for cross)
+----------------------------------------------------------- */
+
+// Blue block
+doc.setFillColor(11, 59, 145);
+doc.rect(15, 10, 35, 16, "F");
+
+// Red block (draw BEFORE the cross!)
+doc.setFillColor(210, 0, 0);
+doc.rect(50, 10, 15, 16, "F");
+
+// White cross (now visible on red box)
+doc.setFillColor(255, 255, 255);
+
+// vertical bar
+doc.rect(57, 13, 4, 10, "F");
+
+// horizontal bar
+doc.rect(54, 17, 10, 4, "F");
+
+// Blue text "SOKLEAN"
+doc.setFontSize(12);
+doc.setTextColor(255, 255, 255);
+doc.text("SOKLEAN", 33, 20, { align: "center" });
+
+// Center header text
+doc.setTextColor(0, 0, 0);
+doc.setFontSize(14);
+doc.text("SOKLEAN", pageWidth / 2 + 10, 15, { align: "center" });
+
+doc.setFontSize(10);
+doc.text("CABINET MEDICAL", pageWidth / 2 + 10, 20, { align: "center" });
+
+doc.setFontSize(12);
+doc.text("HEALTH & MEDICAL CLINIC", pageWidth / 2 + 10, 25, { align: "center" });
+
+// Underline
+doc.setLineWidth(0.4);
+doc.line(pageWidth / 2 - 25, 27, pageWidth / 2 + 25, 27);
+
+// Title
+doc.setFontSize(14);
+doc.setFont("helvetica", "bold");
+doc.text("Prescription", pageWidth / 2, 37, { align: "center" });
+doc.line(pageWidth / 2 - 20, 38, pageWidth / 2 + 20, 38);
+
+// Back to Khmer font for content
+doc.setFont(khmerFontName);
+
+
+  /* ----------------------------------------------------------
+     PATIENT INFO (English labels)
+  ----------------------------------------------------------- */
+  let y = 50;
+
+  doc.setFontSize(12);
+  doc.text("Patient:", margin, y);
+  doc.text(name || ".....THYDA.....", margin + 25, y);
+
+  doc.text("Gender:", pageWidth - 80, y);
+  doc.text(gender || "F", pageWidth - 58, y);
+
+  y += 7;
+  doc.text("Age:", margin, y);
+  doc.text("34", margin + 20, y);
+
+  doc.text("District:", pageWidth - 80, y);
+  doc.text("Krek", pageWidth - 58, y);
+
+  y += 7;
+  doc.text(`Vital Signs:  BP: 129/78   P: 110   T: 38   RR: 20`, margin, y);
+
+  y += 7;
+  doc.text(`Symptoms: ${symptom || "fever, runny nose, headache"}`, margin, y);
+
+  y += 7;
+  doc.text(`Diagnosis: ${diagnosis || "Acute pharyngitis"}`, margin, y);
+
+  y += 5;
+  doc.line(margin, y, pageWidth - margin, y);
+
+  /* ----------------------------------------------------------
+     TABLE (English headers, same layout)
+  ----------------------------------------------------------- */
+  y += 5;
+
+  const head = [
+    ["No.", "Medication", "Morning", "Afternoon", "Evening", "Night", "Period", "QTY", "Price"]
+  ];
+
+  const body = prescriptions.map((p, i) => [
+    i + 1,
+    p.name,
+    p.morning || "",
+    p.afternoon || "",
+    p.evening || "",
+    p.night || "",
+    p.period || "",
+    p.qty || "",
+    ""
+  ]);
+
+  while (body.length < 10) body.push(["", "", "", "", "", "", "", "", ""]);
+
+ autoTable(doc, {
+    startY: y,
+    head: head,
+    body: body,
+    tableWidth: doc.internal.pageSize.getWidth() - (margin * 2),
+    styles: {
+        font: khmerFontName,
+        fontSize: 10,
+        cellPadding: 2,
+        lineWidth: 0.3,
+        lineColor: [0,0,0]
+    },
+    headStyles: {
+        fillColor: [255,255,255],
+        textColor: [0,0,0],
+        halign: "center",
+        fontStyle: "bold"
+    },
+    columnStyles: {
+        0: { halign: "center" },
+        1: { },
+        2: { halign: "center" },
+        3: { halign: "center" },
+        4: { halign: "center" },
+        5: { halign: "center" },
+        6: { halign: "center" },
+        7: { halign: "center" },
+        8: { halign: "right" }
     }
+});
 
-    const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
 
-    /* ----------------------------------------------------------
-       HEADER AREA — EXACTLY LIKE ORIGINAL PDF
-    ----------------------------------------------------------- */
+  const afterTable = doc.lastAutoTable.finalY + 8;
 
-    // Left rectangular logo
-    doc.setFillColor(11, 59, 145); 
-    doc.rect(15, 10, 35, 16, "F");
+  doc.setFontSize(10);
+  doc.text("Note: Please follow your doctor’s instructions.", margin, afterTable);
 
-    // White cross
-    doc.setFillColor(255,255,255);
-    doc.rect(29, 13, 4, 10, "F");
-    doc.rect(24, 17, 14, 4, "F");
+  /* ----------------------------------------------------------
+     FOOTER (English)
+  ----------------------------------------------------------- */
+  const footerY = doc.internal.pageSize.height - 20;
 
-    // Right red block
-    doc.setFillColor(210, 0, 0);
-    doc.rect(50, 10, 15, 16, "F");
+  doc.text(
+    "No. St. 7  PHUM KREK TBONG, KHOM KREK, PONHEA KREK, CAMBODIA.",
+    margin,
+    footerY
+  );
+  doc.text(`DATE: ${dateStr}`, pageWidth - 60, footerY);
 
-    // Blue text "SOKLEAN"
-    doc.setFontSize(12);
-    doc.setTextColor(255,255,255);
-    doc.text("SOKLEAN", 33, 20, { align: "center" });
+  doc.text("TEL: 010511178", margin, footerY + 6);
+  doc.text("Dr. IM SOKLEAN", pageWidth - 60, footerY + 6);
 
-    // Center Header
-    doc.setTextColor(0,0,0);
-    doc.setFontSize(14);
-    doc.text("SOKLEAN", pageWidth / 2 + 10, 15, { align: "center" });
+  /* ----------------------------------------------------------
+     FINISH
+  ----------------------------------------------------------- */
+  const fileName = `prescription-${dateStr.replace(/\//g, "")}.pdf`;
 
-    doc.setFontSize(10);
-    doc.text("CABINET MEDICAL", pageWidth / 2 + 10, 20, { align: "center" });
-
-    // Khmer top labels
-    doc.setFontSize(12);
-    doc.text("សាលារៀនសុខភាព និង វេជ្ជសាស្ត្រ", pageWidth / 2 + 10, 25, { align: "center" });
-
-    // Center underline
-    doc.setLineWidth(0.4);
-    doc.line(pageWidth/2 - 25, 27, pageWidth/2 + 25, 27);
-
-    // Title: Prescription
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Prescription", pageWidth / 2, 37, { align: "center" });
-    doc.line(pageWidth/2 - 20, 38, pageWidth/2 + 20, 38);
-    doc.setFont("KhmerOS");
-
-    /* ----------------------------------------------------------
-       PATIENT INFO SECTION
-    ----------------------------------------------------------- */
-    let y = 50;
-    doc.setFontSize(12);
-    doc.text("អ្នកជំងឺ៖", margin, y);
-    doc.text(name || ".....THYDA.....", margin + 25, y);
-
-    doc.text("ភេទ៖", pageWidth - 80, y);
-    doc.text(gender || "F", pageWidth - 65, y);
-
-    y += 7;
-    doc.text("អាយុ៖", margin, y);
-    doc.text("34", margin + 20, y);
-
-    doc.text("ស្រុក៖", pageWidth - 80, y);
-    doc.text("krek", pageWidth - 65, y);
-
-    y += 7;
-    doc.text(`សញ្ញាអាច្សុសជីវិត៖  BP: 129/78   P: 110   T: 38   RR: 20`, margin, y);
-
-    y += 7;
-    doc.text(`រោគសញ្ញា៖ ${symptom || "fever, runny nose, headache"}`, margin, y);
-
-    y += 7;
-    doc.text(`រោគវិនិច្ឆ័យ៖ ${diagnosis || "Acute pharyngitis"}`, margin, y);
-
-    y += 5;
-    doc.line(margin, y, pageWidth - margin, y);
-
-    /* ----------------------------------------------------------
-       TABLE – EXACT STYLE AS ORIGINAL
-    ----------------------------------------------------------- */
-
-    y += 5;
-
-    const head = [[
-        "ល.រ", "ឱសថ", "ព្រឹក", "រសៀល", "ល្ងាច", "យប់", "រយៈពេល", "ចំនួន", "តម្លៃ"
-    ]];
-
-    const body = prescriptions.map((p, i) => [
-        i + 1,
-        p.name,
-        p.morning || "",
-        p.afternoon || "",
-        p.evening || "",
-        p.night || "",
-        p.period || "",
-        p.qty || "",
-        ""
-    ]);
-
-    while (body.length < 10) body.push(["", "", "", "", "", "", "", "", ""]);
-
-    autoTable(doc, {
-        startY: y,
-        head: head,
-        body: body,
-        styles: {
-            font: "KhmerOS",
-            fontSize: 10,
-            cellPadding: 2,
-            lineWidth: 0.3,
-            lineColor: [0,0,0]
-        },
-        headStyles: {
-            fillColor: [255,255,255],
-            textColor: [0,0,0],
-            halign: "center",
-            fontStyle: "bold"
-        },
-        columnStyles: {
-            0: { cellWidth: 10, halign: "center" },
-            1: { cellWidth: 45 },
-            2: { cellWidth: 15, halign: "center" },
-            3: { cellWidth: 15, halign: "center" },
-            4: { cellWidth: 15, halign: "center" },
-            5: { cellWidth: 15, halign: "center" },
-            6: { cellWidth: 18, halign: "center" },
-            7: { cellWidth: 15, halign: "center" },
-            8: { cellWidth: 20, halign: "right" }
-        }
-    });
-
-    const afterTable = doc.lastAutoTable.finalY + 8;
-
-    doc.setFontSize(10);
-    doc.text("សំគាល់៖  សូមអនុវត្តតាមការណែនាំរបស់វេជ្ជបណ្ឌិត ឬ មន្ត្រីឱសថ", margin, afterTable);
-
-    /* ----------------------------------------------------------
-       FOOTER — EXACT SAME LAYOUT
-    ----------------------------------------------------------- */
-
-    const footerY = doc.internal.pageSize.height - 20;
-
-    doc.setFontSize(10);
-    doc.text("No. St. 7  PHUM KREK TBONG, KHOM KREK, PONHEA KREK, CAMBODIA.", margin, footerY);
-    doc.text(`DATE: ${dateStr}`, pageWidth - 60, footerY);
-
-    doc.text("TEL: 010511178", margin, footerY + 6);
-    doc.text("Dr. IM SOKLEAN", pageWidth - 60, footerY + 6);
-
-    /* ----------------------------------------------------------
-       RETURN FILE
-    ----------------------------------------------------------- */
-
-    const fileName = `prescription-${dateStr.replace(/\//g,"")}.pdf`;
-
-    return { doc, fileName };
+  return { doc, fileName };
 };
+
 
   
   const downloadPdf = async () => {
