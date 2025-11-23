@@ -9,6 +9,7 @@ import { SortableHeader } from '@/components/common/SortableHeader';
 import Pagination from '@/components/common/Pagination';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import DateInput from '@/components/common/DateInput';
 
 interface Patient {
   id: number | string;
@@ -174,19 +175,21 @@ const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
 
 const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [telephone, setTelephone] = useState('');
+  const [age, setAge] = useState<string>('');
   const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
+  const [symptom, setSymptom] = useState('');
+  const [diagnosis, setDiagnosis] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
 
   useEffect(() => {
     if (patient) {
       setName(patient.name ?? '');
-      setEmail(patient.email ?? '');
       setTelephone((patient.telephone ?? patient.phone ?? '') as string);
+      setAge(patient.age?.toString() ?? '');
       setAddress(patient.address ?? '');
-      setCity(patient.city ?? '');
+      setSymptom(patient.symptom ?? '');
+      setDiagnosis(patient.diagnosis ?? '');
       setGender((patient.gender as 'male' | 'female') ?? 'male');
     }
   }, [patient]);
@@ -199,10 +202,11 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
     const updatedPatient: Patient = {
       ...patient,
       name,
-      email,
       telephone,
+      age: age ? parseInt(age) : undefined,
       address,
-      city,
+      symptom,
+      diagnosis,
       gender,
     };
     onUpdatePatient(updatedPatient);
@@ -232,22 +236,24 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              Email
-            </Text>
-            <TextField.Root
-              value={email ?? ''}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email address"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
               Telephone
             </Text>
             <TextField.Root
               value={telephone ?? ''}
               onChange={(e) => setTelephone(e.target.value)}
               placeholder="Enter telephone"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Age
+            </Text>
+            <TextField.Root
+              type="number"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="Enter age"
+              min={0}
             />
           </label>
           <label>
@@ -262,12 +268,22 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
           </label>
           <label>
             <Text as="div" size="2" mb="1" weight="bold">
-              City
+              Symptom
             </Text>
             <TextField.Root
-              value={city ?? ''}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Enter city"
+              value={symptom}
+              onChange={(e) => setSymptom(e.target.value)}
+              placeholder="Enter symptom"
+            />
+          </label>
+          <label>
+            <Text as="div" size="2" mb="1" weight="bold">
+              Diagnosis
+            </Text>
+            <TextField.Root
+              value={diagnosis}
+              onChange={(e) => setDiagnosis(e.target.value)}
+              placeholder="Enter diagnosis"
             />
           </label>
           <label>
@@ -302,7 +318,8 @@ export default function PatientListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('all');
-  const [cityFilter, setCityFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<Date | null>(null);
+  const [diagnosisFilter, setDiagnosisFilter] = useState('');
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Patient; direction: 'asc' | 'desc' } | null>(null);
   const [isAddPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
@@ -331,8 +348,6 @@ export default function PatientListPage() {
     load();
   }, [searchTerm, currentPage, itemsPerPage]);
 
-  const cities = [...new Set(patientsData.map(p => p.city).filter(Boolean))];
-
   useEffect(() => {
     let sortedPatients = [...patientsData];
     if (sortConfig !== null) {
@@ -348,21 +363,83 @@ export default function PatientListPage() {
     }
 
     const lowercasedFilter = searchTerm.toLowerCase();
-    let filtered = sortedPatients.filter(patient =>
-      patient.name.toLowerCase().includes(lowercasedFilter)
-    );
+    let filtered = sortedPatients.filter(patient => {
+      // Search by name
+      if (patient.name && patient.name.toLowerCase().includes(lowercasedFilter)) return true;
+      
+      // Search by telephone
+      if (patient.telephone && patient.telephone.toLowerCase().includes(lowercasedFilter)) return true;
+      if (patient.phone && patient.phone.toLowerCase().includes(lowercasedFilter)) return true;
+      
+      // Search by address
+      if (patient.address && patient.address.toLowerCase().includes(lowercasedFilter)) return true;
+      
+      // Search by symptom
+      if (patient.symptom && patient.symptom.toLowerCase().includes(lowercasedFilter)) return true;
+      
+      // Search by diagnosis
+      if (patient.diagnosis && patient.diagnosis.toLowerCase().includes(lowercasedFilter)) return true;
+      
+      // Search by created_at date
+      if (patient.created_at) {
+        const createdDate = new Date(patient.created_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        if (createdDate.toLowerCase().includes(lowercasedFilter)) return true;
+      }
+      
+      // Search by updated_at date
+      if (patient.updated_at) {
+        const updatedDate = new Date(patient.updated_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        if (updatedDate.toLowerCase().includes(lowercasedFilter)) return true;
+      }
+      
+      return false;
+    });
 
     if (genderFilter !== 'all') {
       filtered = filtered.filter(patient => patient.gender === genderFilter);
     }
 
-    if (cityFilter !== 'all') {
-      filtered = filtered.filter(patient => patient.city === cityFilter);
+    if (dateFilter) {
+      filtered = filtered.filter(patient => {
+        if (!patient.created_at) return false;
+        
+        // Parse patient date and filter date
+        const patientDate = new Date(patient.created_at);
+        const filterDate = new Date(dateFilter);
+        
+        // Compare year, month, and day separately to avoid timezone issues
+        const patientYear = patientDate.getFullYear();
+        const patientMonth = patientDate.getMonth();
+        const patientDay = patientDate.getDate();
+        
+        const filterYear = filterDate.getFullYear();
+        const filterMonth = filterDate.getMonth();
+        const filterDay = filterDate.getDate();
+        
+        return patientYear === filterYear && 
+               patientMonth === filterMonth && 
+               patientDay === filterDay;
+      });
+    }
+
+    if (diagnosisFilter) {
+      const diagnosisLower = diagnosisFilter.toLowerCase();
+      filtered = filtered.filter(patient => 
+        patient.diagnosis && patient.diagnosis.toLowerCase().includes(diagnosisLower)
+      );
     }
 
     setFilteredPatients(filtered);
     setCurrentPage(1);
-  }, [searchTerm, sortConfig, patientsData, genderFilter, cityFilter]);
+  }, [searchTerm, sortConfig, patientsData, genderFilter, dateFilter, diagnosisFilter]);
 
   const handleSort = (key: keyof Patient) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -437,7 +514,8 @@ export default function PatientListPage() {
   const handleResetFilters = () => {
     setSearchTerm('');
     setGenderFilter('all');
-    setCityFilter('all');
+    setDateFilter(null);
+    setDiagnosisFilter('');
   };
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -458,7 +536,7 @@ export default function PatientListPage() {
         <Flex gap="4" align="center" wrap="wrap" className="w-full">
           <Box className="flex-grow min-w-[250px]">
             <TextField.Root
-              placeholder="Search by name..."
+              placeholder="Search by name, phone, address, symptom, diagnosis, date..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             >
@@ -477,18 +555,20 @@ export default function PatientListPage() {
               </Select.Content>
             </Select.Root>
           </Flex>
-          <Flex align="center" gap="2" className="flex-shrink-0">
-            <Select.Root value={cityFilter} onValueChange={setCityFilter}>
-              <Select.Trigger placeholder="All Cities" />
-              <Select.Content>
-                <Select.Item value="all">All Cities</Select.Item>
-                {cities.map(city => (
-                  <Select.Item key={city} value={city}>{city}</Select.Item>
-                ))}
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-          <Button variant="soft" color={genderFilter !== 'all' || cityFilter !== 'all' ? 'red' : 'gray'} onClick={handleResetFilters}>
+          <Box className="flex-shrink-0" style={{ minWidth: '150px' }}>
+            <DateInput
+              value={dateFilter}
+              onChange={(date) => setDateFilter(date)}
+            />
+          </Box>
+          <Box className="flex-shrink-0" style={{ minWidth: '200px' }}>
+            <TextField.Root
+              placeholder="Search by diagnosis..."
+              value={diagnosisFilter}
+              onChange={(e) => setDiagnosisFilter(e.target.value)}
+            />
+          </Box>
+          <Button variant="soft" color={genderFilter !== 'all' || dateFilter || diagnosisFilter ? 'red' : 'gray'} onClick={handleResetFilters}>
             <RotateCcw size={16} />
             Reset Filters
           </Button>
@@ -527,25 +607,24 @@ export default function PatientListPage() {
                 <Table.Row>
                   <Table.ColumnHeaderCell>
                     <SortableHeader
-                      label="ID"
-                      sortKey="id"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    <SortableHeader
                       label="Name"
                       sortKey="name"
                       currentSort={sortConfig}
                       onSort={handleSort}
                     />
                   </Table.ColumnHeaderCell>
-
                   <Table.ColumnHeaderCell>
                     <SortableHeader
-                      label="Phone"
-                      sortKey="phone"
+                      label="Telephone"
+                      sortKey="telephone"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Age"
+                      sortKey="age"
                       currentSort={sortConfig}
                       onSort={handleSort}
                     />
@@ -560,8 +639,16 @@ export default function PatientListPage() {
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
                     <SortableHeader
-                      label="City"
-                      sortKey="city"
+                      label="Symptom"
+                      sortKey="symptom"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Diagnosis"
+                      sortKey="diagnosis"
                       currentSort={sortConfig}
                       onSort={handleSort}
                     />
@@ -574,22 +661,36 @@ export default function PatientListPage() {
                       onSort={handleSort}
                     />
                   </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Created At"
+                      sortKey="created_at"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
+                  <Table.ColumnHeaderCell>
+                    <SortableHeader
+                      label="Updated At"
+                      sortKey="updated_at"
+                      currentSort={sortConfig}
+                      onSort={handleSort}
+                    />
+                  </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
                 {currentItems.length === 0 ? (
                   <Table.Row>
-                    <Table.Cell colSpan={7} className="text-center">
+                    <Table.Cell colSpan={10} className="text-center">
                       <Text size="3" color="gray">No patients found.</Text>
                     </Table.Cell>
                   </Table.Row>
                 ) : (
                   currentItems.map((patient) => {
-                    console.log('Patient object in map:', patient);
                     return (
                       <Table.Row key={patient.id}>
-                        <Table.Cell>{String(patient.id).substring(0,8)}</Table.Cell>
                         <Table.RowHeaderCell>
                           <Flex align="center" justify="between">
                             <PatientNameWithMenu
@@ -597,11 +698,30 @@ export default function PatientListPage() {
                             />
                           </Flex>
                         </Table.RowHeaderCell>
-  
                         <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
+                        <Table.Cell>{patient.age || '-'}</Table.Cell>
                         <Table.Cell>{patient.address || '-'}</Table.Cell>
-                        <Table.Cell>{patient.city || '-'}</Table.Cell>
+                        <Table.Cell>{patient.symptom || '-'}</Table.Cell>
+                        <Table.Cell>{patient.diagnosis || '-'}</Table.Cell>
                         <Table.Cell>{patient.gender || '-'}</Table.Cell>
+                        <Table.Cell>
+                          {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : '-'}
+                        </Table.Cell>
+                        <Table.Cell>
+                          {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : '-'}
+                        </Table.Cell>
                         <Table.Cell>
                           <Flex gap="2">
                             <Tooltip content="Edit Patient">

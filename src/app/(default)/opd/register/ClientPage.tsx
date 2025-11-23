@@ -1327,11 +1327,6 @@ doc.setFont(khmerFontName);
                                 </div>
                               </Box>
                               <Select.Group>
-                                <Select.Label>Actions</Select.Label>
-                                <Select.Item value="__add_custom__">➕ Add custom…</Select.Item>
-                              </Select.Group>
-                              <Select.Separator />
-                              <Select.Group>
                                 <Select.Label>Drugs</Select.Label>
                                 {(() => {
                                   const filteredDrugOptions = allDrugOptions.filter(d => d.name.toLowerCase().includes(drugSearchTerm.toLowerCase()) || (d.generic_name && d.generic_name.toLowerCase().includes(drugSearchTerm.toLowerCase())) || (d.manufacturer && d.manufacturer.toLowerCase().includes(drugSearchTerm.toLowerCase())));

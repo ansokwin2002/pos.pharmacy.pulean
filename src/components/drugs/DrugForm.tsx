@@ -35,9 +35,6 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
     expiry_date: new Date(),
     barcode: '',
     manufacturer: '',
-    dosage: '',
-    instructions: '',
-    side_effects: '',
     status: 'active' as 'active' | 'inactive',
   };
 
@@ -299,51 +296,14 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
             </Box>
           </Grid>
 
-          <Grid columns="2" gap="4">
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Dosage
-              </Text>
-              <TextField.Root
-                value={formData.dosage || ''}
-                onChange={(e) => handleInputChange('dosage', e.target.value)}
-                placeholder="e.g., 500mg, 10ml"
+          <Box>
+            <Flex align="center" gap="2">
+              <Switch
+                checked={formData.status === 'active'}
+                onCheckedChange={(checked) => handleInputChange('status', checked ? 'active' : 'inactive')}
               />
-            </Box>
-
-            <Box>
-              <Flex align="center" gap="2" className="mt-6">
-                <Switch
-                  checked={formData.status === 'active'}
-                  onCheckedChange={(checked) => handleInputChange('status', checked ? 'active' : 'inactive')}
-                />
-                <Text size="2" weight="medium">Active</Text>
-              </Flex>
-            </Box>
-          </Grid>
-
-          <Box>
-            <Text as="label" size="2" weight="medium" className="block mb-1">
-              Instructions
-            </Text>
-            <TextArea
-              value={formData.instructions || ''}
-              onChange={(e) => handleInputChange('instructions', e.target.value)}
-              placeholder="Enter usage instructions"
-              rows={3}
-            />
-          </Box>
-
-          <Box>
-            <Text as="label" size="2" weight="medium" className="block mb-1">
-              Side Effects
-            </Text>
-            <TextArea
-              value={formData.side_effects || ''}
-              onChange={(e) => handleInputChange('side_effects', e.target.value)}
-              placeholder="Enter known side effects"
-              rows={3}
-            />
+              <Text size="2" weight="medium">Active</Text>
+            </Flex>
           </Box>
 
           <Flex gap="3" justify="end" className="mt-6">

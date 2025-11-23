@@ -226,10 +226,12 @@ export default function DateInput({
       {isMounted && open && (
         <div 
           ref={calendarRef}
-          className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-lg rounded-md absolute"
+          className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-lg rounded-md"
           style={{
-            zIndex: 9999,
-            [position === 'top' ? 'bottom' : 'top']: position === 'top' ? 'calc(100% + 5px)' : 35,
+            position: 'fixed',
+            zIndex: 99999,
+            top: inputRef.current ? inputRef.current.getBoundingClientRect().bottom + 5 : 0,
+            left: inputRef.current ? inputRef.current.getBoundingClientRect().left : 0,
           }}
         >
           <Box style={{marginTop: -17}}>

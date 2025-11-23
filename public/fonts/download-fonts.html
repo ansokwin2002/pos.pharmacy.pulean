@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Khmer Fonts for PDF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .status {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .font-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .font-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .font-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge.optional {
+            background: #6c757d;
+        }
+        
+        .font-card p {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        
+        .steps {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .steps h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .steps ol {
+            margin-left: 20px;
+        }
+        
+        .steps li {
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .code {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .icon {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📥 Download Khmer Fonts</h1>
+        <p class="subtitle">Required for PDF generation with Khmer text support</p>
+        
+        <div class="status" id="status">
+            <strong>⚠️ Action Required:</strong> Download and install the Khmer fonts below to enable proper Khmer text display in PDF prescriptions.
+        </div>
+        
+        <!-- Primary Font -->
+        <div class="font-card">
+            <h3>
+                <span class="icon">🎯</span>
+                Noto Sans Khmer
+                <span class="badge">RECOMMENDED</span>
+            </h3>
+            <p>
+                <strong>File:</strong> NotoSansKhmer-Regular.ttf<br>
+                <strong>Size:</strong> ~150-200 KB<br>
+                <strong>Quality:</strong> Excellent - Best for modern displays<br>
+                <strong>License:</strong> Open Font License (Free for commercial use)
+            </p>
+            <a href="https://github.com/notofonts/khmer/raw/main/fonts/NotoSansKhmer/full/ttf/NotoSansKhmer-Regular.ttf" 
+               class="download-btn" 
+               download="NotoSansKhmer-Regular.ttf">
+                📥 Download NotoSansKhmer-Regular.ttf
+            </a>
+        </div>
+        
+        <!-- Fallback Font -->
+        <div class="font-card">
+            <h3>
+                <span class="icon">🔄</span>
+                KhmerOS
+                <span class="badge optional">OPTIONAL</span>
+            </h3>
+            <p>
+                <strong>File:</strong> KhmerOS.ttf<br>
+                <strong>Size:</strong> ~100-150 KB<br>
+                <strong>Quality:</strong> Good - Fallback option<br>
+                <strong>License:</strong> GPL (Free for commercial use)
+            </p>
+            <a href="https://github.com/khmertype/KhmerOS/raw/master/fonts/KhmerOS.ttf" 
+               class="download-btn" 
+               download="KhmerOS.ttf">
+                📥 Download KhmerOS.ttf
+            </a>
+        </div>
+        
+        <!-- Installation Steps -->
+        <div class="steps">
+            <h3>📋 Installation Steps</h3>
+            <ol>
+                <li><strong>Download</strong> the font file(s) using the buttons above</li>
+                <li><strong>Save</strong> the downloaded file(s) to this directory:</li>
+            </ol>
+            <div class="code">D:\pos.pharmacy.pulean\public\fonts\</div>
+            <ol start="3">
+                <li><strong>Verify</strong> the files are named correctly:
+                    <ul style="margin-top: 8px;">
+                        <li>✅ <code>NotoSansKhmer-Regular.ttf</code></li>
+                        <li>✅ <code>KhmerOS.ttf</code> (optional)</li>
+                    </ul>
+                </li>
+                <li><strong>Restart</strong> your development server:</li>
+            </ol>
+            <div class="code">npm run dev</div>
+            <ol start="5">
+                <li><strong>Test</strong> by generating a PDF prescription</li>
+                <li><strong>Check</strong> browser console for success message: "✅ Font loaded successfully!"</li>
+            </ol>
+        </div>
+        
+        <div class="steps" style="margin-top: 20px;">
+            <h3>🧪 Testing Khmer Text</h3>
+            <p style="color: #666; margin-bottom: 10px;">After installation, these Khmer words should display correctly in PDFs:</p>
+            <div class="code">
+អាយុ (Age)<br>
+ឈ្មោះ (Name)<br>
+ភេទ (Gender)<br>
+អាសយដ្ឋាន (Address)
+            </div>
+        </div>
+        
+        <div class="status success" style="margin-top: 20px; display: none;" id="success-message">
+            <strong>✅ Success!</strong> If you've completed the steps above, Khmer fonts should now work in your PDFs.
+        </div>
+    </div>
+    
+    <script>
+        // Show success message after 2 seconds
+        setTimeout(() => {
+            const successMsg = document.getElementById('success-message');
+            if (successMsg) {
+                successMsg.style.display = 'block';
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -170,7 +170,10 @@ export default function PatientHistoryPage() {
     let fontLoaded = false;
     let khmerFontName = "helvetica";
 
+    console.log('🔤 Attempting to load Khmer fonts for PDF...');
+
     try {
+      console.log('📥 Trying to load NotoSansKhmer-Regular.ttf...');
       const fontResponse = await fetch("/fonts/NotoSansKhmer-Regular.ttf");
 
       if (fontResponse.ok) {
@@ -185,11 +188,17 @@ export default function PatientHistoryPage() {
         doc.setFont("NotoSansKhmer");
         khmerFontName = "NotoSansKhmer";
         fontLoaded = true;
+        console.log('✅ NotoSansKhmer font loaded successfully!');
+      } else {
+        console.warn('⚠️ NotoSansKhmer-Regular.ttf not found (status:', fontResponse.status, ')');
       }
-    } catch {}
+    } catch (error) {
+      console.warn('⚠️ Failed to load NotoSansKhmer-Regular.ttf:', error);
+    }
 
     if (!fontLoaded) {
       try {
+        console.log('📥 Trying to load KhmerOS.ttf as fallback...');
         const fontResponse = await fetch("/fonts/KhmerOS.ttf");
 
         if (fontResponse.ok) {
@@ -204,11 +213,19 @@ export default function PatientHistoryPage() {
           doc.setFont("KhmerOS");
           khmerFontName = "KhmerOS";
           fontLoaded = true;
+          console.log('✅ KhmerOS font loaded successfully!');
+        } else {
+          console.warn('⚠️ KhmerOS.ttf not found (status:', fontResponse.status, ')');
         }
-      } catch {}
+      } catch (error) {
+        console.warn('⚠️ Failed to load KhmerOS.ttf:', error);
+      }
     }
 
     if (!fontLoaded) {
+      console.error('❌ No Khmer fonts found! Using Helvetica fallback.');
+      console.error('📖 Please download Khmer fonts. See: KHMER_FONT_SETUP.md');
+      console.error('📥 Quick download: https://github.com/notofonts/khmer/raw/main/fonts/NotoSansKhmer/full/ttf/NotoSansKhmer-Regular.ttf');
       doc.setFont("helvetica", "normal");
     }
 
