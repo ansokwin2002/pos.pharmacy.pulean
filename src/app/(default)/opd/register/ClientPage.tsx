@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs, IconButton } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
-import { User, Pill, CheckCircle, FileText, Trash2 } from 'lucide-react';
+import { User, Pill, CheckCircle, FileText, Trash2, Plus, ArrowRight, Save, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
@@ -54,6 +54,9 @@ export default function RegisterPatientPage() {
   const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
   const [tempPrescriptionId, setTempPrescriptionId] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [isLoadingPrescriptions, setIsLoadingPrescriptions] = useState(false);
+  const [isAddingDrug, setIsAddingDrug] = useState(false);
+  const [removingDrugIndex, setRemovingDrugIndex] = useState<number | null>(null);
 
   // Tab management
   const [currentTab, setCurrentTab] = useState<'patient-info' | 'prescription' | 'complete'>('patient-info');
@@ -197,6 +200,9 @@ export default function RegisterPatientPage() {
         return validatePatientInfo();
       };
     
+  // Show export actions only after successful save
+  const [hasSaved, setHasSaved] = useState(false);
+
   // Tab navigation functions
 
 
@@ -217,6 +223,11 @@ export default function RegisterPatientPage() {
       return;
     }
 
+    // Reset hasSaved state when switching away from complete tab
+    if (tabId !== 'complete' && hasSaved) {
+      setHasSaved(false);
+    }
+
     setCurrentTab(tabId as 'patient-info' | 'prescription' | 'complete');
 
     // Mark previous tabs as completed
@@ -225,7 +236,7 @@ export default function RegisterPatientPage() {
     } else if (tabId === 'complete' && isPatientInfoValid && prescriptions.length > 0) {
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription']));
     }
-  }, [prescriptions.length, validatePatientInfo]);
+  }, [prescriptions.length, validatePatientInfo, hasSaved]);
 
   const proceedToNextTab = useCallback(() => {
     const isPatientInfoValid = validatePatientInfo();
@@ -336,9 +347,6 @@ export default function RegisterPatientPage() {
   const [afterMeal, setAfterMeal] = useState<boolean>(false);
   const [beforeMeal, setBeforeMeal] = useState<boolean>(false);
 
-  // Show export actions only after successful save
-  const [hasSaved, setHasSaved] = useState(false);
-
   const saveDrugToTempAPI = async (drug: Presc) => {
     try {
       const { createTempPrescription } = await import('@/utilities/api/tempPrescriptions');
@@ -357,6 +365,7 @@ export default function RegisterPatientPage() {
   };
 
   const loadTempDrugs = async () => {
+    setIsLoadingPrescriptions(true);
     try {
       const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
       const temps = await listTempPrescriptions();
@@ -374,10 +383,12 @@ export default function RegisterPatientPage() {
       console.warn('Temp prescriptions API not available:', error.message);
       // Keep prescriptions as empty array
       setPrescriptions([]);
+    } finally {
+      setIsLoadingPrescriptions(false);
     }
   };
 
-  const addDrugToTable = () => {
+  const addDrugToTable = async () => {
     // Validate required Drug selection
     const d = allDrugOptions.find(x => x.id === selectedDrugId);
     if (!d) {
@@ -430,17 +441,26 @@ export default function RegisterPatientPage() {
       beforeMeal,
     };
 
-    // Save to temp API first
-    saveDrugToTempAPI(entry).then((result) => {
+    // Show loading state
+    setIsAddingDrug(true);
+
+    try {
+      // Save to temp API first
+      const result = await saveDrugToTempAPI(entry);
       if (result) {
         // API save successful, reload from API
-        loadTempDrugs();
+        await loadTempDrugs();
       } else {
         // API not available, use local state
         setPrescriptions(prev => [...prev, entry]);
       }
       toast.success('Medication added');
-    });
+    } catch (error) {
+      console.error('Failed to add drug:', error);
+      toast.error('Failed to add medication');
+    } finally {
+      setIsAddingDrug(false);
+    }
 
     // reset inputs
     setSelectedDrugId('');
@@ -454,53 +474,87 @@ export default function RegisterPatientPage() {
     setBeforeMeal(false);
   };
 
-  const removeDrug = (index: number) => {
+  const removeDrug = async (index: number) => {
     console.log('=== REMOVE DRUG START ===');
     console.log('Removing drug at index:', index);
     console.log('Current prescriptions:', prescriptions.length);
     console.log('Current drugs:', prescriptions.map((p, i) => `${i}: ${p.name}`));
     
-    // Immediately update local state
-    const newPrescriptions = prescriptions.filter((_, i) => i !== index);
-    console.log('After filter:', newPrescriptions.length);
-    console.log('New drugs:', newPrescriptions.map((p, i) => `${i}: ${p.name}`));
+    // Show loading state for this specific row
+    setRemovingDrugIndex(index);
     
-    // Update state
-    setPrescriptions(newPrescriptions);
-    setRenderKey(prev => prev + 1);
-    
-    console.log('=== REMOVE DRUG END ===');
-    toast.success('Medication removed');
-    
-    // Try to delete from API in background (don't wait)
-    const drug = prescriptions[index];
-    const tempId = (drug as any).tempId;
-    if (tempId) {
-      import('@/utilities/api/tempPrescriptions').then(({ deleteTempPrescription }) => {
-        deleteTempPrescription(tempId).catch(err => {
-          console.warn('Background API deletion failed:', err);
-        });
-      });
+    try {
+      // Try to delete from API first
+      const drug = prescriptions[index];
+      const tempId = (drug as any).tempId;
+      if (tempId) {
+        try {
+          const { deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
+          await deleteTempPrescription(tempId);
+        } catch (err) {
+          console.warn('API deletion failed:', err);
+        }
+      }
+      
+      // Update local state
+      const newPrescriptions = prescriptions.filter((_, i) => i !== index);
+      console.log('After filter:', newPrescriptions.length);
+      console.log('New drugs:', newPrescriptions.map((p, i) => `${i}: ${p.name}`));
+      
+      setPrescriptions(newPrescriptions);
+      setRenderKey(prev => prev + 1);
+      
+      console.log('=== REMOVE DRUG END ===');
+      toast.success('Medication removed');
+    } catch (error) {
+      console.error('Failed to remove drug:', error);
+      toast.error('Failed to remove medication');
+    } finally {
+      setRemovingDrugIndex(null);
     }
   };
 
   // Build PDF document and return { doc, fileName }
-  const buildPdf = async ({ name, gender, signOfLife, symptom, diagnosis, prescriptions }) => {
+  const buildPdf = async () => {
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
-
-    // Load Khmer font (IMPORTANT)
-    // Place KhmerOS.ttf inside /public/fonts or /assets/fonts
-    const fontData = await fetch("/fonts/KhmerOS.ttf").then(r => r.arrayBuffer());
 
     const doc = new jsPDF({
         unit: "mm",
         format: "a4"
     });
 
-    doc.addFileToVFS("KhmerOS.ttf", fontData);
-    doc.addFont("KhmerOS.ttf", "KhmerOS", "normal");
-    doc.setFont("KhmerOS");
+    // Load Khmer font with proper base64 conversion
+    try {
+      const fontResponse = await fetch("/fonts/KhmerOS.ttf");
+      
+      if (!fontResponse.ok) {
+        throw new Error(`Font file not found: ${fontResponse.status}`);
+      }
+      
+      const fontArrayBuffer = await fontResponse.arrayBuffer();
+      
+      if (!fontArrayBuffer || fontArrayBuffer.byteLength === 0) {
+        throw new Error('Font file is empty');
+      }
+      
+      // Convert ArrayBuffer to base64
+      const uint8Array = new Uint8Array(fontArrayBuffer);
+      let binaryString = '';
+      for (let i = 0; i < uint8Array.length; i++) {
+        binaryString += String.fromCharCode(uint8Array[i]);
+      }
+      const base64Font = btoa(binaryString);
+      
+      // Add font to PDF
+      doc.addFileToVFS("KhmerOS.ttf", base64Font);
+      doc.addFont("KhmerOS.ttf", "KhmerOS", "normal");
+      doc.setFont("KhmerOS");
+      console.log('Khmer font loaded successfully');
+    } catch (error) {
+      console.warn('Khmer font not available, using Helvetica. To enable Khmer support, add KhmerOS.ttf to public/fonts/', error);
+      doc.setFont("helvetica", "normal");
+    }
 
     const now = new Date();
     const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
@@ -758,7 +812,11 @@ export default function RegisterPatientPage() {
       setHasSaved(true);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
-      // Clear all temp prescriptions after successful save
+      // Clear prescriptions from UI immediately
+      setPrescriptions([]);
+      setTempPrescriptionId(null);
+      
+      // Clear all temp prescriptions from API in background
       try {
         const { listTempPrescriptions, deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
         const temps = await listTempPrescriptions();
@@ -768,11 +826,9 @@ export default function RegisterPatientPage() {
           await deleteTempPrescription(temp.id);
         }
         
-        setPrescriptions([]);
-        setTempPrescriptionId(null);
-        console.log('Cleared all temp prescriptions');
+        console.log('Cleared all temp prescriptions from API');
       } catch (error) {
-        console.error('Failed to clear temp prescriptions:', error);
+        console.error('Failed to clear temp prescriptions from API:', error);
       }
       
       toast.success('OPD history saved successfully!');
@@ -818,8 +874,8 @@ export default function RegisterPatientPage() {
     <Box className="space-y-4 w-full px-4">
 
       <PageHeading
-        title={isAutoFilled ? "Add New Patient (Auto-filled)" : "Add New Patient"}
-        description={isAutoFilled ? "Patient information has been auto-filled. Review and modify as needed." : "Complete the patient registration process step by step."}
+        title="Add New Patient"
+        description="Complete the patient registration process step by step."
       />
 
       {/* Progress Indicator */}
@@ -887,14 +943,6 @@ export default function RegisterPatientPage() {
       </Card>
       <Card style={{ width: '100%' }}>
         <Box p="4">
-          {isAutoFilled && (
-            <Box mb="4" p="3" style={{ backgroundColor: 'var(--blue-2)', borderRadius: '6px', border: '1px solid var(--blue-6)' }}>
-              <Text size="2" style={{ color: 'var(--blue-11)' }}>
-                ℹ️ Patient information has been auto-filled from the patient list. You can modify any field as needed.
-              </Text>
-            </Box>
-          )}
-
           <Tabs.Root value={currentTab} onValueChange={handleTabChange}>
             <Tabs.List style={{ gap: '8px', backgroundColor: 'transparent', borderBottom: 'none' }}>
               <Tabs.Trigger 
@@ -963,59 +1011,10 @@ export default function RegisterPatientPage() {
               <Box mt="4">
                 <Box mb="4" p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px' }}>
                   <Text size="2" color="gray">
-                    📋 <strong>Step 1:</strong> Enter patient information. All fields marked with * are required to proceed to the next step.
+                    📋 <strong>Step 1:</strong> Fill in patient details. Fields marked with * are required.
                   </Text>
                 </Box>
                 <Flex direction="column" gap="3">
-            {/* Existing Patient */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Existing Patient</Text>
-              <Flex direction="row" align="end" gap="2" className="w-full">
-                <Flex direction="column" align="start" className="w-[320px]">
-                  <Select.Root value={selectedPatientId} onValueChange={(val) => {
-                    setSelectedPatientId(val);
-                    if (!val) return;
-                    const p = allPatients.find(x => String(x.id) === val);
-                    if (p) {
-                      setName(p.name);
-                      setGender(p.gender);
-                      setAge(String(p.age));
-                      setTelephone(p.telephone);
-                      setAddress(p.address);
-                      setSignOfLife(p.signOfLife);
-                      setSymptom(p.symptom);
-                      setDiagnosis(p.diagnosis);
-                      setErrors({});
-                    }
-                  }}>
-                    <Select.Trigger placeholder="Select existing patient" style={{ width: '100%' }} />
-                    <Select.Content>
-                      <Select.Group>
-                        <Select.Label>Patients</Select.Label>
-                        {allPatients.map(p => (
-                          <Select.Item key={p.id} value={String(p.id)}>{p.id} — {p.name} ({p.gender}), {p.age}y</Select.Item>
-                        ))}
-                      </Select.Group>
-                    </Select.Content>
-                  </Select.Root>
-                </Flex>
-                <Button variant="soft" color="gray" className="ml-1" onClick={() => {
-                  setSelectedPatientId('');
-                  setName('');
-                  setGender('');
-                  setAge('');
-                  setTelephone('');
-                  setAddress('');
-                  setSignOfLife('');
-                  setSymptom('');
-                  setDiagnosis('');
-                  setErrors({});
-                }}>
-                  Reset
-                </Button>
-              </Flex>
-            </label>
-
             {/* Name */}
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Name <Text color="red">*</Text></Text>
@@ -1127,6 +1126,7 @@ export default function RegisterPatientPage() {
                 <Flex justify="end" mt="4" gap="2">
                   <Button onClick={proceedToNextTab}>
                     Next: Prescription
+                    <ArrowRight size={16} />
                   </Button>
                 </Flex>
               </Box>
@@ -1312,7 +1312,10 @@ export default function RegisterPatientPage() {
                   {prescErrors.meal && (
                     <Text size="1" className="text-red-500 mt-1 pl-4">{prescErrors.meal}</Text>
                   )}
-                  <Button onClick={addDrugToTable}>Add</Button>
+                  <Button onClick={addDrugToTable} disabled={isAddingDrug || isLoadingPrescriptions}>
+                    <Plus size={16} />
+                    {isAddingDrug ? 'Adding...' : 'Add'}
+                  </Button>
                 </Flex>
               </Box>
             </Box>
@@ -1337,41 +1340,161 @@ export default function RegisterPatientPage() {
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                  {prescriptions.map((p, idx) => (
-                    <Table.Row key={`${p.id}-${p.name}-${idx}`}>
-                      <Table.Cell>{idx + 1}</Table.Cell>
-                      <Table.Cell>
-                        <Flex align="center" gap="2">
-                          <Text>{p.name}</Text>
-                          <IconButton
-                            size="1"
-                            variant="ghost"
-                            color="red"
-                            onClick={() => removeDrug(idx)}
-                            title="Remove medication"
-                          >
-                            <Trash2 size={14} />
-                          </IconButton>
-                        </Flex>
-                      </Table.Cell>
-                      <Table.Cell>{p.morning}</Table.Cell>
-                      <Table.Cell>{p.afternoon}</Table.Cell>
-                      <Table.Cell>{p.evening}</Table.Cell>
-                      <Table.Cell>{p.night}</Table.Cell>
-                      <Table.Cell>{p.period}</Table.Cell>
-                      <Table.Cell>{p.qty}</Table.Cell>
-                      <Table.Cell>{p.afterMeal ? 'Yes' : 'No'}</Table.Cell>
-                      <Table.Cell>{p.beforeMeal ? 'Yes' : 'No'}</Table.Cell>
-                      <Table.Cell>${p.price.toFixed(2)}</Table.Cell>
-                      <Table.Cell>${(p.price * p.qty).toFixed(2)}</Table.Cell>
-                    </Table.Row>
-                  ))}
-                  {prescriptions.length === 0 && (
-                    <Table.Row>
-                      <Table.Cell colSpan={12}>
-                        <Text size="2" className="text-gray-500">No drugs added yet</Text>
-                      </Table.Cell>
-                    </Table.Row>
+                  {isLoadingPrescriptions ? (
+                    // Loading skeleton rows
+                    Array.from({ length: 3 }).map((_, idx) => (
+                      <Table.Row key={`skeleton-${idx}`}>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-8 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-32 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" /></Table.Cell>
+                        <Table.Cell><Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" /></Table.Cell>
+                      </Table.Row>
+                    ))
+                  ) : (
+                    <>
+                      {prescriptions.map((p, idx) => (
+                        <Table.Row 
+                          key={`${p.id}-${p.name}-${idx}`}
+                          style={{
+                            opacity: removingDrugIndex === idx ? 0.5 : 1,
+                            transition: 'opacity 0.3s ease',
+                            position: 'relative'
+                          }}
+                        >
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-8 rounded" />
+                            ) : (
+                              idx + 1
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-32 rounded" />
+                            ) : (
+                              <Flex align="center" gap="2">
+                                <Text>{p.name}</Text>
+                                <IconButton
+                                  size="1"
+                                  variant="ghost"
+                                  color="red"
+                                  onClick={() => removeDrug(idx)}
+                                  title="Remove medication"
+                                  disabled={removingDrugIndex !== null}
+                                >
+                                  <Trash2 size={14} />
+                                </IconButton>
+                              </Flex>
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.morning
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.afternoon
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.evening
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.night
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
+                            ) : (
+                              p.period
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.qty
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.afterMeal ? 'Yes' : 'No'
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
+                            ) : (
+                              p.beforeMeal ? 'Yes' : 'No'
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
+                            ) : (
+                              `${p.price.toFixed(2)}`
+                            )}
+                          </Table.Cell>
+                          <Table.Cell>
+                            {removingDrugIndex === idx ? (
+                              <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
+                            ) : (
+                              `${(p.price * p.qty).toFixed(2)}`
+                            )}
+                          </Table.Cell>
+                        </Table.Row>
+                      ))}
+                      {isAddingDrug && (
+                        <Table.Row style={{ backgroundColor: 'var(--blue-2)' }}>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-8 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-32 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-16 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-12 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-16 rounded" /></Table.Cell>
+                          <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-16 rounded" /></Table.Cell>
+                        </Table.Row>
+                      )}
+                      {prescriptions.length === 0 && !isAddingDrug && (
+                        <Table.Row>
+                          <Table.Cell colSpan={12}>
+                            <Flex direction="column" align="center" justify="center" py="6">
+                              <Pill size={48} color="gray" style={{ opacity: 0.3, marginBottom: '12px' }} />
+                              <Text size="2" color="gray">No medications added yet</Text>
+                              <Text size="1" color="gray" mt="1">Add your first medication using the form above</Text>
+                            </Flex>
+                          </Table.Cell>
+                        </Table.Row>
+                      )}
+                    </>
                   )}
                 </Table.Body>
               </Table.Root>
@@ -1387,10 +1510,12 @@ export default function RegisterPatientPage() {
           {/* Tab Navigation */}
           <Flex justify="between" mt="4">
             <Button variant="soft" onClick={() => handleTabChange('patient-info')}>
+              <ArrowLeft size={16} />
               Back: Patient Info
             </Button>
             <Button onClick={proceedToNextTab} disabled={prescriptions.length === 0}>
               Next: Complete
+              <ArrowRight size={16} />
             </Button>
           </Flex>
         </Box>
@@ -1398,9 +1523,13 @@ export default function RegisterPatientPage() {
 
             <Tabs.Content value="complete">
               <Box mt="4">
-                <Box mb="4" p="3" style={{ backgroundColor: 'var(--gray-2)', borderRadius: '6px' }}>
-                  <Text size="2" color="gray">
-                    ✅ <strong>Step 3:</strong> Review the patient information and prescription details. Save the patient record and export/print the prescription.
+                <Box mb="4" p="3" style={{ 
+                  backgroundColor: hasSaved ? 'var(--green-3)' : 'var(--gray-2)', 
+                  borderRadius: '6px',
+                  border: hasSaved ? '1px solid var(--green-6)' : 'none'
+                }}>
+                  <Text size="2" style={{ color: hasSaved ? 'var(--green-11)' : 'var(--gray-11)' }}>
+                    {hasSaved ? '✅ Success! OPD history has been saved.' : '✅ Step 3: Review the patient information and prescription details. Save the patient record and export/print the prescription.'}
                   </Text>
                 </Box>
                 {/* Summary Section */}
@@ -1443,7 +1572,10 @@ export default function RegisterPatientPage() {
                     <Button variant="soft" color="gray">
                       Cancel
                     </Button>
-                    <Button onClick={handleSubmit}>Save OPD History</Button>
+                    <Button onClick={handleSubmit}>
+                      <Save size={16} />
+                      Save OPD History
+                    </Button>
                   </Flex>
                 </Flex>
 
