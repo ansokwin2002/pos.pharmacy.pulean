@@ -57,10 +57,19 @@ const MenuLink = ({
   onClose?: () => void;
   onLoadingStart?: (title: string) => void;
 }) => {
+  const pathname = usePathname();
   const padding = level === 1 ? "px-4" : level === 2 ? "pl-6 pr-4" : "pl-12 pr-4";
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only show loading for OPD and Drugs pages
+    // Don't show loading if already on this page
+    if (isActive || pathname === href || pathname.startsWith(href + '/')) {
+      if (onClose) {
+        onClose();
+      }
+      return;
+    }
+    
+    // Only show loading for OPD and Drugs pages when navigating to a different page
     if (href.includes('/opd/') || href.includes('/drugs')) {
       if (onLoadingStart) {
         onLoadingStart(title);

@@ -76,8 +76,8 @@ export default function Pagination({
       
       <Flex gap="2" align="center">
         <Button 
-          variant="outline" 
-          color="gray"
+          variant="soft" 
+          color="blue"
           size="1" 
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
@@ -91,8 +91,8 @@ export default function Pagination({
           ) : (
             <Button
               key={`page-${page}`}
-              variant={currentPage === page ? 'solid' : 'outline'}
-              color="gray"
+              variant={currentPage === page ? 'solid' : 'soft'}
+              color={currentPage === page ? 'orange' : 'blue'}
               size="1"
               onClick={() => onPageChange(Number(page))}
             >
@@ -102,8 +102,8 @@ export default function Pagination({
         ))}
         
         <Button 
-          variant="outline" 
-          color="gray"
+          variant="soft" 
+          color="blue"
           size="1"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}

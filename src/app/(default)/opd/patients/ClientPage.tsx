@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton, Tooltip } from "@radix-ui/themes";
 import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient } from '@/utilities/api/podPatients';
 import { PageHeading } from '@/components/common/PageHeading';
@@ -311,9 +311,12 @@ export default function PatientListPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [isPaginating, setIsPaginating] = useState(false);
+  const tableRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = async () => {
+      setIsPaginating(true);
       try {
         const data = await listPodPatients({ search: searchTerm || undefined, page: currentPage, per_page: itemsPerPage });
         const items = Array.isArray(data?.data) ? data.data : data;
@@ -321,6 +324,8 @@ export default function PatientListPage() {
       } catch (e) {
         console.error(e);
         toast.error('Failed to load patients');
+      } finally {
+        setIsPaginating(false);
       }
     };
     load();
@@ -490,6 +495,33 @@ export default function PatientListPage() {
         </Flex>
       </Box>
 
+      <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
+            {isPaginating && (
+              <Box style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                borderRadius: '8px'
+              }}>
+                <Flex direction="column" align="center" gap="2">
+                  <Box className="animate-spin" style={{
+                    width: '32px',
+                    height: '32px',
+                    border: '3px solid var(--gray-6)',
+                    borderTopColor: 'var(--blue-9)',
+                    borderRadius: '50%'
+                  }} />
+                  <Text size="2" color="gray">Loading...</Text>
+                </Flex>
+              </Box>
+            )}
             <Table.Root variant="surface" style={{ width: '100%' }}>
               <Table.Header>
                 <Table.Row>
@@ -600,6 +632,7 @@ export default function PatientListPage() {
                 )}
               </Table.Body>
             </Table.Root>
+            </Box>
       
             {filteredPatients.length > 0 && (
               <Pagination
@@ -609,10 +642,34 @@ export default function PatientListPage() {
                 totalItems={filteredPatients.length}
                 startIndex={startIndex}
                 endIndex={endIndex}
-                onPageChange={setCurrentPage}
+                onPageChange={(page) => {
+                  setIsPaginating(true);
+                  setCurrentPage(page);
+                  // Smooth scroll to table top with offset
+                  setTimeout(() => {
+                    if (tableRef.current) {
+                      const yOffset = -20; // 20px offset from top
+                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                      window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                    // Hide loading after a short delay to show smooth transition
+                    setTimeout(() => setIsPaginating(false), 300);
+                  }, 0);
+                }}
                 onItemsPerPageChange={(newSize) => {
+                  setIsPaginating(true);
                   setItemsPerPage(newSize);
                   setCurrentPage(1);
+                  // Smooth scroll to table top with offset
+                  setTimeout(() => {
+                    if (tableRef.current) {
+                      const yOffset = -20; // 20px offset from top
+                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                      window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                    // Hide loading after a short delay to show smooth transition
+                    setTimeout(() => setIsPaginating(false), 300);
+                  }, 0);
                 }}
               />
             )}

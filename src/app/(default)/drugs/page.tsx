@@ -34,6 +34,8 @@ export default function DrugsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const tableRef = React.useRef<HTMLDivElement>(null);
+  const [isPaginating, setIsPaginating] = useState(false);
   
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -121,7 +123,12 @@ export default function DrugsPage() {
   // Fetch drugs when filters or pagination change
   useEffect(() => {
     const fetchDrugs = async () => {
-      setIsLoading(true);
+      // Only show full loading on initial load, use isPaginating for page changes
+      if (drugsData.length === 0) {
+        setIsLoading(true);
+      } else {
+        setIsPaginating(true);
+      }
       setError(null);
       try {
         const params: any = {
@@ -154,11 +161,12 @@ export default function DrugsPage() {
         toast.error(err.detail?.message || err.message || 'Failed to fetch drugs');
       } finally {
         setIsLoading(false);
+        setIsPaginating(false);
       }
     };
 
     fetchDrugs();
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter]);
+  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter, drugsData.length]);
 
   const totalPages = Math.ceil(totalDrugs / itemsPerPage);
   const paginatedDrugs = drugsData; // drugsData is already paginated by the API
@@ -350,6 +358,33 @@ export default function DrugsPage() {
             </Callout.Text>
           </Callout.Root>
 
+                <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
+                {isPaginating && (
+                  <Box style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    borderRadius: '8px'
+                  }}>
+                    <Flex direction="column" align="center" gap="2">
+                      <Box className="animate-spin" style={{
+                        width: '32px',
+                        height: '32px',
+                        border: '3px solid var(--gray-6)',
+                        borderTopColor: 'var(--blue-9)',
+                        borderRadius: '50%'
+                      }} />
+                      <RadixText size="2" color="gray">Loading...</RadixText>
+                    </Flex>
+                  </Box>
+                )}
                 <DrugsTable
                   drugs={paginatedDrugs}
                   selectedIds={selectedIds}
@@ -359,6 +394,7 @@ export default function DrugsPage() {
                   onSelectionChange={handleSelectionChange}
                   onSelectAll={handleSelectAll}
                 />
+                </Box>
           {totalDrugs > 0 && (
             <Pagination
               currentPage={currentPage}
@@ -367,10 +403,28 @@ export default function DrugsPage() {
               totalItems={totalDrugs}
               startIndex={(currentPage - 1) * itemsPerPage + 1}
               endIndex={Math.min(currentPage * itemsPerPage, totalDrugs)}
-              onPageChange={setCurrentPage}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                // Smooth scroll to table top with offset
+                setTimeout(() => {
+                  if (tableRef.current) {
+                    const yOffset = -20; // 20px offset from top
+                    const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                  }
+                }, 0);
+              }}
               onItemsPerPageChange={(newSize) => {
                 setItemsPerPage(newSize);
                 setCurrentPage(1);
+                // Smooth scroll to table top with offset
+                setTimeout(() => {
+                  if (tableRef.current) {
+                    const yOffset = -20; // 20px offset from top
+                    const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                  }
+                }, 0);
               }}
             />
           )}
