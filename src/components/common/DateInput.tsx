@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { TextField, Button, Flex, Box, Text, RadioCards } from "@radix-ui/themes";
 import { Calendar as CalendarIcon, Clock, Check, X } from "lucide-react";
 import { Calendar } from "react-date-range";
@@ -42,9 +42,28 @@ export default function DateInput({
   const [tempDate, setTempDate] = useState<Date | undefined | null>(value);
   const inputRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const [displayPosition, setDisplayPosition] = useState<'top' | 'bottom'>(position); // State for actual display position
   // For client-side rendering only
   const [isMounted, setIsMounted] = useState(false);
-  
+
+  // Memoize calendar position style to avoid unnecessary re-renders
+  const calendarPositionStyle = useMemo(() => {
+    if (!inputRef.current) return {};
+    
+    const inputRect = inputRef.current.getBoundingClientRect();
+    const style: React.CSSProperties = { left: inputRect.left };
+    
+    if (displayPosition === 'top') {
+      // Position above the input
+      style.bottom = window.innerHeight - inputRect.top + 5; // 5px gap
+    } else {
+      // Position below the input
+      style.top = inputRect.bottom + 5; // 5px gap
+    }
+    
+    return style;
+  }, [displayPosition, open, inputRef.current?.getBoundingClientRect().top]); // Depend on relevant position changes
+
   useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);
@@ -66,6 +85,25 @@ export default function DateInput({
     }
     setTempDate(value);
   }, [value, includeTime]);
+
+
+  useEffect(() => {
+    // Calculate optimal position when calendar opens
+    if (open && inputRef.current && calendarRef.current) {
+      const inputRect = inputRef.current.getBoundingClientRect();
+      const calendarHeight = calendarRef.current.offsetHeight || 350; // Estimate height if not yet rendered
+      const spaceBelow = window.innerHeight - inputRect.bottom;
+      const spaceAbove = inputRect.top;
+
+      if (position === 'bottom' && spaceBelow < calendarHeight && spaceAbove > calendarHeight) {
+        setDisplayPosition('top');
+      } else if (position === 'top' && spaceAbove < calendarHeight && spaceBelow > calendarHeight) {
+        setDisplayPosition('bottom');
+      } else {
+        setDisplayPosition(position); // Default or explicit position
+      }
+    }
+  }, [open, position]); // Recalculate when open or explicit position changes
 
   useEffect(() => {
     // Handle clicks outside to close the date picker
@@ -229,9 +267,8 @@ export default function DateInput({
           className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-lg rounded-md"
           style={{
             position: 'fixed',
-            zIndex: 99999,
-            top: inputRef.current ? inputRef.current.getBoundingClientRect().bottom + 5 : 0,
-            left: inputRef.current ? inputRef.current.getBoundingClientRect().left : 0,
+            zIndex: 99999, // Ensure high z-index
+            ...calendarPositionStyle
           }}
         >
           <Box style={{marginTop: -17}}>
