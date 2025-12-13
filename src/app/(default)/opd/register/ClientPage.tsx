@@ -1560,7 +1560,7 @@ doc.setFont(khmerFontName);
                             {removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
-                              `$${p.price.toFixed(2)}`
+                              `$${p.price ? p.price.toFixed(2) : '0.00'}`
                             )}
                           </Table.Cell>
                           <Table.Cell>

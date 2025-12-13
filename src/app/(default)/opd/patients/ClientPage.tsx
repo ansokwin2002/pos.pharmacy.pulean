@@ -527,6 +527,8 @@ export default function PatientListPage() {
     <Box className="space-y-4 w-full px-4">
       <Flex justify="between" align="start" mb="5" className="w-full">
         <PageHeading title="Patient List" description="View and manage all patients" />
+      </Flex>
+      <Flex justify="start" mb="5"> {/* New Flex container to align button to the right, or adjust as needed */}
         <Button onClick={() => setAddPatientDialogOpen(true)}>
           <Plus size={16} /> Add Patient
         </Button>
