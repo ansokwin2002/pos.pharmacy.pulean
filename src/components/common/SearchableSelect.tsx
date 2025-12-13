@@ -33,6 +33,8 @@ interface SearchableSelectProps extends Omit<SelectProps<Option, boolean>, 'onCh
     height?: string | number;
     color?: string;
     fontSize?: string | number;
+    width?: string | number;
+    maxWidth?: string | number; // Add maxWidth property
   };
   usePortal?: boolean;
   isMulti?: boolean;
@@ -85,6 +87,8 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       fontSize: mergedStyles.fontSize,
       backgroundColor: isDarkMode ? 'var(--slate-1)' : provided.backgroundColor,
       boxShadow: state.isFocused ? `0 0 0 1px ${mergedStyles.focusBorderColor}` : provided.boxShadow,
+      width: mergedStyles.width, // Apply width here
+      maxWidth: mergedStyles.maxWidth, // Apply maxWidth here
     }),
     option: (provided, state) => ({
       ...provided,

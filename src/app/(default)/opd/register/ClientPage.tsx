@@ -1246,7 +1246,7 @@ doc.setFont(khmerFontName);
               <Box className="p-4">
                 <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))' }}>
                   {/* Drug */}
-                  <div className="col-span-12 sm:col-span-6 lg:col-span-6 min-w-[240px]">
+                  <div className="col-span-12 sm:col-span-6 lg:col-span-6">
                     <Text as="div" size="2" mb="1" weight="bold">Drug</Text>
                     <Flex align="center" gap="2">
                                             <Box className="flex-1">
@@ -1295,6 +1295,7 @@ doc.setFont(khmerFontName);
                                                   }}
                                                   placeholder="Select a drug"
                                                   usePortal={true}
+                                                  customStyles={{ width: '700px' }}
                                                 />
                                                 {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
                                                 {prescErrors.drug && (
