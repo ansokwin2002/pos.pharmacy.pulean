@@ -16,12 +16,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
     
     try {
       const res = await apiLogin({ email, password });
@@ -31,8 +29,13 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login failed:', error);
       const detail = error?.detail;
-      const message = detail?.message || detail?.errors?.email?.[0] || 'Login failed';
-      setError(message);
+      let message = detail?.message || detail?.errors?.email?.[0] || 'Login failed';
+
+      // Intercept and change the specific error message
+      if (message === 'The provided credentials are incorrect.') {
+        message = 'Incorrect email or password. Please try again.';
+      }
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -56,9 +59,6 @@ export default function LoginPage() {
         <Container size="2" className="max-w-md w-full mx-auto">
           <Card size="3">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <Text size="2" color="red">{error}</Text>
-              )}
               <Flex direction="column" gap="1">
                 <Text as="label" size="2" weight="medium">Email Address</Text>
                 <TextField.Root 

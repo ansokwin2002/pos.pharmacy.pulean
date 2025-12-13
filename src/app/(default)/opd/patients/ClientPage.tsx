@@ -526,7 +526,21 @@ export default function PatientListPage() {
   return (
     <Box className="space-y-4 w-full px-4">
       <Flex justify="between" align="start" mb="5" className="w-full">
-        <PageHeading title="Patient List" description="View and manage all patients" />
+      <Box
+        style={{
+          backgroundColor: 'var(--gray-2)',
+          padding: 'var(--space-3)',
+          borderRadius: 'var(--radius-3)',
+          marginBottom: 'var(--space-5)',
+          width: '100%', // Ensure it takes full width
+        }}
+      >
+        <PageHeading 
+          title="Patient List" 
+          description="View and manage all patients" 
+          titleStyle={{ color: '#fc7f19', fontWeight: 'bold' }} 
+        />
+      </Box>
       </Flex>
       <Flex justify="start" mb="5"> {/* New Flex container to align button to the right, or adjust as needed */}
         <Button onClick={() => setAddPatientDialogOpen(true)}>

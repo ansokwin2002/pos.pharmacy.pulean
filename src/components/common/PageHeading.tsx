@@ -12,6 +12,7 @@ interface PageHeadingProps {
   onBackClick?: () => void;
   noMarginBottom?: boolean;
   badge?: React.ReactNode;
+  titleStyle?: React.CSSProperties;
 }
 
 export function PageHeading({ 
@@ -21,7 +22,8 @@ export function PageHeading({
   showBackButton = false,
   onBackClick,
   noMarginBottom = false,
-  badge
+  badge,
+  titleStyle,
 }: PageHeadingProps) {
   const router = useRouter();
   
@@ -36,7 +38,7 @@ export function PageHeading({
   const headingContent = (
     <>
       <Flex align="center" gap="2" mb="1">
-        <Heading as="h1" size="6">{title}</Heading>
+        <Heading as="h1" size="6" style={titleStyle}>{title}</Heading>
         {badge && badge}
       </Flex>
       {children ? (
