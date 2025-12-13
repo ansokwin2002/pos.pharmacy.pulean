@@ -1295,7 +1295,7 @@ doc.setFont(khmerFontName);
                                                   }}
                                                   placeholder="Select a drug"
                                                   usePortal={true}
-                                                  customStyles={{ width: '700px' }}
+                                                  customStyles={{ width: '700px',height:'35px' }}
                                                 />
                                                 {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
                                                 {prescErrors.drug && (
