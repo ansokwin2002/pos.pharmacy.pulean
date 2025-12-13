@@ -120,9 +120,18 @@ export default function DrugDetailPage() {
 
   if (isLoading) {
     return (
-      <Box className="space-y-4">
-        <Text>Loading...</Text>
-      </Box>
+      <Flex justify="center" align="center" style={{ height: 'calc(100vh - 100px)' }}> {/* Adjust height as needed */}
+        <Flex direction="column" align="center" gap="2">
+          <Box className="animate-spin" style={{
+            width: '32px',
+            height: '32px',
+            border: '3px solid var(--gray-6)',
+            borderTopColor: 'var(--blue-9)',
+            borderRadius: '50%'
+          }} />
+          <Text size="2" color="gray">Loading drug details...</Text>
+        </Flex>
+      </Flex>
     );
   }
 

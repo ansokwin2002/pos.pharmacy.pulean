@@ -12,7 +12,7 @@ import {
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import { formatCurrency } from '@/utilities';
-import { Edit, Trash2, Eye } from 'lucide-react';
+import { Edit, Trash2, Eye, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SortableHeader } from '@/components/common/SortableHeader';
 
@@ -301,6 +301,19 @@ export default function DrugsTable({
                         }}
                       >
                         <Eye size={14} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip content="Add Stock">
+                      <IconButton
+                        size="1"
+                        variant="ghost"
+                        color="green"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/drugs/add-stock/${drug.id}`);
+                        }}
+                      >
+                        <Package size={14} />
                       </IconButton>
                     </Tooltip>
                     <Tooltip content="Edit Drug">
