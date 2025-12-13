@@ -210,12 +210,7 @@ export default function DrugDetailPage() {
         <Card className="p-6">
           <Text size="4" weight="bold" className="mb-6 block">Product Details</Text>
           <Flex direction="column" gap="6">
-            {drug.manufacturer && (
-              <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
-                <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Manufacturer</Text>
-                <Text size="3" weight="medium">{drug.manufacturer}</Text>
-              </Box>
-            )}
+
             {drug.barcode && (
               <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
                 <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Barcode</Text>

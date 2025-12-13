@@ -309,7 +309,7 @@ export default function DrugsPage() {
           <Flex gap="4" align="center" wrap="wrap" mb="4">
             <Box className="flex-grow min-w-[250px]">
               <TextField.Root
-                placeholder="Search by name, generic name, brand, barcode, or manufacturer..."
+                placeholder="Search by name, generic name, brand, or barcode..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               >

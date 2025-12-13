@@ -225,13 +225,21 @@ export interface Drug {
   brand_name?: string;
   category_id?: number;
   image?: string;
-  unit: string;
-  price: number;
-  cost_price: number;
-  quantity: number;
+  box_price: number;
+  box_cost_price: number;
+  strip_price: number;
+  strip_cost_price: number;
+  tablet_price: number;
+  tablet_cost_price: number;
+  strips_per_box: number;
+  tablets_per_strip: number;
+  quantity_in_boxes: number;
+  total_strips?: number;
+  total_tablets?: number;
+  quantity?: number; // total tablets
   expiry_date: Date;
   barcode?: string;
-  manufacturer?: string;
+
   dosage?: string;
   instructions?: string;
   side_effects?: string;

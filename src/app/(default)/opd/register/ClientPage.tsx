@@ -252,7 +252,7 @@ export default function RegisterPatientPage() {
     }
   }, [currentTab, prescriptions.length, validatePatientInfo, handleTabChange]);
 
-  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; manufacturer?: string; }[]>([]);
+  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; }[]>([]);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
 
   const fetchDrugs = useCallback(async () => {
@@ -265,7 +265,7 @@ export default function RegisterPatientPage() {
         price: Number(drug.price), // Ensure price is a number
         generic_name: drug.generic_name,
         unit: drug.unit,
-        manufacturer: drug.manufacturer,
+
       }));
       setDrugOptions(drugs);
     } catch (error) {
@@ -298,7 +298,7 @@ export default function RegisterPatientPage() {
   const [manualDrugName, setManualDrugName] = useState('');
   const [manualDrugPrice, setManualDrugPrice] = useState<string>('');
   const [manualErrors, setManualErrors] = useState<{ name?: string; price?: string }>({});
-  const [customDrugs, setCustomDrugs] = useState<{ id: string; name: string; price: number; generic_name?: string; manufacturer?: string; unit?: string; }[]>([]);
+  const [customDrugs, setCustomDrugs] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; }[]>([]);
 
   // Prescription form validation (drug select)
   const [prescErrors, setPrescErrors] = useState<{ drug?: string; meal?: string }>({});
@@ -1283,14 +1283,12 @@ doc.setFont(khmerFontName);
                                   price: Number(fetchedDrug.price),
                                   generic_name: fetchedDrug.generic_name,
                                   unit: fetchedDrug.unit,
-                                  manufacturer: fetchedDrug.manufacturer,
                                 } : d));
                                 setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
                                   ...fetchedDrug,
                                   price: Number(fetchedDrug.price),
                                   generic_name: fetchedDrug.generic_name,
                                   unit: fetchedDrug.unit,
-                                  manufacturer: fetchedDrug.manufacturer,
                                 } : d));
                               } catch (error) {
                                 console.error('Failed to fetch selected drug details:', error);
@@ -1327,7 +1325,7 @@ doc.setFont(khmerFontName);
                               <Select.Group>
                                 <Select.Label>Drugs</Select.Label>
                                 {(() => {
-                                  const filteredDrugOptions = allDrugOptions.filter(d => d.name.toLowerCase().includes(drugSearchTerm.toLowerCase()) || (d.generic_name && d.generic_name.toLowerCase().includes(drugSearchTerm.toLowerCase())) || (d.manufacturer && d.manufacturer.toLowerCase().includes(drugSearchTerm.toLowerCase())));
+                                  const filteredDrugOptions = allDrugOptions.filter(d => d.name.toLowerCase().includes(drugSearchTerm.toLowerCase()) || (d.generic_name && d.generic_name.toLowerCase().includes(drugSearchTerm.toLowerCase())));
                                   if (filteredDrugOptions.length === 0) {
                                                                          return <Select.Item value="no-results" disabled>No results found</Select.Item>;                                  }
                                   return filteredDrugOptions.map(d => (
