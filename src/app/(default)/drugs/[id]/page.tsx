@@ -204,53 +204,231 @@ export default function DrugDetailPage() {
         </Card>
       </Grid>
 
-      {/* Detailed Information */}
-      <Grid columns={{ initial: "1", lg: "2" }} gap="6">
-        {/* Product Details */}
-        <Card className="p-6">
-          <Text size="4" weight="bold" className="mb-6 block">Product Details</Text>
-          <Flex direction="column" gap="6">
+            {/* Detailed Information */}
 
-            {drug.barcode && (
-              <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
-                <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Barcode</Text>
-                <Text size="3" className="font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded border dark:border-gray-600 inline-block">{drug.barcode}</Text>
-              </Box>
-            )}
-            {drug.dosage && (
-              <Box className="pb-2">
-                <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Dosage</Text>
-                <Text size="3" weight="medium">{drug.dosage}</Text>
-              </Box>
-            )}
-          </Flex>
-        </Card>
+            <Grid columns={{ initial: "1", lg: "2" }} gap="6">
 
-        {/* Medical Information */}
-        <Card className="p-6">
-          <Text size="4" weight="bold" className="mb-6 block">Medical Information</Text>
-          <Flex direction="column" gap="6">
-            {drug.instructions && (
-              <Box className="pb-4 border-b border-gray-200 dark:border-gray-700">
-                <Text size="2" color="gray" className="block mb-3 uppercase tracking-wide">Usage Instructions</Text>
-                <Text size="3" className="leading-relaxed text-gray-800 dark:text-gray-200">{drug.instructions}</Text>
-              </Box>
-            )}
-            {drug.side_effects && (
-              <Box className="pb-2">
-                <Text size="2" color="gray" className="block mb-3 uppercase tracking-wide">Side Effects</Text>
-                <Text size="3" className="leading-relaxed text-gray-800 dark:text-gray-200">{drug.side_effects}</Text>
-              </Box>
-            )}
-            {!drug.instructions && !drug.side_effects && (
-              <Box className="text-center py-8">
-                <Text size="3" color="gray" style={{ fontStyle: 'italic' }}>
-                  No medical information available
-                </Text>
-              </Box>
-            )}
-          </Flex>
-        </Card>
+              {/* Product Details */}
+
+              <Card className="p-6">
+
+                <Text size="4" weight="bold" className="mb-6 block">Product Details</Text>
+
+                <Flex direction="column" gap="6">
+
+                  {drug.image && (
+
+                    <Box className="mb-4">
+
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+
+                      <img src={drug.image} alt={`${drug.name} image`} className="w-full h-auto max-h-64 object-contain rounded-md" />
+
+                    </Box>
+
+                  )}
+
+                  {drug.barcode && (
+
+                    <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                      <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Barcode</Text>
+
+                      <Text size="3" className="font-mono bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded border dark:border-gray-600 inline-block">{drug.barcode}</Text>
+
+                    </Box>
+
+                  )}
+
+                  {drug.slug && (
+
+                    <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                      <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Slug</Text>
+
+                      <Text size="3" weight="medium">{drug.slug}</Text>
+
+                    </Box>
+
+                  )}
+
+                  {drug.brand_id && (
+
+                    <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                      <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Brand ID</Text>
+
+                      <Text size="3" weight="medium">{drug.brand_id}</Text>
+
+                    </Box>
+
+                  )}
+
+                              {drug.category_id && (
+
+                                <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                                  <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Category ID</Text>
+
+                                  <Text size="3" weight="medium">{drug.category_id}</Text>
+
+                                </Box>
+
+                              )}
+
+                              <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                                <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Strips Per Box</Text>
+
+                                <Text size="3" weight="medium">{drug.strips_per_box}</Text>
+
+                              </Box>
+
+                              <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                                <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Tablets Per Strip</Text>
+
+                                <Text size="3" weight="medium">{drug.tablets_per_strip}</Text>
+
+                              </Box>
+
+                              <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                                <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Quantity in Boxes</Text>
+
+                                <Text size="3" weight="medium">{drug.quantity_in_boxes}</Text>
+
+                              </Box>
+
+                              {drug.dosage && (
+
+                    <Box className="pb-2">
+
+                      <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Dosage</Text>
+
+                      <Text size="3" weight="medium">{drug.dosage}</Text>
+
+                    </Box>
+
+                  )}
+
+                </Flex>
+
+              </Card>
+
+      
+
+              {/* Pricing Details */}
+
+              <Card className="p-6">
+
+                <Text size="4" weight="bold" className="mb-6 block">Pricing Details</Text>
+
+                <Flex direction="column" gap="6">
+
+                  <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                    <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Box Price</Text>
+
+                    <Text size="3" weight="medium">{formatCurrency(drug.box_price)}</Text>
+
+                  </Box>
+
+                  <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                    <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Box Cost Price</Text>
+
+                    <Text size="3" weight="medium">{formatCurrency(drug.box_cost_price)}</Text>
+
+                  </Box>
+
+                  <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                    <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Strip Price</Text>
+
+                    <Text size="3" weight="medium">{formatCurrency(drug.strip_price)}</Text>
+
+                  </Box>
+
+                  <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                    <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Strip Cost Price</Text>
+
+                    <Text size="3" weight="medium">{formatCurrency(drug.strip_cost_price)}</Text>
+
+                  </Box>
+
+                  <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
+
+                    <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Tablet Price</Text>
+
+                    <Text size="3" weight="medium">{formatCurrency(drug.tablet_price)}</Text>
+
+                  </Box>
+
+                  <Box className="pb-2">
+
+                    <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Tablet Cost Price</Text>
+
+                    <Text size="3" weight="medium">{formatCurrency(drug.tablet_cost_price)}</Text>
+
+                  </Box>
+
+                </Flex>
+
+              </Card>
+
+      
+
+              {/* Medical Information */}
+
+              <Card className="p-6">
+
+                <Text size="4" weight="bold" className="mb-6 block">Medical Information</Text>
+
+                <Flex direction="column" gap="6">
+
+                  {drug.instructions && (
+
+                    <Box className="pb-4 border-b border-gray-200 dark:border-gray-700">
+
+                      <Text size="2" color="gray" className="block mb-3 uppercase tracking-wide">Usage Instructions</Text>
+
+                      <Text size="3" className="leading-relaxed text-gray-800 dark:text-gray-200">{drug.instructions}</Text>
+
+                    </Box>
+
+                  )}
+
+                  {drug.side_effects && (
+
+                    <Box className="pb-2">
+
+                      <Text size="2" color="gray" className="block mb-3 uppercase tracking-wide">Side Effects</Text>
+
+                      <Text size="3" className="leading-relaxed text-gray-800 dark:text-gray-200">{drug.side_effects}</Text>
+
+                    </Box>
+
+                  )}
+
+                  {!drug.instructions && !drug.side_effects && (
+
+                    <Box className="text-center py-8">
+
+                      <Text size="3" color="gray" style={{ fontStyle: 'italic' }}>
+
+                        No medical information available
+
+                      </Text>
+
+                    </Box>
+
+                  )}
+
+                </Flex>
+
+              </Card>
       </Grid>
 
 

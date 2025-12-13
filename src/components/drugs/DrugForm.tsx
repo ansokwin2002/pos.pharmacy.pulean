@@ -89,33 +89,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
       newErrors.generic_name = 'Generic name is required';
     }
 
-    if (!formData.box_price || formData.box_price <= 0) {
-      newErrors.box_price = 'Box price must be greater than 0';
-    }
-    if (!formData.box_cost_price || formData.box_cost_price <= 0) {
-      newErrors.box_cost_price = 'Box cost price must be greater than 0';
-    }
-    if (!formData.strip_price || formData.strip_price <= 0) {
-      newErrors.strip_price = 'Strip price must be greater than 0';
-    }
-    if (!formData.strip_cost_price || formData.strip_cost_price <= 0) {
-      newErrors.strip_cost_price = 'Strip cost price must be greater than 0';
-    }
-    if (!formData.tablet_price || formData.tablet_price <= 0) {
-      newErrors.tablet_price = 'Tablet price must be greater than 0';
-    }
-    if (!formData.tablet_cost_price || formData.tablet_cost_price <= 0) {
-      newErrors.tablet_cost_price = 'Tablet cost price must be greater than 0';
-    }
-    if (formData.quantity_in_boxes === undefined || formData.quantity_in_boxes < 0) {
-      newErrors.quantity_in_boxes = 'Quantity (in boxes) must be 0 or greater';
-    }
-    if (!formData.strips_per_box || formData.strips_per_box <= 0) {
-      newErrors.strips_per_box = 'Strips per box must be greater than 0';
-    }
-    if (!formData.tablets_per_strip || formData.tablets_per_strip <= 0) {
-      newErrors.tablets_per_strip = 'Tablets per strip must be greater than 0';
-    }
+
 
     if (!formData.expiry_date) {
       newErrors.expiry_date = 'Expiry date is required';
@@ -219,7 +193,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
           <Grid columns="3" gap="4" mt="4">
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Quantity in Boxes *
+                Quantity in Boxes
               </Text>
               <TextField.Root
                 type="number"
@@ -236,7 +210,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Box Price *
+                Box Price
               </Text>
               <TextField.Root
                 type="number"
@@ -254,7 +228,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Box Cost Price *
+                Box Cost Price
               </Text>
               <TextField.Root
                 type="number"
@@ -274,11 +248,11 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
           <Grid columns="3" gap="4" mt="4">
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Strips Per Box *
+                Strips Per Box
               </Text>
               <TextField.Root
                 type="number"
-                min="1"
+                min="0"
                 value={formData.strips_per_box?.toString() || ''}
                 onChange={(e) => handleInputChange('strips_per_box', parseInt(e.target.value) || 0)}
                 placeholder="0"
@@ -291,7 +265,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Strip Price *
+                Strip Price
               </Text>
               <TextField.Root
                 type="number"
@@ -309,7 +283,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Strip Cost Price *
+                Strip Cost Price
               </Text>
               <TextField.Root
                 type="number"
@@ -329,11 +303,11 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
           <Grid columns="3" gap="4" mt="4">
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Tablets Per Strip *
+                Tablets Per Strip
               </Text>
               <TextField.Root
                 type="number"
-                min="1"
+                min="0"
                 value={formData.tablets_per_strip?.toString() || ''}
                 onChange={(e) => handleInputChange('tablets_per_strip', parseInt(e.target.value) || 0)}
                 placeholder="0"
@@ -346,7 +320,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Tablet Price *
+                Tablet Price
               </Text>
               <TextField.Root
                 type="number"
@@ -364,7 +338,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Tablet Cost Price *
+                Tablet Cost Price
               </Text>
               <TextField.Root
                 type="number"
