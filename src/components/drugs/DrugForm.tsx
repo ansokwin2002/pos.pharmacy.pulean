@@ -36,8 +36,8 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
     tablet_price: 0,
     tablet_cost_price: 0,
     quantity_in_boxes: 0,
-    strips_per_box: 0,
-    tablets_per_strip: 0,
+    strips_per_box: undefined, // Initialize as undefined
+    tablets_per_strip: undefined, // Initialize as undefined
     expiry_date: new Date(),
     barcode: '',
 
@@ -49,6 +49,8 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
       ...defaults,
       ...drug,
       expiry_date: new Date(drug.expiry_date),
+      strips_per_box: drug.strips_per_box ?? undefined, // Ensure it's undefined if null/0 from backend
+      tablets_per_strip: drug.tablets_per_strip ?? undefined,
     };
   }
 
@@ -64,9 +66,17 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
   }, [drug]);
 
   const handleInputChange = (field: keyof Drug, value: any) => {
+    let newValue = value;
+    if (field === 'strips_per_box' || field === 'tablets_per_strip' || field === 'quantity_in_boxes') {
+      newValue = value === '' ? undefined : parseInt(value) || 0;
+    } else if (field === 'box_price' || field === 'box_cost_price' || field === 'strip_price' || field === 'strip_cost_price' || field === 'tablet_price' || field === 'tablet_cost_price') {
+      newValue = value === '' ? undefined : parseFloat(value) || 0;
+    }
+
+
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      [field]: newValue
     }));
     
     // Clear error when user starts typing
@@ -105,7 +115,25 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     e.preventDefault();
     
     if (validateForm()) {
-      const dataToSubmit = { ...formData };
+      const dataToSubmit: Partial<Drug> = { ...formData };
+      
+      // Calculate total quantity (total tablets)
+      const quantityInBoxes = dataToSubmit.quantity_in_boxes || 0;
+      const stripsPerBox = dataToSubmit.strips_per_box || 0;
+      const tabletsPerStrip = dataToSubmit.tablets_per_strip || 0;
+      
+      // The logic for total tablets depends on what's available.
+      // If we have strips and tablets per strip, we can calculate total from boxes.
+      if (stripsPerBox > 0 && tabletsPerStrip > 0) {
+        dataToSubmit.quantity = quantityInBoxes * stripsPerBox * tabletsPerStrip;
+      } else if (stripsPerBox > 0) {
+        // Case where we only have strips per box
+        dataToSubmit.quantity = quantityInBoxes * stripsPerBox;
+      } else {
+        // Fallback to just quantity in boxes if other units are not defined
+        dataToSubmit.quantity = quantityInBoxes;
+      }
+
       if (dataToSubmit.expiry_date) {
         dataToSubmit.expiry_date = dataToSubmit.expiry_date.toISOString().split('T')[0] as any; // Format to YYYY-MM-DD string
       }
@@ -252,9 +280,8 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
               </Text>
               <TextField.Root
                 type="number"
-                min="0"
-                value={formData.strips_per_box?.toString() || ''}
-                onChange={(e) => handleInputChange('strips_per_box', parseInt(e.target.value) || 0)}
+                value={formData.strips_per_box?.toString() ?? ''}
+                onChange={(e) => handleInputChange('strips_per_box', e.target.value)}
                 placeholder="0"
                 className={errors.strips_per_box ? 'border-red-500' : ''}
               />
@@ -307,9 +334,8 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
               </Text>
               <TextField.Root
                 type="number"
-                min="0"
-                value={formData.tablets_per_strip?.toString() || ''}
-                onChange={(e) => handleInputChange('tablets_per_strip', parseInt(e.target.value) || 0)}
+                value={formData.tablets_per_strip?.toString() ?? ''}
+                onChange={(e) => handleInputChange('tablets_per_strip', e.target.value)}
                 placeholder="0"
                 className={errors.tablets_per_strip ? 'border-red-500' : ''}
               />

@@ -231,8 +231,8 @@ export interface Drug {
   strip_cost_price: number;
   tablet_price: number;
   tablet_cost_price: number;
-  strips_per_box: number;
-  tablets_per_strip: number;
+  strips_per_box?: number;
+  tablets_per_strip?: number;
   quantity_in_boxes: number;
   total_strips?: number;
   total_tablets?: number;
