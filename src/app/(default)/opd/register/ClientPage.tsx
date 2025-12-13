@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs, IconButton } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
+import SearchableSelect from '@/components/common/SearchableSelect';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
 import { User, Pill, CheckCircle, FileText, Trash2, Plus, ArrowRight, Save, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -279,19 +280,6 @@ export default function RegisterPatientPage() {
   }, [fetchDrugs]);
 
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
-  const [drugSearchTerm, setDrugSearchTerm] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isSelectOpen) {
-      // Defer focus to ensure the element is fully mounted
-      setTimeout(() => {
-        if (searchRef.current) {
-          searchRef.current.focus();
-        }
-      }, 0);
-    }
-  }, [isSelectOpen]);
 
   // Manual drug dialog state
   const [isManualDrugOpen, setManualDrugOpen] = useState(false);
@@ -1261,86 +1249,59 @@ doc.setFont(khmerFontName);
                   <div className="col-span-12 sm:col-span-6 lg:col-span-6 min-w-[240px]">
                     <Text as="div" size="2" mb="1" weight="bold">Drug</Text>
                     <Flex align="center" gap="2">
-                      <Box className="flex-1">
-                        <Flex direction="column" align="start" className="w-full">
-                          <Select.Root value={selectedDrugId} onValueChange={async (val) => {
-                            if (val === '__add_custom__') {
-                              setManualDrugOpen(true);
-                              return;
-                            }
-                            setSelectedDrugId(val);
-                            if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
-
-                            // Fetch latest drug data when selected
-                            if (val) {
-                              setIsFetchingSelectedDrug(true);
-                              try {
-                                const { getDrug } = await import('@/utilities/api/drugs');
-                                const fetchedDrug = await getDrug(val);
-                                // Update the specific drug in allDrugOptions with the latest data
-                                setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                  ...fetchedDrug,
-                                  price: Number(fetchedDrug.price),
-                                  generic_name: fetchedDrug.generic_name,
-                                  unit: fetchedDrug.unit,
-                                } : d));
-                                setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                  ...fetchedDrug,
-                                  price: Number(fetchedDrug.price),
-                                  generic_name: fetchedDrug.generic_name,
-                                  unit: fetchedDrug.unit,
-                                } : d));
-                              } catch (error) {
-                                console.error('Failed to fetch selected drug details:', error);
-                                toast.error('Failed to load selected drug details');
-                              } finally {
-                                setIsFetchingSelectedDrug(false);
-                              }
-                            }
-                          }} onOpenChange={(open) => {
-                            setIsSelectOpen(open);
-                            if (open) {
-                              fetchDrugs(); // Refetch drugs when the dropdown is opened
-                            }
-                          }}>
-                            <Select.Trigger placeholder="Select a drug" style={{ width: '100%' }} />
-                            <Select.Content onPointerDown={(e) => {
-                              // Prevent closing the select when clicking inside the search input area
-                              if (searchRef.current && searchRef.current.contains(e.target as Node)) {
-                                // Do nothing, allow default behavior for the search input
-                              } else {
-                                e.preventDefault();
-                              }
-                            }}>
-                              <Box p="2">
-                                <div onPointerDown={(e) => { e.stopPropagation(); }}>
-                                  <TextField.Root
-                                    ref={searchRef}
-                                    placeholder="Search drugs..."
-                                    value={drugSearchTerm}
-                                    onChange={(e) => setDrugSearchTerm(e.target.value)}
-                                  />
-                                </div>
-                              </Box>
-                              <Select.Group>
-                                <Select.Label>Drugs</Select.Label>
-                                {(() => {
-                                  const filteredDrugOptions = allDrugOptions.filter(d => d.name.toLowerCase().includes(drugSearchTerm.toLowerCase()) || (d.generic_name && d.generic_name.toLowerCase().includes(drugSearchTerm.toLowerCase())));
-                                  if (filteredDrugOptions.length === 0) {
-                                                                         return <Select.Item value="no-results" disabled>No results found</Select.Item>;                                  }
-                                  return filteredDrugOptions.map(d => (
-                                    <Select.Item key={d.id} value={d.id}>{d.name} {d.generic_name ? `(${d.generic_name})` : ''} {d.unit ? `(${d.unit})` : ''} — ${d.price.toFixed(2)}</Select.Item>
-                                  ));
-                                })()}
-                              </Select.Group>
-                            </Select.Content>
-                          </Select.Root>
-                          {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
-                          {prescErrors.drug && (
-                            <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
-                          )}
-                        </Flex>
-                      </Box>
+                                            <Box className="flex-1">
+                                              <Flex direction="column" align="start" className="w-full">
+                                                <SearchableSelect
+                                                  options={allDrugOptions.map(d => ({
+                                                    value: d.id,
+                                                    label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${d.price.toFixed(2)}`
+                                                  }))}
+                                                  value={selectedDrugId}
+                                                  onChange={async (val) => {
+                                                    const value = val as string;
+                                                    if (value === '__add_custom__') {
+                                                      setManualDrugOpen(true);
+                                                      return;
+                                                    }
+                                                    setSelectedDrugId(value);
+                                                    if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
+                      
+                                                    // Fetch latest drug data when selected
+                                                    if (value) {
+                                                      setIsFetchingSelectedDrug(true);
+                                                      try {
+                                                        const { getDrug } = await import('@/utilities/api/drugs');
+                                                        const fetchedDrug = await getDrug(value);
+                                                        // Update the specific drug in allDrugOptions with the latest data
+                                                        setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                                          ...fetchedDrug,
+                                                          price: Number(fetchedDrug.price),
+                                                          generic_name: fetchedDrug.generic_name,
+                                                          unit: fetchedDrug.unit,
+                                                        } : d));
+                                                        setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                                          ...fetchedDrug,
+                                                          price: Number(fetchedDrug.price),
+                                                          generic_name: fetchedDrug.generic_name,
+                                                          unit: fetchedDrug.unit,
+                                                        } : d));
+                                                      } catch (error) {
+                                                        console.error('Failed to fetch selected drug details:', error);
+                                                        toast.error('Failed to load selected drug details');
+                                                      } finally {
+                                                        setIsFetchingSelectedDrug(false);
+                                                      }
+                                                    }
+                                                  }}
+                                                  placeholder="Select a drug"
+                                                  usePortal={true}
+                                                />
+                                                {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
+                                                {prescErrors.drug && (
+                                                  <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
+                                                )}
+                                              </Flex>
+                                            </Box>
                       <Dialog.Root open={isManualDrugOpen} onOpenChange={(open) => {
                         setManualDrugOpen(open);
                         if (!open) setManualErrors({});
