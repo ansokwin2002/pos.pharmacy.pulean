@@ -188,10 +188,6 @@ export default function DrugDetailPage() {
       {/* Quick Stats Cards */}
       <Grid columns={{ initial: "2", sm: "4" }} gap="4">
         <Card className="p-4">
-          <Text size="2" color="gray" className="block mb-1">Price</Text>
-          <Text size="4" weight="bold">{formatCurrency(drug.price)}</Text>
-        </Card>
-        <Card className="p-4">
           <Text size="2" color="gray" className="block mb-1">Stock</Text>
           <Flex align="center" gap="2">
             <Text size="4" weight="bold">{drug.quantity}</Text>
@@ -200,10 +196,6 @@ export default function DrugDetailPage() {
           <Box className="mt-1">
             {getStockBadge(drug.quantity)}
           </Box>
-        </Card>
-        <Card className="p-4">
-          <Text size="2" color="gray" className="block mb-1">Cost Price</Text>
-          <Text size="4" weight="bold">{formatCurrency(drug.cost_price)}</Text>
         </Card>
         <Card className="p-4">
           <Text size="2" color="gray" className="block mb-1">Expiry</Text>

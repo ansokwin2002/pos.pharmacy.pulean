@@ -131,10 +131,6 @@ export default function DrugsTable({
           aValue = a.brand_name || '';
           bValue = b.brand_name || '';
           break;
-        case 'price':
-          aValue = a.price;
-          bValue = b.price;
-          break;
         case 'quantity':
           aValue = a.quantity;
           bValue = b.quantity;
@@ -205,14 +201,7 @@ export default function DrugsTable({
                 onSort={handleSort}
               />
             </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>
-              <SortableHeader
-                label="Price"
-                sortKey="price"
-                currentSort={sortConfig}
-                onSort={handleSort}
-              />
-            </Table.ColumnHeaderCell>
+
             <Table.ColumnHeaderCell>
               <SortableHeader
                 label="Stock"
@@ -221,7 +210,6 @@ export default function DrugsTable({
                 onSort={handleSort}
               />
             </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Unit</Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>
               <SortableHeader
                 label="Expiry Date"
@@ -245,7 +233,7 @@ export default function DrugsTable({
         <Table.Body>
           {sortedDrugs.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={10}>
+              <Table.Cell colSpan={8}>
                 <Text align="center" className="py-4 text-slate-500">No drugs found</Text>
               </Table.Cell>
             </Table.Row>
@@ -278,14 +266,12 @@ export default function DrugsTable({
                     <Text color="gray">-</Text>
                   )}
                 </Table.Cell>
-                <Table.Cell>{formatCurrency(drug.price)}</Table.Cell>
                 <Table.Cell>
                   <Flex align="center" gap="2">
                     <Text>{drug.quantity}</Text>
                     {getStockBadge(drug.quantity)}
                   </Flex>
                 </Table.Cell>
-                <Table.Cell>{drug.unit}</Table.Cell>
                 <Table.Cell>{formatExpiryDate(drug.expiry_date)}</Table.Cell>
                 <Table.Cell>{getStatusBadge(drug.status)}</Table.Cell>
                 <Table.Cell>
