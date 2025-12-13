@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Select, { StylesConfig, Props as SelectProps } from 'react-select';
+import Select, { StylesConfig, Props as SelectProps, components, InputActionMeta } from 'react-select';
 import { useTheme } from 'next-themes';
 
 interface Option {
@@ -34,11 +34,28 @@ interface SearchableSelectProps extends Omit<SelectProps<Option, boolean>, 'onCh
     color?: string;
     fontSize?: string | number;
     width?: string | number;
-    maxWidth?: string | number; // Add maxWidth property
+    maxWidth?: string | number;
   };
   usePortal?: boolean;
   isMulti?: boolean;
+  rightSlot?: React.ReactNode; // New prop for content on the right side
+  onMenuOpen?: () => void;
+  onMenuScrollToBottom?: () => void;
+  onInputChange?: (newValue: string) => void;
 }
+
+const Control = ({ children, ...props }: any) => {
+  return (
+    <components.Control {...props}>
+      {children}
+      {props.selectProps.rightSlot && (
+        <div style={{ marginRight: '8px', display: 'flex', alignItems: 'center' }}>
+          {props.selectProps.rightSlot}
+        </div>
+      )}
+    </components.Control>
+  );
+};
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
@@ -48,6 +65,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   customStyles = {},
   usePortal = false,
   isMulti = false,
+  rightSlot, // Destructure new prop
+  onMenuOpen,
+  onMenuScrollToBottom,
+  onInputChange,
   ...props
 }) => {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -89,6 +110,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       boxShadow: state.isFocused ? `0 0 0 1px ${mergedStyles.focusBorderColor}` : provided.boxShadow,
       width: mergedStyles.width, // Apply width here
       maxWidth: mergedStyles.maxWidth, // Apply maxWidth here
+      paddingRight: rightSlot ? '40px' : provided.paddingRight, // Make space for the right slot
     }),
     option: (provided, state) => ({
       ...provided,
@@ -193,6 +215,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       closeMenuOnScroll={false}
       blurInputOnSelect={false}
       isMulti={isMulti}
+      components={{ Control }} // Pass custom Control component
+      onMenuOpen={onMenuOpen}
+      onMenuScrollToBottom={onMenuScrollToBottom}
+      onInputChange={onInputChange}
       theme={(theme) => ({
         ...theme,
         borderRadius: typeof mergedStyles.borderRadius === 'string' ? 
@@ -217,6 +243,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           neutral90: isDarkMode ? 'var(--slate-12)' : theme.colors.neutral90,
         }
       })}
+      rightSlot={rightSlot} // Pass rightSlot to the Select component so it's available in Control
       {...props}
     />
   );

@@ -5,7 +5,8 @@ import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Swit
 import { PageHeading } from '@/components/common/PageHeading';
 import SearchableSelect from '@/components/common/SearchableSelect';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
-import { User, Pill, CheckCircle, FileText, Trash2, Plus, ArrowRight, Save, ArrowLeft } from 'lucide-react';
+import { User, Pill, CheckCircle, FileText, Trash2, Plus, ArrowRight, Save, ArrowLeft, RefreshCcw } from 'lucide-react';
+import useDebounce from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
@@ -254,30 +255,57 @@ export default function RegisterPatientPage() {
   }, [currentTab, prescriptions.length, validatePatientInfo, handleTabChange]);
 
   const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; }[]>([]);
-  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  const [drugSearchTerm, setDrugSearchTerm] = useState('');
+  const [drugPage, setDrugPage] = useState(1);
+  const [hasMoreDrugs, setHasMoreDrugs] = useState(true);
+  const [isFetchingMoreDrugs, setIsFetchingMoreDrugs] = useState(false);
+  const debouncedDrugSearchTerm = useDebounce(drugSearchTerm, 300);
 
-  const fetchDrugs = useCallback(async () => {
+
+  const fetchDrugs = useCallback(async (searchTerm = '', page = 1, append = false) => {
+    if (!append) {
+      setIsLoadingPrescriptions(true);
+    } else {
+      setIsFetchingMoreDrugs(true);
+    }
     try {
       const { listDrugs } = await import('@/utilities/api/drugs');
-      const response = await listDrugs(); // Fetch all drugs
-      const drugs = response.data.map((drug: any) => ({
+      const response = await listDrugs({
+        search: searchTerm,
+        page: page,
+        per_page: 15, // as requested
+      });
+      
+      const newDrugs = response.data.map((drug: any) => ({
         id: drug.id,
         name: drug.name,
-        price: Number(drug.price), // Ensure price is a number
+        price: Number(drug.price),
         generic_name: drug.generic_name,
         unit: drug.unit,
-
       }));
-      setDrugOptions(drugs);
+
+      setDrugOptions(prev => append ? [...prev, ...newDrugs] : newDrugs);
+      setHasMoreDrugs(response.data.length > 0 && response.total > (page * response.per_page));
+      setDrugPage(page);
+
     } catch (error) {
       console.error('Failed to fetch drugs:', error);
       toast.error('Failed to load drug options');
+    } finally {
+      setIsLoadingPrescriptions(false);
+      setIsFetchingMoreDrugs(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchDrugs();
-  }, [fetchDrugs]);
+    fetchDrugs(debouncedDrugSearchTerm, 1);
+  }, [debouncedDrugSearchTerm, fetchDrugs]);
+
+  const handleMenuScrollToBottom = () => {
+    if (hasMoreDrugs && !isFetchingMoreDrugs) {
+      fetchDrugs(drugSearchTerm, drugPage + 1, true);
+    }
+  };
 
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
 
@@ -286,12 +314,9 @@ export default function RegisterPatientPage() {
   const [manualDrugName, setManualDrugName] = useState('');
   const [manualDrugPrice, setManualDrugPrice] = useState<string>('');
   const [manualErrors, setManualErrors] = useState<{ name?: string; price?: string }>({});
-  const [customDrugs, setCustomDrugs] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; }[]>([]);
 
   // Prescription form validation (drug select)
   const [prescErrors, setPrescErrors] = useState<{ drug?: string; meal?: string }>({});
-
-  const allDrugOptions = useMemo(() => [...customDrugs, ...drugOptions], [customDrugs, drugOptions]);
 
   const addManualDrug = () => {
     const name = manualDrugName.trim();
@@ -302,10 +327,9 @@ export default function RegisterPatientPage() {
     setManualErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    const tempId = `MD-${Date.now()}`;
-    const newDrug = { id: tempId, name: `${name} (manual)`, price: priceNum };
-    setCustomDrugs(prev => [newDrug, ...prev]);
-    setSelectedDrugId(tempId);
+    // This should ideally save the drug to the backend and then refetch.
+    // For now, we will just refetch the list.
+    fetchDrugs(drugSearchTerm, 1);
     setManualDrugName('');
     setManualDrugPrice('');
     setManualErrors({});
@@ -1251,52 +1275,66 @@ doc.setFont(khmerFontName);
                     <Flex align="center" gap="2">
                                             <Box className="flex-1">
                                               <Flex direction="column" align="start" className="w-full">
-                                                <SearchableSelect
-                                                  options={allDrugOptions.map(d => ({
-                                                    value: d.id,
-                                                    label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${d.price.toFixed(2)}`
-                                                  }))}
-                                                  value={selectedDrugId}
-                                                  onChange={async (val) => {
-                                                    const value = val as string;
-                                                    if (value === '__add_custom__') {
-                                                      setManualDrugOpen(true);
-                                                      return;
-                                                    }
-                                                    setSelectedDrugId(value);
-                                                    if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
-                      
-                                                    // Fetch latest drug data when selected
-                                                    if (value) {
-                                                      setIsFetchingSelectedDrug(true);
-                                                      try {
-                                                        const { getDrug } = await import('@/utilities/api/drugs');
-                                                        const fetchedDrug = await getDrug(value);
-                                                        // Update the specific drug in allDrugOptions with the latest data
-                                                        setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                                          ...fetchedDrug,
-                                                          price: Number(fetchedDrug.price),
-                                                          generic_name: fetchedDrug.generic_name,
-                                                          unit: fetchedDrug.unit,
-                                                        } : d));
-                                                        setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                                          ...fetchedDrug,
-                                                          price: Number(fetchedDrug.price),
-                                                          generic_name: fetchedDrug.generic_name,
-                                                          unit: fetchedDrug.unit,
-                                                        } : d));
-                                                      } catch (error) {
-                                                        console.error('Failed to fetch selected drug details:', error);
-                                                        toast.error('Failed to load selected drug details');
-                                                      } finally {
-                                                        setIsFetchingSelectedDrug(false);
-                                                      }
-                                                    }
-                                                  }}
-                                                  placeholder="Select a drug"
-                                                  usePortal={true}
-                                                  customStyles={{ width: '700px',height:'35px' }}
-                                                />
+                                                <Box style={{ position: 'relative', width: '100%' }}>
+                                                                                                                        <SearchableSelect
+                                                                                                                          options={drugOptions.map(d => ({
+                                                                                                                            value: d.id,
+                                                                                                                            label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${d.price.toFixed(2)}`
+                                                                                                                          }))}
+                                                                                                                          value={selectedDrugId}
+                                                                                                                          onChange={async (val) => {
+                                                                                                                            const value = val as string;
+                                                                                                                            if (value === '__add_custom__') {
+                                                                                                                              setManualDrugOpen(true);
+                                                                                                                              return;
+                                                                                                                            }
+                                                                                                                            setSelectedDrugId(value);
+                                                                                                                            if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
+                                                                                                  
+                                                                                                                            // Fetch latest drug data when selected
+                                                                                                                            if (value) {
+                                                                                                                              setIsFetchingSelectedDrug(true);
+                                                                                                                              try {
+                                                                                                                                const { getDrug } = await import('@/utilities/api/drugs');
+                                                                                                                                const fetchedDrug = await getDrug(value);
+                                                                                                                                // Update the specific drug in allDrugOptions with the latest data
+                                                                                                                                setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                                                                                                                  ...fetchedDrug,
+                                                                                                                                  price: Number(fetchedDrug.price),
+                                                                                                                                  generic_name: fetchedDrug.generic_name,
+                                                                                                                                  unit: fetchedDrug.unit,
+                                                                                                                                } : d));
+                                                                                                                                setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                                                                                                                  ...fetchedDrug,
+                                                                                                                                  price: Number(fetchedDrug.price),
+                                                                                                                                  generic_name: fetchedDrug.generic_name,
+                                                                                                                                  unit: fetchedDrug.unit,
+                                                                                                                                } : d));
+                                                                                                                              } catch (error) {
+                                                                                                                                console.error('Failed to fetch selected drug details:', error);
+                                                                                                                                toast.error('Failed to load selected drug details');
+                                                                                                                              } finally {
+                                                                                                                                setIsFetchingSelectedDrug(false);
+                                                                                                                              }
+                                                                                                                            }
+                                                                                                                          }}
+                                                                                                                          placeholder="Search a drug..."
+                                                                                                                          usePortal={true}
+                                                                                                                          customStyles={{ width: '100%', maxWidth: '700px', height: '35px' }}
+                                                                                                                          onInputChange={(value) => setDrugSearchTerm(value)}
+                                                                                                                          onMenuScrollToBottom={handleMenuScrollToBottom}
+                                                                                                                          isLoading={isFetchingMoreDrugs}
+                                                                                                                          rightSlot={
+                                                                                                                            <IconButton 
+                                                                                                                              onClick={() => fetchDrugs(drugSearchTerm, 1)} 
+                                                                                                                              variant="ghost" 
+                                                                                                                              title="Refresh drug list"
+                                                                                                                              size="1"
+                                                                                                                            >
+                                                                                                                              <RefreshCcw size={16} />
+                                                                                                                            </IconButton>
+                                                                                                                          }
+                                                                                                                        />                                                                                              </Box>
                                                 {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
                                                 {prescErrors.drug && (
                                                   <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
