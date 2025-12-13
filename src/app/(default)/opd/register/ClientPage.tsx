@@ -1320,21 +1320,11 @@ doc.setFont(khmerFontName);
                                                                                                                           }}
                                                                                                                           placeholder="Search a drug..."
                                                                                                                           usePortal={true}
-                                                                                                                          customStyles={{ width: '100%', maxWidth: '700px', height: '35px' }}
-                                                                                                                          onInputChange={(value) => setDrugSearchTerm(value)}
-                                                                                                                          onMenuScrollToBottom={handleMenuScrollToBottom}
-                                                                                                                          isLoading={isFetchingMoreDrugs}
-                                                                                                                          rightSlot={
-                                                                                                                            <IconButton 
-                                                                                                                              onClick={() => fetchDrugs(drugSearchTerm, 1)} 
-                                                                                                                              variant="ghost" 
-                                                                                                                              title="Refresh drug list"
-                                                                                                                              size="1"
-                                                                                                                            >
-                                                                                                                              <RefreshCcw size={16} />
-                                                                                                                            </IconButton>
-                                                                                                                          }
-                                                                                                                        />                                                                                              </Box>
+                                                                                                                                                                              customStyles={{ width: '100%', maxWidth: '700px', height: '35px' }}
+                                                                                                                                                                              onInputChange={(value) => setDrugSearchTerm(value)}
+                                                                                                                                                                              onMenuScrollToBottom={handleMenuScrollToBottom}
+                                                                                                                                                                              isLoading={isFetchingMoreDrugs}
+                                                                                                                                                                            />                                                                                              </Box>
                                                 {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
                                                 {prescErrors.drug && (
                                                   <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
