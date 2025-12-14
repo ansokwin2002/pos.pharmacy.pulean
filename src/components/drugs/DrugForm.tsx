@@ -60,9 +60,19 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
 export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }: DrugFormProps) {
   const [formData, setFormData] = useState<Partial<Drug>>(getInitialData(drug));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [medicineTypeDisplay, setMedicineTypeDisplay] = useState<'box-strip-tablet' | 'box-only'>(
+    drug && (drug.strips_per_box === undefined || drug.strips_per_box === 0) && (drug.tablets_per_strip === undefined || drug.tablets_per_strip === 0)
+      ? 'box-only'
+      : 'box-strip-tablet'
+  );
 
   useEffect(() => {
     setFormData(getInitialData(drug));
+    setMedicineTypeDisplay(
+      drug && (drug.strips_per_box === undefined || drug.strips_per_box === 0) && (drug.tablets_per_strip === undefined || drug.tablets_per_strip === 0)
+        ? 'box-only'
+        : 'box-strip-tablet'
+    );
   }, [drug]);
 
   const handleInputChange = (field: keyof Drug, value: any) => {
@@ -117,6 +127,16 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     if (validateForm()) {
       const dataToSubmit: Partial<Drug> = { ...formData };
       
+      // If medicineTypeDisplay is 'box-only', clear strip and tablet related fields
+      if (medicineTypeDisplay === 'box-only') {
+        dataToSubmit.strips_per_box = undefined;
+        dataToSubmit.tablets_per_strip = undefined;
+        dataToSubmit.strip_price = undefined;
+        dataToSubmit.strip_cost_price = undefined;
+        dataToSubmit.tablet_price = undefined;
+        dataToSubmit.tablet_cost_price = undefined;
+      }
+      
       // Calculate total quantity (total tablets)
       const quantityInBoxes = dataToSubmit.quantity_in_boxes || 0;
       const stripsPerBox = dataToSubmit.strips_per_box || 0;
@@ -163,7 +183,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
       </Callout.Root>
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="4">
-          <Grid columns="2" gap="4">
+          <Grid columns="3" gap="4">
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
                 Drug Name *
@@ -215,171 +235,192 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
                 placeholder="Enter barcode"
               />
             </Box>
-
-          </Grid>
-
-          <Grid columns="3" gap="4" mt="4">
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Quantity in Boxes
+                Medicine Type Display *
               </Text>
-              <TextField.Root
-                type="number"
-                min="0"
-                value={formData.quantity_in_boxes?.toString() || ''}
-                onChange={(e) => handleInputChange('quantity_in_boxes', parseInt(e.target.value) || 0)}
-                placeholder="0"
-                className={errors.quantity_in_boxes ? 'border-red-500' : ''}
-              />
-              {errors.quantity_in_boxes && (
-                <Text size="1" color="red" className="mt-1">{errors.quantity_in_boxes}</Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Box Price
-              </Text>
-              <TextField.Root
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.box_price?.toString() || ''}
-                onChange={(e) => handleInputChange('box_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className={errors.box_price ? 'border-red-500' : ''}
-              />
-              {errors.box_price && (
-                <Text size="1" color="red" className="mt-1">{errors.box_price}</Text>
-              )}
-            </Box>
-
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Box Cost Price
-              </Text>
-              <TextField.Root
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.box_cost_price?.toString() || ''}
-                onChange={(e) => handleInputChange('box_cost_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className={errors.box_cost_price ? 'border-red-500' : ''}
-              />
-              {errors.box_cost_price && (
-                <Text size="1" color="red" className="mt-1">{errors.box_cost_price}</Text>
-              )}
+              <Select.Root
+                value={medicineTypeDisplay}
+                onValueChange={(value) => setMedicineTypeDisplay(value as 'box-strip-tablet' | 'box-only')}
+              >
+                <Select.Trigger placeholder="Select medicine type" />
+                <Select.Content>
+                  <Select.Item value="box-strip-tablet">Box/Strip/Tablet</Select.Item>
+                  <Select.Item value="box-only">Box Only</Select.Item>
+                </Select.Content>
+              </Select.Root>
             </Box>
           </Grid>
 
-          <Grid columns="3" gap="4" mt="4">
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Strips Per Box
-              </Text>
-              <TextField.Root
-                type="number"
-                value={formData.strips_per_box?.toString() ?? ''}
-                onChange={(e) => handleInputChange('strips_per_box', e.target.value)}
-                placeholder="0"
-                className={errors.strips_per_box ? 'border-red-500' : ''}
-              />
-              {errors.strips_per_box && (
-                <Text size="1" color="red" className="mt-1">{errors.strips_per_box}</Text>
-              )}
-            </Box>
+          {/* Conditional Rendering based on medicineTypeDisplay */}
+          {medicineTypeDisplay === 'box-strip-tablet' || medicineTypeDisplay === 'box-only' ? (
+            <Grid columns="3" gap="4" mt="4">
+              <Box>
+                <Text as="label" size="2" weight="medium" className="block mb-1">
+                  Quantity in Boxes
+                </Text>
+                <TextField.Root
+                  type="number"
+                  min="0"
+                  value={formData.quantity_in_boxes?.toString() || ''}
+                  onChange={(e) => handleInputChange('quantity_in_boxes', parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                  className={errors.quantity_in_boxes ? 'border-red-500' : ''}
+                />
+                {errors.quantity_in_boxes && (
+                  <Text size="1" color="red" className="mt-1">{errors.quantity_in_boxes}</Text>
+                )}
+              </Box>
 
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Strip Price
-              </Text>
-              <TextField.Root
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.strip_price?.toString() || ''}
-                onChange={(e) => handleInputChange('strip_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className={errors.strip_price ? 'border-red-500' : ''}
-              />
-              {errors.strip_price && (
-                <Text size="1" color="red" className="mt-1">{errors.strip_price}</Text>
-              )}
-            </Box>
+              <Box>
+                <Text as="label" size="2" weight="medium" className="block mb-1">
+                  Box Price
+                </Text>
+                <TextField.Root
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.box_price?.toString() || ''}
+                  onChange={(e) => handleInputChange('box_price', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className={errors.box_price ? 'border-red-500' : ''}
+                />
+                {errors.box_price && (
+                  <Text size="1" color="red" className="mt-1">{errors.box_price}</Text>
+                )}
+              </Box>
 
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Strip Cost Price
-              </Text>
-              <TextField.Root
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.strip_cost_price?.toString() || ''}
-                onChange={(e) => handleInputChange('strip_cost_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className={errors.strip_cost_price ? 'border-red-500' : ''}
-              />
-              {errors.strip_cost_price && (
-                <Text size="1" color="red" className="mt-1">{errors.strip_cost_price}</Text>
-              )}
-            </Box>
-          </Grid>
+              <Box>
+                <Text as="label" size="2" weight="medium" className="block mb-1">
+                  Box Cost Price
+                </Text>
+                <TextField.Root
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.box_cost_price?.toString() || ''}
+                  onChange={(e) => handleInputChange('box_cost_price', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className={errors.box_cost_price ? 'border-red-500' : ''}
+                />
+                {errors.box_cost_price && (
+                  <Text size="1" color="red" className="mt-1">{errors.box_cost_price}</Text>
+                )}
+              </Box>
+            </Grid>
+          ) : null}
 
-          <Grid columns="3" gap="4" mt="4">
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Tablets Per Strip
-              </Text>
-              <TextField.Root
-                type="number"
-                value={formData.tablets_per_strip?.toString() ?? ''}
-                onChange={(e) => handleInputChange('tablets_per_strip', e.target.value)}
-                placeholder="0"
-                className={errors.tablets_per_strip ? 'border-red-500' : ''}
-              />
-              {errors.tablets_per_strip && (
-                <Text size="1" color="red" className="mt-1">{errors.tablets_per_strip}</Text>
-              )}
-            </Box>
+          {medicineTypeDisplay === 'box-strip-tablet' ? (
+            <>
+              <Grid columns="3" gap="4" mt="4">
+                <Box>
+                  <Text as="label" size="2" weight="medium" className="block mb-1">
+                    Strips Per Box
+                  </Text>
+                  <TextField.Root
+                    type="number"
+                    value={formData.strips_per_box?.toString() ?? ''}
+                    onChange={(e) => handleInputChange('strips_per_box', e.target.value)}
+                    placeholder="0"
+                    className={errors.strips_per_box ? 'border-red-500' : ''}
+                  />
+                  {errors.strips_per_box && (
+                    <Text size="1" color="red" className="mt-1">{errors.strips_per_box}</Text>
+                  )}
+                </Box>
 
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Tablet Price
-              </Text>
-              <TextField.Root
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.tablet_price?.toString() || ''}
-                onChange={(e) => handleInputChange('tablet_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className={errors.tablet_price ? 'border-red-500' : ''}
-              />
-              {errors.tablet_price && (
-                <Text size="1" color="red" className="mt-1">{errors.tablet_price}</Text>
-              )}
-            </Box>
+                <Box>
+                  <Text as="label" size="2" weight="medium" className="block mb-1">
+                    Strip Price
+                  </Text>
+                  <TextField.Root
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.strip_price?.toString() || ''}
+                    onChange={(e) => handleInputChange('strip_price', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className={errors.strip_price ? 'border-red-500' : ''}
+                  />
+                  {errors.strip_price && (
+                    <Text size="1" color="red" className="mt-1">{errors.strip_price}</Text>
+                  )}
+                </Box>
 
-            <Box>
-              <Text as="label" size="2" weight="medium" className="block mb-1">
-                Tablet Cost Price
-              </Text>
-              <TextField.Root
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.tablet_cost_price?.toString() || ''}
-                onChange={(e) => handleInputChange('tablet_cost_price', parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-                className={errors.tablet_cost_price ? 'border-red-500' : ''}
-              />
-              {errors.tablet_cost_price && (
-                <Text size="1" color="red" className="mt-1">{errors.tablet_cost_price}</Text>
-              )}
-            </Box>
-          </Grid>
+                <Box>
+                  <Text as="label" size="2" weight="medium" className="block mb-1">
+                    Strip Cost Price
+                  </Text>
+                  <TextField.Root
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.strip_cost_price?.toString() || ''}
+                    onChange={(e) => handleInputChange('strip_cost_price', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className={errors.strip_cost_price ? 'border-red-500' : ''}
+                  />
+                  {errors.strip_cost_price && (
+                    <Text size="1" color="red" className="mt-1">{errors.strip_cost_price}</Text>
+                  )}
+                </Box>
+              </Grid>
+
+              <Grid columns="3" gap="4" mt="4">
+                <Box>
+                  <Text as="label" size="2" weight="medium" className="block mb-1">
+                    Tablets Per Strip
+                  </Text>
+                  <TextField.Root
+                    type="number"
+                    value={formData.tablets_per_strip?.toString() ?? ''}
+                    onChange={(e) => handleInputChange('tablets_per_strip', e.target.value)}
+                    placeholder="0"
+                    className={errors.tablets_per_strip ? 'border-red-500' : ''}
+                  />
+                  {errors.tablets_per_strip && (
+                    <Text size="1" color="red" className="mt-1">{errors.tablets_per_strip}</Text>
+                  )}
+                </Box>
+
+                <Box>
+                  <Text as="label" size="2" weight="medium" className="block mb-1">
+                    Tablet Price
+                  </Text>
+                  <TextField.Root
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.tablet_price?.toString() || ''}
+                    onChange={(e) => handleInputChange('tablet_price', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className={errors.tablet_price ? 'border-red-500' : ''}
+                  />
+                  {errors.tablet_price && (
+                    <Text size="1" color="red" className="mt-1">{errors.tablet_price}</Text>
+                  )}
+                </Box>
+
+                <Box>
+                  <Text as="label" size="2" weight="medium" className="block mb-1">
+                    Tablet Cost Price
+                  </Text>
+                  <TextField.Root
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.tablet_cost_price?.toString() || ''}
+                    onChange={(e) => handleInputChange('tablet_cost_price', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className={errors.tablet_cost_price ? 'border-red-500' : ''}
+                  />
+                  {errors.tablet_cost_price && (
+                    <Text size="1" color="red" className="mt-1">{errors.tablet_cost_price}</Text>
+                  )}
+                </Box>
+              </Grid>
+            </>
+          ) : null}
 
           <Grid columns="2" gap="4" mt="4">
             <Box>

@@ -1002,69 +1002,7 @@ doc.setFont(khmerFontName);
         description="Complete the patient registration process step by step."
       />
 
-      {/* Progress Indicator */}
-      <Card>
-        <Box p="3">
-          <Flex justify="between" align="center" mb="2">
-            <Text size="2" weight="bold">Progress</Text>
-            <Text size="2" color="gray">{Math.round(getProgressPercentage())}% Complete</Text>
-          </Flex>
 
-          {/* Progress Bar */}
-          <Box style={{ backgroundColor: 'var(--gray-3)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
-            <Box
-              style={{
-                backgroundColor: 'var(--blue-9)',
-                height: '100%',
-                width: `${getProgressPercentage()}%`,
-                transition: 'width 0.3s ease'
-              }}
-            />
-          </Box>
-
-          {/* Step Indicators */}
-          <Flex justify="between" mt="3">
-            <Flex align="center" gap="1">
-              {getStepStatus('patient-info') === 'completed' ? (
-                <CheckCircle size={16} color="green" />
-              ) : getStepStatus('patient-info') === 'current' ? (
-                <User size={16} color="blue" />
-              ) : (
-                <User size={16} color="gray" />
-              )}
-              <Text size="1" color={getStepStatus('patient-info') === 'pending' ? 'gray' : undefined}>
-                Patient Info
-              </Text>
-            </Flex>
-
-            <Flex align="center" gap="1">
-              {getStepStatus('prescription') === 'completed' ? (
-                <CheckCircle size={16} color="green" />
-              ) : getStepStatus('prescription') === 'current' ? (
-                <Pill size={16} color="blue" />
-              ) : (
-                <Pill size={16} color="gray" />
-              )}
-              <Text size="1" color={getStepStatus('prescription') === 'pending' ? 'gray' : undefined}>
-                Prescription
-              </Text>
-            </Flex>
-
-            <Flex align="center" gap="1">
-              {getStepStatus('complete') === 'completed' ? (
-                <CheckCircle size={16} color="green" />
-              ) : getStepStatus('complete') === 'current' ? (
-                <FileText size={16} color="blue" />
-              ) : (
-                <FileText size={16} color="gray" />
-              )}
-              <Text size="1" color={getStepStatus('complete') === 'pending' ? 'gray' : undefined}>
-                Complete
-              </Text>
-            </Flex>
-          </Flex>
-        </Box>
-      </Card>
       <Card style={{ width: '100%' }}>
         <Box p="4">
           <Tabs.Root value={currentTab} onValueChange={handleTabChange}>
