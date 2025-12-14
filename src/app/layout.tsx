@@ -66,7 +66,7 @@ function ThemedToaster() {
   // After mounting, use the resolvedTheme from next-themes
   const theme = mounted ? resolvedTheme : 'light';
   
-  return <Toaster richColors position="top-right" theme={theme as 'light' | 'dark'} />;
+  return <Toaster richColors position="top-center" theme={theme as 'light' | 'dark'} />;
 }
 
 function RadixThemeWrapper({ children }: { children: ReactNode }) {
