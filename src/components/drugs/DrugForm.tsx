@@ -40,6 +40,7 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
     tablets_per_strip: undefined, // Initialize as undefined
     expiry_date: new Date(),
     barcode: '',
+    type_drug: 'box-strip-tablet', // Default to 'box-strip-tablet'
 
     status: 'active' as 'active' | 'inactive',
   };
@@ -51,6 +52,7 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
       expiry_date: new Date(drug.expiry_date),
       strips_per_box: drug.strips_per_box ?? undefined, // Ensure it's undefined if null/0 from backend
       tablets_per_strip: drug.tablets_per_strip ?? undefined,
+      type_drug: drug.type_drug || 'box-strip-tablet', // Ensure type_drug is set
     };
   }
 
@@ -69,7 +71,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
   useEffect(() => {
     setFormData(getInitialData(drug));
     setMedicineTypeDisplay(
-      drug && (drug.strips_per_box === undefined || drug.strips_per_box === 0) && (drug.tablets_per_strip === undefined || drug.tablets_per_strip === 0)
+      drug && drug.type_drug === 'box-only'
         ? 'box-only'
         : 'box-strip-tablet'
     );
@@ -109,6 +111,28 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
       newErrors.generic_name = 'Generic name is required';
     }
 
+    if (medicineTypeDisplay === 'box-strip-tablet') {
+      if (formData.strips_per_box === undefined || formData.strips_per_box <= 0) {
+        newErrors.strips_per_box = 'Strips per box is required and must be greater than 0';
+      }
+      if (formData.strip_price === undefined || formData.strip_price <= 0) {
+        newErrors.strip_price = 'Strip price is required and must be greater than 0';
+      }
+      if (formData.strip_cost_price === undefined || formData.strip_cost_price <= 0) {
+        newErrors.strip_cost_price = 'Strip cost price is required and must be greater than 0';
+      }
+      if (formData.tablets_per_strip === undefined || formData.tablets_per_strip <= 0) {
+        newErrors.tablets_per_strip = 'Tablets per strip is required and must be greater than 0';
+      }
+      if (formData.tablet_price === undefined || formData.tablet_price <= 0) {
+        newErrors.tablet_price = 'Tablet price is required and must be greater than 0';
+      }
+      if (formData.tablet_cost_price === undefined || formData.tablet_cost_price <= 0) {
+        newErrors.tablet_cost_price = 'Tablet cost price is required and must be greater than 0';
+      }
+    }
+
+
 
 
     if (!formData.expiry_date) {
@@ -126,6 +150,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     
     if (validateForm()) {
       const dataToSubmit: Partial<Drug> = { ...formData };
+      dataToSubmit.type_drug = medicineTypeDisplay; // Set type_drug based on selected display option
       
       // If medicineTypeDisplay is 'box-only', clear strip and tablet related fields
       if (medicineTypeDisplay === 'box-only') {
@@ -243,7 +268,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
                 value={medicineTypeDisplay}
                 onValueChange={(value) => setMedicineTypeDisplay(value as 'box-strip-tablet' | 'box-only')}
               >
-                <Select.Trigger placeholder="Select medicine type" />
+                <Select.Trigger placeholder="Select medicine type" className="w-full" />
                 <Select.Content>
                   <Select.Item value="box-strip-tablet">Box/Strip/Tablet</Select.Item>
                   <Select.Item value="box-only">Box Only</Select.Item>

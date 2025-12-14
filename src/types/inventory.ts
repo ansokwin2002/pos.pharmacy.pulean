@@ -246,4 +246,5 @@ export interface Drug {
   status: DrugStatus;
   created_at?: Date;
   updated_at?: Date;
+  type_drug?: string;
 }
