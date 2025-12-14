@@ -218,19 +218,23 @@ export async function buildPrescriptionPdf(
     ["No.", "Medication", "Morning", "Afternoon", "Evening", "Night", "Period", "QTY", "After Meal", "Before Meal", "Price"]
   ];
 
-  const body = (pdfData.prescriptions || []).map((p: any, i: number) => [
-    i + 1,
-    p.name,
-    p.morning || "",
-    p.afternoon || "",
-    p.evening || "",
-    p.night || "",
-    p.period || "",
-    p.qty || "",
-    p.afterMeal ? "Yes" : "No",
-    p.beforeMeal ? "Yes" : "No",
-    p.price ? `$${p.price.toFixed(2)}` : ""
-  ]);
+  const body = (pdfData.prescriptions || []).map((p: any, i: number) => {
+    const price = Number(p.price) || 0; // Ensure price is a number
+    const qty = Number(p.qty) || 0; // Ensure qty is a number
+    return [
+      i + 1,
+      p.name,
+      p.morning || "",
+      p.afternoon || "",
+      p.evening || "",
+      p.night || "",
+      p.period || "",
+      qty || "", // Display numeric qty
+      p.afterMeal ? "Yes" : "No",
+      p.beforeMeal ? "Yes" : "No",
+      `$${price.toFixed(2)}` // Use numeric price
+    ];
+  });
 
   while (body.length < 10) body.push(["", "", "", "", "", "", "", "", "", "", ""]);
 
@@ -269,7 +273,9 @@ export async function buildPrescriptionPdf(
 
   // Calculate and display grand total
   const grandTotal = (pdfData.prescriptions || []).reduce((sum: number, p: any) => {
-    return sum + ((p.price || 0) * (p.qty || 0));
+    const price = Number(p.price) || 0; // Ensure price is a number
+    const qty = Number(p.qty) || 0; // Ensure qty is a number
+    return sum + (price * qty);
   }, 0);
 
   let afterTable = (doc as any).lastAutoTable.finalY + 8;
