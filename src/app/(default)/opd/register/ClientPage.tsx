@@ -285,9 +285,9 @@ export default function RegisterPatientPage() {
         price: Number(medicineTypeFilter === 'box-only' ? drug.box_price : (medicineTypeFilter === 'strip-only' ? drug.strip_price : drug.tablet_price)),
         generic_name: drug.generic_name,
         unit: drug.unit,
-        box_price: Number(drug.box_price),
-        tablet_price: Number(drug.tablet_price),
-        strip_price: Number(drug.strip_price), // Added this line
+        box_price: Number(drug.box_price || 0),
+        tablet_price: Number(drug.tablet_price || 0),
+        strip_price: Number(drug.strip_price || 0),
         type_drug: drug.type_drug,
       }));
 
@@ -1226,7 +1226,7 @@ doc.setFont(khmerFontName);
                                                 <Box style={{ position: 'relative', width: '200px' }}> {/* Adjust width as needed */}
                                                   <Select.Root
                                                     value={medicineTypeFilter}
-                                                    onValueChange={(value: 'box-strip-tablet' | 'box-only') => {
+                                                    onValueChange={(value: 'box-strip-tablet' | 'box-only' | 'strip-only') => {
                                                       setMedicineTypeFilter(value);
                                                       // Potentially refetch drugs or adjust prices here
                                                       fetchDrugs(debouncedDrugSearchTerm, 1);
@@ -1245,12 +1245,12 @@ doc.setFont(khmerFontName);
                                                                                                                           options={drugOptions.map(d => {
                                                                                                                             let priceDisplay = '';
                                                                                                                             if (medicineTypeFilter === 'box-only') {
-                                                                                                                              priceDisplay = `B: $${d.box_price?.toFixed(2) || '0.00'}`;
-                                                                                                                            } else if (medicineTypeFilter === 'strip-only') {
-                                                                                                                              priceDisplay = `S: $${d.strip_price?.toFixed(2) || '0.00'}`;
-                                                                                                                            } else { // box-strip-tablet
-                                                                                                                              priceDisplay = `T: $${d.tablet_price?.toFixed(2) || '0.00'}`;
-                                                                                                                            }
+                                                                                                                              console.log('Debugging box_price:', d.box_price, typeof d.box_price); // Debug log for box_price
+                                                                                                                                                                                                                                                             priceDisplay = `B: $${(parseFloat(d.box_price) || 0).toFixed(2)}`;                                                                                                                            } else if (medicineTypeFilter === 'strip-only') {
+                                                                                                                              console.log('Debugging strip_price:', d.strip_price, typeof d.strip_price); // Debug log for strip_price
+                                                                                                                                                                                                                                                             priceDisplay = `S: $${(parseFloat(d.strip_price) || 0).toFixed(2)}`;                                                                                                                            } else { // box-strip-tablet
+                                                                                                                              console.log('Debugging tablet_price:', d.tablet_price, typeof d.tablet_price); // Debug log for tablet_price
+                                                                                                                                                                                                                                                             priceDisplay = `T: $${(parseFloat(d.tablet_price) || 0).toFixed(2)}`;                                                                                                                            }
                                                                                                                             return {
                                                                                                                               value: d.id,
                                                                                                                               label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${priceDisplay}`
@@ -1519,7 +1519,7 @@ doc.setFont(khmerFontName);
                             {removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
-                              `$${p.price ? p.price.toFixed(2) : '0.00'}`
+                              `$${(parseFloat(p.price) || 0).toFixed(2)}`
                             )}
                           </Table.Cell>
                           <Table.Cell>
