@@ -1241,8 +1241,8 @@ doc.setFont(khmerFontName);
                     <Text as="div" size="2" mb="1" weight="bold">Drug</Text>
                     <Flex align="center" gap="2">
                                             <Box className="flex-1">
-                                              <Flex direction="row" align="center" gap="2" className="w-full">
-                                                <Box style={{ position: 'relative', width: '200px' }}> {/* Adjust width as needed */}
+                                              <Flex direction="row" align="center" gap="1" className="w-full">
+                                                <Box style={{ position: 'relative', flexShrink: 0, width: '137px' }}> {/* Adjust width for Select.Root */}
                                                   <Select.Root
                                                     value={medicineTypeFilter}
                                                     onValueChange={(value: 'box-strip-tablet' | 'box-only' | 'strip-only') => {
@@ -1268,59 +1268,63 @@ doc.setFont(khmerFontName);
                                                   </Select.Root>
                                                 </Box>
                                                 <Box style={{ position: 'relative', flexGrow: 1 }}>
-                                                                                                                        <SearchableSelect
-                                                                                                                          options={drugOptions.map(d => {
-                                                                                                                            let priceDisplay = '';
-                                                                                                                            if (medicineTypeFilter === 'box-only') {
-                                                                                                                              console.log('Debugging box_price:', d.box_price, typeof d.box_price); // Debug log for box_price
-                                                                                                                                                                                                                                                             priceDisplay = `B: $${(parseFloat(d.box_price) || 0).toFixed(2)}`;                                                                                                                            } else if (medicineTypeFilter === 'strip-only') {
-                                                                                                                              console.log('Debugging strip_price:', d.strip_price, typeof d.strip_price); // Debug log for strip_price
-                                                                                                                                                                                                                                                             priceDisplay = `S: $${(parseFloat(d.strip_price) || 0).toFixed(2)}`;                                                                                                                            } else { // box-strip-tablet
-                                                                                                                              console.log('Debugging tablet_price:', d.tablet_price, typeof d.tablet_price); // Debug log for tablet_price
-                                                                                                                                                                                                                                                             priceDisplay = `T: $${(parseFloat(d.tablet_price) || 0).toFixed(2)}`;                                                                                                                            }
-                                                                                                                            return {
-                                                                                                                              value: d.id,
-                                                                                                                              label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${priceDisplay}`
-                                                                                                                            };
-                                                                                                                          })}
-                                                                                                                          value={selectedDrugId}
-                                                                                                                          onChange={async (val) => {
-                                                                                                                            const value = val as string;
-                                                                                                                            if (value === '__add_custom__') {
-                                                                                                                              setManualDrugOpen(true);
-                                                                                                                              return;
-                                                                                                                            }
-                                                                                                                            setSelectedDrugId(value);
-                                                                                                                            if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
-                                                                                                  
-                                                                                                                            // Fetch latest drug data when selected
-                                                                                                                            if (value) {
-                                                                                                                              setIsFetchingSelectedDrug(true);
-                                                                                                                              try {
-                                                                                                                                const { getDrug } = await import('@/utilities/api/drugs');
-                                                                                                                                const fetchedDrug = await getDrug(value);
-                                                                                                                                // Update the specific drug in allDrugOptions with the latest data
-                                                                                                                                setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                                                                                                                  ...fetchedDrug,
-                                                                                                                                  price: Number(fetchedDrug.price),
-                                                                                                                                  generic_name: fetchedDrug.generic_name,
-                                                                                                                                  unit: fetchedDrug.unit,
-                                                                                                                                } : d));
-                                                                                                                                                                                                                                                              } catch (error) {
-                                                                                                                                console.error('Failed to fetch selected drug details:', error);
-                                                                                                                                toast.error('Failed to load selected drug details');
-                                                                                                                              } finally {
-                                                                                                                                setIsFetchingSelectedDrug(false);
-                                                                                                                              }
-                                                                                                                            }
-                                                                                                                          }}
-                                                                                                                          placeholder="Search a drug..."
-                                                                                                                          usePortal={true}
-                                                                                                                                                                              customStyles={{ width: '100%', maxWidth: '700px', height: '35px' }}
-                                                                                                                                                                              onInputChange={(value) => setDrugSearchTerm(value)}
-                                                                                                                                                                              onMenuScrollToBottom={handleMenuScrollToBottom}
-                                                                                                                                                                              isLoading={isFetchingMoreDrugs}
-                                                                                                                                                                            />                                                                                              </Box>
+                                                  <SearchableSelect
+                                                    options={drugOptions.map(d => {
+                                                      let priceDisplay = '';
+                                                      if (medicineTypeFilter === 'box-only') {
+                                                        console.log('Debugging box_price:', d.box_price, typeof d.box_price); // Debug log for box_price
+                                                        priceDisplay = `B: $${(parseFloat(d.box_price) || 0).toFixed(2)}`;
+                                                      } else if (medicineTypeFilter === 'strip-only') {
+                                                        console.log('Debugging strip_price:', d.strip_price, typeof d.strip_price); // Debug log for strip_price
+                                                        priceDisplay = `S: $${(parseFloat(d.strip_price) || 0).toFixed(2)}`;
+                                                      } else { // box-strip-tablet
+                                                        console.log('Debugging tablet_price:', d.tablet_price, typeof d.tablet_price); // Debug log for tablet_price
+                                                        priceDisplay = `T: $${(parseFloat(d.tablet_price) || 0).toFixed(2)}`;
+                                                      }
+                                                      return {
+                                                        value: d.id,
+                                                        label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${priceDisplay}`
+                                                      };
+                                                    })}
+                                                    value={selectedDrugId}
+                                                    onChange={async (val) => {
+                                                      const value = val as string;
+                                                      if (value === '__add_custom__') {
+                                                        setManualDrugOpen(true);
+                                                        return;
+                                                      }
+                                                      setSelectedDrugId(value);
+                                                      if (prescErrors.drug) setPrescErrors(prev => ({ ...prev, drug: undefined }));
+                            
+                                                      // Fetch latest drug data when selected
+                                                      if (value) {
+                                                        setIsFetchingSelectedDrug(true);
+                                                        try {
+                                                          const { getDrug } = await import('@/utilities/api/drugs');
+                                                          const fetchedDrug = await getDrug(value);
+                                                          // Update the specific drug in allDrugOptions with the latest data
+                                                          setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                                            ...fetchedDrug,
+                                                            price: Number(fetchedDrug.price),
+                                                            generic_name: fetchedDrug.generic_name,
+                                                            unit: fetchedDrug.unit,
+                                                          } : d));
+                                                        } catch (error) {
+                                                          console.error('Failed to fetch selected drug details:', error);
+                                                          toast.error('Failed to load selected drug details');
+                                                        } finally {
+                                                          setIsFetchingSelectedDrug(false);
+                                                        }
+                                                      }
+                                                    }}
+                                                    placeholder="Search a drug..."
+                                                    usePortal={true}
+                                                    customStyles={{ width: '100%', maxWidth: '700px', height: '35px' }}
+                                                    onInputChange={(value) => setDrugSearchTerm(value)}
+                                                    onMenuScrollToBottom={handleMenuScrollToBottom}
+                                                    isLoading={isFetchingMoreDrugs}
+                                                  />
+                                                </Box>
                                                 {isFetchingSelectedDrug && <Text size="1" color="gray">Loading...</Text>}
                                                 {prescErrors.drug && (
                                                   <Text size="1" className="text-red-500 mt-1 pt-4">{prescErrors.drug}</Text>
