@@ -261,7 +261,7 @@ export default function RegisterPatientPage() {
   const [isFetchingMoreDrugs, setIsFetchingMoreDrugs] = useState(false);
   const debouncedDrugSearchTerm = useDebounce(drugSearchTerm, 300);
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
-  const [medicineTypeFilter, setMedicineTypeFilter] = useState<'box-strip-tablet' | 'box-only'>('box-strip-tablet');
+  const [medicineTypeFilter, setMedicineTypeFilter] = useState<'box-strip-tablet' | 'box-only' | 'strip-only'>('box-strip-tablet');
 
 
   const fetchDrugs = useCallback(async (searchTerm = '', page = 1, append = false) => {
@@ -276,17 +276,18 @@ export default function RegisterPatientPage() {
         search: searchTerm,
         page: page,
         per_page: 15, // as requested
-        type_drug: medicineTypeFilter,
+        type_drug: medicineTypeFilter === 'box-only' ? 'box-only' : 'box-strip-tablet',
       });
       
       const newDrugs = response.data.map((drug: any) => ({
         id: drug.id,
         name: drug.name,
-        price: Number(medicineTypeFilter === 'box-only' ? drug.box_price : drug.tablet_price),
+        price: Number(medicineTypeFilter === 'box-only' ? drug.box_price : (medicineTypeFilter === 'strip-only' ? drug.strip_price : drug.tablet_price)),
         generic_name: drug.generic_name,
         unit: drug.unit,
         box_price: Number(drug.box_price),
         tablet_price: Number(drug.tablet_price),
+        strip_price: Number(drug.strip_price), // Added this line
         type_drug: drug.type_drug,
       }));
 
@@ -438,7 +439,7 @@ export default function RegisterPatientPage() {
       quantity = dailyDose > 0 ? dailyDose * days : days;
     }
 
-    const priceToUse = medicineTypeFilter === 'box-only' ? d.box_price : d.tablet_price;
+    const priceToUse = medicineTypeFilter === 'box-only' ? d.box_price : (medicineTypeFilter === 'strip-only' ? d.strip_price : d.tablet_price);
     
     console.log('Adding drug:', {
       name: d.name,
@@ -1235,15 +1236,26 @@ doc.setFont(khmerFontName);
                                                     <Select.Content>
                                                       <Select.Item value="box-strip-tablet">Tablet Price</Select.Item>
                                                       <Select.Item value="box-only">Box Price</Select.Item>
+                                                      <Select.Item value="strip-only">Strip Price</Select.Item>
                                                     </Select.Content>
                                                   </Select.Root>
                                                 </Box>
                                                 <Box style={{ position: 'relative', flexGrow: 1 }}>
                                                                                                                         <SearchableSelect
-                                                                                                                          options={drugOptions.map(d => ({
-                                                                                                                            value: d.id,
-                                                                                                                            label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — $${(medicineTypeFilter === 'box-only' ? d.box_price : d.tablet_price)?.toFixed(2) || '0.00'}`
-                                                                                                                          }))}
+                                                                                                                          options={drugOptions.map(d => {
+                                                                                                                            let priceDisplay = '';
+                                                                                                                            if (medicineTypeFilter === 'box-only') {
+                                                                                                                              priceDisplay = `$${d.box_price?.toFixed(2) || '0.00'}`;
+                                                                                                                            } else if (medicineTypeFilter === 'strip-only') {
+                                                                                                                              priceDisplay = `S: $${d.strip_price?.toFixed(2) || '0.00'}`;
+                                                                                                                            } else { // box-strip-tablet
+                                                                                                                              priceDisplay = `T: $${d.tablet_price?.toFixed(2) || '0.00'} / S: $${d.strip_price?.toFixed(2) || '0.00'}`;
+                                                                                                                            }
+                                                                                                                            return {
+                                                                                                                              value: d.id,
+                                                                                                                              label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${priceDisplay}`
+                                                                                                                            };
+                                                                                                                          })}
                                                                                                                           value={selectedDrugId}
                                                                                                                           onChange={async (val) => {
                                                                                                                             const value = val as string;
