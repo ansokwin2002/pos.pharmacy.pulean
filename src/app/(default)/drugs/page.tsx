@@ -285,17 +285,20 @@ export default function DrugsPage() {
         mb="5"
       >
         <PageHeading title="Drugs" description="Manage your pharmaceutical inventory" noMarginBottom />
-        {selectedIds.length > 0 ? (
+        {selectedIds.length > 0 && (
           <Button color="red" onClick={handleDeleteSelected}>
             <Trash2 size={16} />
             Delete Selected ({selectedIds.length})
           </Button>
-        ) : (
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus size={16} />
-            Add Drug
-          </Button>
         )}
+      </Flex>
+      
+      {/* Add Drug button moved below the main description */}
+      <Flex justify="start" mt="4" mb="4">
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus size={16} />
+          Add Drug
+        </Button>
       </Flex>
       
       {isLoading ? (
