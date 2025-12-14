@@ -352,18 +352,22 @@ export default function RegisterPatientPage() {
   const [doseNight, setDoseNight] = useState<string>('');
   const [period, setPeriod] = useState<string>('');
   const [qty, setQty] = useState<string>('');
+  const [stripQty, setStripQty] = useState<string>(''); // New state for strip quantity
+  const [boxQty, setBoxQty] = useState<string>(''); // New state for box quantity
 
   // Recompute QTY whenever any dose or period changes to avoid stale state issues
   useEffect(() => {
-    const m = Number(doseMorning) || 0;
-    const a = Number(doseAfternoon) || 0;
-    const e = Number(doseEvening) || 0;
-    const n = Number(doseNight) || 0;
-    const p = Number(period) || 0;
-    const totalPerDay = m + a + e + n;
-    const total = totalPerDay * p;
-    setQty(String(total));
-  }, [doseMorning, doseAfternoon, doseEvening, doseNight, period]);
+    if (medicineTypeFilter === 'box-strip-tablet') { // Only compute if tablet price
+      const m = Number(doseMorning) || 0;
+      const a = Number(doseAfternoon) || 0;
+      const e = Number(doseEvening) || 0;
+      const n = Number(doseNight) || 0;
+      const p = Number(period) || 0;
+      const totalPerDay = m + a + e + n;
+      const total = totalPerDay * p;
+      setQty(String(total));
+    }
+  }, [doseMorning, doseAfternoon, doseEvening, doseNight, period, medicineTypeFilter]); // Add medicineTypeFilter to dependencies
 
   const [afterMeal, setAfterMeal] = useState<boolean>(false);
   const [beforeMeal, setBeforeMeal] = useState<boolean>(false);
@@ -416,27 +420,40 @@ export default function RegisterPatientPage() {
       setPrescErrors(prev => ({ ...prev, drug: 'Drug is required' }));
       return;
     }
-    // Validate required Period
-    if (!period || Number(period) <= 0) {
-      setPrescErrors(prev => ({ ...prev, period: 'Period (days) is required' }));
-      toast.error('Please enter the period (days) for this medication');
-      return;
-    }
-    // Meal selection is now optional - users can add drugs without choosing
-    setPrescErrors({});
-    
     const morning = Number(doseMorning) || 0;
     const afternoon = Number(doseAfternoon) || 0;
     const evening = Number(doseEvening) || 0;
     const night = Number(doseNight) || 0;
     const days = Number(period) || 0;
     
-    // Auto-calculate quantity if not provided: (morning + afternoon + evening + night) * days
-    let quantity = Number(qty) || 0;
-    if (quantity === 0 && days > 0) {
-      const dailyDose = morning + afternoon + evening + night;
-      // If no dosages entered, default to 1 per day
-      quantity = dailyDose > 0 ? dailyDose * days : days;
+    let quantity: number;
+
+    if (medicineTypeFilter === 'strip-only') {
+      quantity = Number(stripQty) || 0;
+      if (quantity <= 0) {
+        setPrescErrors(prev => ({ ...prev, qty: 'QTY for strips is required and must be greater than 0' }));
+        toast.error('Please enter the quantity for strips (must be > 0)');
+        return;
+      }
+    } else if (medicineTypeFilter === 'box-only') { // New condition for box-only
+      quantity = Number(boxQty) || 0;
+      if (quantity <= 0) {
+        setPrescErrors(prev => ({ ...prev, qty: 'QTY for boxes is required and must be greater than 0' }));
+        toast.error('Please enter the quantity for boxes (must be > 0)');
+        return;
+      }
+    } else {
+      // Original logic for box-strip-tablet
+      quantity = Number(qty) || 0;
+      if (quantity === 0 && days > 0) {
+        const dailyDose = morning + afternoon + evening + night;
+        quantity = dailyDose > 0 ? dailyDose * days : days;
+      }
+      if ((morning + afternoon + evening + night === 0 || days === 0) && quantity === 0) {
+        setPrescErrors(prev => ({ ...prev, period: 'Dosage or Period (days) / QTY is required' }));
+        toast.error('Please enter dosage and period, or QTY');
+        return;
+      }
     }
 
     const priceToUse = medicineTypeFilter === 'box-only' ? d.box_price : (medicineTypeFilter === 'strip-only' ? d.strip_price : d.tablet_price);
@@ -454,11 +471,11 @@ export default function RegisterPatientPage() {
       id: d.id,
       name: d.name,
       price: priceToUse || 0,
-      morning,
-      afternoon,
-      evening,
-      night,
-      period: period || '',
+      morning: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : morning, // Set to 0 if strip-only or box-only
+      afternoon: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : afternoon, // Set to 0 if strip-only or box-only
+      evening: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : evening, // Set to 0 if strip-only or box-only
+      night: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : night, // Set to 0 if strip-only or box-only
+      period: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? '' : period || '', // Set to empty if strip-only or box-only
       qty: quantity,
       afterMeal,
       beforeMeal,
@@ -493,6 +510,8 @@ export default function RegisterPatientPage() {
     setDoseNight('');
     setPeriod('');
     setQty('');
+    setStripQty(''); // Reset stripQty
+    setBoxQty(''); // Reset boxQty
     setAfterMeal(false);
     setBeforeMeal(false);
   };
@@ -1228,8 +1247,16 @@ doc.setFont(khmerFontName);
                                                     value={medicineTypeFilter}
                                                     onValueChange={(value: 'box-strip-tablet' | 'box-only' | 'strip-only') => {
                                                       setMedicineTypeFilter(value);
-                                                      // Potentially refetch drugs or adjust prices here
                                                       fetchDrugs(debouncedDrugSearchTerm, 1);
+                                                      setQty(''); // Clear existing QTY
+                                                      setStripQty(''); // Clear strip QTY
+                                                      setBoxQty(''); // Clear box QTY
+                                                      setDoseMorning(''); // Clear dose fields
+                                                      setDoseAfternoon('');
+                                                      setDoseEvening('');
+                                                      setDoseNight('');
+                                                      setPeriod(''); // Clear period
+                                                      setPrescErrors({}); // Clear prescription errors
                                                     }}
                                                   >
                                                     <Select.Trigger placeholder="Price Type" className="w-full" />
@@ -1333,32 +1360,48 @@ doc.setFont(khmerFontName);
                   </div>
 
                   {/* Dose grid */}
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
-                    <Text as="div" size="2" mb="1" weight="bold">Morning</Text>
-                    <TextField.Root type="number" value={doseMorning} onChange={(e) => { setDoseMorning(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
-                    <Text as="div" size="2" mb="1" weight="bold">Afternoon</Text>
-                    <TextField.Root type="number" value={doseAfternoon} onChange={(e) => { setDoseAfternoon(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
-                    <Text as="div" size="2" mb="1" weight="bold">Evening</Text>
-                    <TextField.Root type="number" value={doseEvening} onChange={(e) => { setDoseEvening(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
-                    <Text as="div" size="2" mb="1" weight="bold">Night</Text>
-                    <TextField.Root type="number" value={doseNight} onChange={(e) => { setDoseNight(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
-                  </div>
+                  {medicineTypeFilter === 'box-strip-tablet' && ( // Conditional rendering for dose and period fields
+                    <>
+                      <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                        <Text as="div" size="2" mb="1" weight="bold">Morning</Text>
+                        <TextField.Root type="number" value={doseMorning} onChange={(e) => { setDoseMorning(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                      </div>
+                      <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                        <Text as="div" size="2" mb="1" weight="bold">Afternoon</Text>
+                        <TextField.Root type="number" value={doseAfternoon} onChange={(e) => { setDoseAfternoon(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                      </div>
+                      <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                        <Text as="div" size="2" mb="1" weight="bold">Evening</Text>
+                        <TextField.Root type="number" value={doseEvening} onChange={(e) => { setDoseEvening(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                      </div>
+                      <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                        <Text as="div" size="2" mb="1" weight="bold">Night</Text>
+                        <TextField.Root type="number" value={doseNight} onChange={(e) => { setDoseNight(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                      </div>
 
-                  {/* Period & Qty */}
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
-                    <Text as="div" size="2" mb="1" weight="bold">Period (days)</Text>
-                    <TextField.Root type="number" value={period} onChange={(e) => { setPeriod(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="e.g. 5" />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-1">
-                    <Text as="div" size="2" mb="1" weight="bold">QTY</Text>
-                    <TextField.Root type="number" value={qty} readOnly inputMode="numeric" min={0} step={1} placeholder="0" />
-                  </div>
+                      {/* Period & QTY */}
+                      <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                        <Text as="div" size="2" mb="1" weight="bold">Period (days)</Text>
+                        <TextField.Root type="number" value={period} onChange={(e) => { setPeriod(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="e.g. 5" />
+                      </div>
+                      <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                        <Text as="div" size="2" mb="1" weight="bold">QTY</Text>
+                        <TextField.Root type="number" value={qty} readOnly inputMode="numeric" min={0} step={1} placeholder="0" />
+                      </div>
+                    </>
+                  )}
+                  {medicineTypeFilter === 'strip-only' && ( // New QTY field for strip-only
+                    <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                      <Text as="div" size="2" mb="1" weight="bold">QTY (Strips)</Text>
+                      <TextField.Root type="number" value={stripQty} onChange={(e) => { setStripQty(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                    </div>
+                  )}
+                  {medicineTypeFilter === 'box-only' && ( // New QTY field for box-only
+                    <div className="col-span-6 sm:col-span-3 lg:col-span-1">
+                      <Text as="div" size="2" mb="1" weight="bold">QTY (Boxes)</Text>
+                      <TextField.Root type="number" value={boxQty} onChange={(e) => { setBoxQty(e.target.value); }} inputMode="numeric" min={0} step={1} placeholder="0" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Action row */}
