@@ -15,6 +15,7 @@ export async function listDrugs(params?: {
   per_page?: number;
   sort_by?: string;
   sort_dir?: 'asc' | 'desc';
+  type_drug?: 'box-strip-tablet' | 'box-only'; // Add type_drug parameter
 }) {
   const qs = new URLSearchParams();
   if (params?.search) qs.set('search', params.search);
@@ -28,6 +29,7 @@ export async function listDrugs(params?: {
   if (params?.per_page) qs.set('per_page', String(params.per_page));
   if (params?.sort_by) qs.set('sort_by', params.sort_by);
   if (params?.sort_dir) qs.set('sort_dir', params.sort_dir);
+  if (params?.type_drug) qs.set('type_drug', params.type_drug); // Add type_drug to query string
 
   const res = await fetch(`${API_BASE}/drugs${qs.toString() ? `?${qs.toString()}` : ''}`, {
     headers: { Accept: 'application/json' },

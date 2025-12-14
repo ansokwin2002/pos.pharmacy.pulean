@@ -254,12 +254,14 @@ export default function RegisterPatientPage() {
     }
   }, [currentTab, prescriptions.length, validatePatientInfo, handleTabChange]);
 
-  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; }[]>([]);
+  const [drugOptions, setDrugOptions] = useState<{ id: string; name: string; price: number; generic_name?: string; unit?: string; box_price?: number; tablet_price?: number; type_drug?: string; }[]>([]);
   const [drugSearchTerm, setDrugSearchTerm] = useState('');
   const [drugPage, setDrugPage] = useState(1);
   const [hasMoreDrugs, setHasMoreDrugs] = useState(true);
   const [isFetchingMoreDrugs, setIsFetchingMoreDrugs] = useState(false);
   const debouncedDrugSearchTerm = useDebounce(drugSearchTerm, 300);
+  const [selectedDrugId, setSelectedDrugId] = useState<string>('');
+  const [medicineTypeFilter, setMedicineTypeFilter] = useState<'box-strip-tablet' | 'box-only'>('box-strip-tablet');
 
 
   const fetchDrugs = useCallback(async (searchTerm = '', page = 1, append = false) => {
@@ -274,14 +276,18 @@ export default function RegisterPatientPage() {
         search: searchTerm,
         page: page,
         per_page: 15, // as requested
+        type_drug: medicineTypeFilter,
       });
       
       const newDrugs = response.data.map((drug: any) => ({
         id: drug.id,
         name: drug.name,
-        price: Number(drug.price),
+        price: Number(medicineTypeFilter === 'box-only' ? drug.box_price : drug.tablet_price),
         generic_name: drug.generic_name,
         unit: drug.unit,
+        box_price: Number(drug.box_price),
+        tablet_price: Number(drug.tablet_price),
+        type_drug: drug.type_drug,
       }));
 
       setDrugOptions(prev => append ? [...prev, ...newDrugs] : newDrugs);
@@ -295,7 +301,7 @@ export default function RegisterPatientPage() {
       setIsLoadingPrescriptions(false);
       setIsFetchingMoreDrugs(false);
     }
-  }, []);
+  }, [medicineTypeFilter]);
 
   useEffect(() => {
     fetchDrugs(debouncedDrugSearchTerm, 1);
@@ -307,7 +313,8 @@ export default function RegisterPatientPage() {
     }
   };
 
-  const [selectedDrugId, setSelectedDrugId] = useState<string>('');
+
+
 
   // Manual drug dialog state
   const [isManualDrugOpen, setManualDrugOpen] = useState(false);
@@ -403,7 +410,7 @@ export default function RegisterPatientPage() {
 
   const addDrugToTable = async () => {
     // Validate required Drug selection
-    const d = allDrugOptions.find(x => x.id === selectedDrugId);
+    const d = drugOptions.find(x => x.id === selectedDrugId);
     if (!d) {
       setPrescErrors(prev => ({ ...prev, drug: 'Drug is required' }));
       return;
@@ -430,20 +437,22 @@ export default function RegisterPatientPage() {
       // If no dosages entered, default to 1 per day
       quantity = dailyDose > 0 ? dailyDose * days : days;
     }
+
+    const priceToUse = medicineTypeFilter === 'box-only' ? d.box_price : d.tablet_price;
     
     console.log('Adding drug:', {
       name: d.name,
       morning, afternoon, evening, night,
       days,
       quantity,
-      price: d.price,
-      total: d.price * quantity
+      price: priceToUse,
+      total: (priceToUse || 0) * quantity
     });
     
     const entry: Presc = {
       id: d.id,
       name: d.name,
-      price: d.price,
+      price: priceToUse || 0,
       morning,
       afternoon,
       evening,
@@ -1212,12 +1221,28 @@ doc.setFont(khmerFontName);
                     <Text as="div" size="2" mb="1" weight="bold">Drug</Text>
                     <Flex align="center" gap="2">
                                             <Box className="flex-1">
-                                              <Flex direction="column" align="start" className="w-full">
-                                                <Box style={{ position: 'relative', width: '100%' }}>
+                                              <Flex direction="row" align="center" gap="2" className="w-full">
+                                                <Box style={{ position: 'relative', width: '200px' }}> {/* Adjust width as needed */}
+                                                  <Select.Root
+                                                    value={medicineTypeFilter}
+                                                    onValueChange={(value: 'box-strip-tablet' | 'box-only') => {
+                                                      setMedicineTypeFilter(value);
+                                                      // Potentially refetch drugs or adjust prices here
+                                                      fetchDrugs(debouncedDrugSearchTerm, 1);
+                                                    }}
+                                                  >
+                                                    <Select.Trigger placeholder="Price Type" className="w-full" />
+                                                    <Select.Content>
+                                                      <Select.Item value="box-strip-tablet">Tablet Price</Select.Item>
+                                                      <Select.Item value="box-only">Box Price</Select.Item>
+                                                    </Select.Content>
+                                                  </Select.Root>
+                                                </Box>
+                                                <Box style={{ position: 'relative', flexGrow: 1 }}>
                                                                                                                         <SearchableSelect
                                                                                                                           options={drugOptions.map(d => ({
                                                                                                                             value: d.id,
-                                                                                                                            label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${d.price.toFixed(2)}`
+                                                                                                                            label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — $${(medicineTypeFilter === 'box-only' ? d.box_price : d.tablet_price)?.toFixed(2) || '0.00'}`
                                                                                                                           }))}
                                                                                                                           value={selectedDrugId}
                                                                                                                           onChange={async (val) => {
@@ -1242,13 +1267,7 @@ doc.setFont(khmerFontName);
                                                                                                                                   generic_name: fetchedDrug.generic_name,
                                                                                                                                   unit: fetchedDrug.unit,
                                                                                                                                 } : d));
-                                                                                                                                setCustomDrugs(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                                                                                                                  ...fetchedDrug,
-                                                                                                                                  price: Number(fetchedDrug.price),
-                                                                                                                                  generic_name: fetchedDrug.generic_name,
-                                                                                                                                  unit: fetchedDrug.unit,
-                                                                                                                                } : d));
-                                                                                                                              } catch (error) {
+                                                                                                                                                                                                                                                              } catch (error) {
                                                                                                                                 console.error('Failed to fetch selected drug details:', error);
                                                                                                                                 toast.error('Failed to load selected drug details');
                                                                                                                               } finally {
