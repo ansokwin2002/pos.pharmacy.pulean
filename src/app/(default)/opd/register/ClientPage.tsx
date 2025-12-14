@@ -1245,11 +1245,11 @@ doc.setFont(khmerFontName);
                                                                                                                           options={drugOptions.map(d => {
                                                                                                                             let priceDisplay = '';
                                                                                                                             if (medicineTypeFilter === 'box-only') {
-                                                                                                                              priceDisplay = `$${d.box_price?.toFixed(2) || '0.00'}`;
+                                                                                                                              priceDisplay = `B: $${d.box_price?.toFixed(2) || '0.00'}`;
                                                                                                                             } else if (medicineTypeFilter === 'strip-only') {
                                                                                                                               priceDisplay = `S: $${d.strip_price?.toFixed(2) || '0.00'}`;
                                                                                                                             } else { // box-strip-tablet
-                                                                                                                              priceDisplay = `T: $${d.tablet_price?.toFixed(2) || '0.00'} / S: $${d.strip_price?.toFixed(2) || '0.00'}`;
+                                                                                                                              priceDisplay = `T: $${d.tablet_price?.toFixed(2) || '0.00'}`;
                                                                                                                             }
                                                                                                                             return {
                                                                                                                               value: d.id,
