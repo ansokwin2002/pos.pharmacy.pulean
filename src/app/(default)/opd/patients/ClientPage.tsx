@@ -5,7 +5,6 @@ import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient }
 import { PageHeading } from '@/components/common/PageHeading';
 import { PatientNameWithMenu } from '@/components/common/PatientActionsMenu';
 import { Search, Plus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
-import { SortableHeader } from '@/components/common/SortableHeader';
 import Pagination from '@/components/common/Pagination';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -17,160 +16,214 @@ interface Patient {
   telephone?: string | null;
   address?: string | null;
   gender?: 'male' | 'female' | string | null;
-  age?: number | null;
-  signs_of_life?: string | null;
-  symptom?: string | null;
-  diagnosis?: string | null;
+  age?: string | null;
   email?: string;
   phone?: string;
   city?: string;
 }
 
 const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
+
   const [name, setName] = useState('');
+
   const [telephone, setTelephone] = useState('');
+
   const [address, setAddress] = useState('');
+
   const [gender, setGender] = useState<'male' | 'female'>('male');
+
   const [age, setAge] = useState<string>('');
-  const [symptom, setSymptom] = useState('');
-  const [diagnosis, setDiagnosis] = useState('');
+
+
+
 
 
   const handleSubmit = () => {
+
     if (!name) {
+
       toast.error('Patient name is required.');
+
       return;
+
     }
-    const payload = { name, gender, age, telephone, address, symptom, diagnosis };
+
+    const payload = { name, gender, age, telephone, address };
+
     onAddPatient(payload);
+
     setOpen(false);
+
     setName('');
+
     setTelephone('');
+
     setAddress('');
+
     setGender('male');
+
     setAge('');
-    setSymptom('');
-    setDiagnosis('');
+
     toast.success('Patient added successfully!');
+
   };
 
+
+
   return (
+
     <Dialog.Root open={open} onOpenChange={setOpen}>
+
       <Dialog.Content style={{ maxWidth: 450 }}>
+
         <Dialog.Title>Add New Patient</Dialog.Title>
+
         <Dialog.Description size="2" mb="4">
+
           Fill in the details of the new patient.
+
         </Dialog.Description>
 
+
+
         <Flex direction="column" gap="3">
+
           <label>
+
             <Text as="div" size="2" mb="1" weight="bold">
+
               Name
+
             </Text>
+
             <TextField.Root
+
               value={name}
+
               onChange={(e) => setName(e.target.value)}
-              onKeyPress={(e) => {
-                if (/[0-9]/.test(e.key)) {
-                  e.preventDefault();
-                }
-              }}
+
               placeholder="Enter full name"
+
               required
+
             />
+
           </label>
+
           <label>
+
             <Text as="div" size="2" mb="1" weight="bold">
+
               Telephone
+
             </Text>
+
             <TextField.Root
+
               value={telephone}
+
               onChange={(e) => setTelephone(e.target.value)}
+
               placeholder="Enter telephone"
+
             />
+
           </label>
+
           <label>
+
             <Text as="div" size="2" mb="1" weight="bold">
+
               Age
+
             </Text>
+
             <TextField.Root
-              type="number"
+
+              type="text"
+
               value={age}
+
               onChange={(e) => setAge(e.target.value)}
+
               placeholder="Enter age"
+
               min={0}
+
             />
+
           </label>
+
           <label>
+
             <Text as="div" size="2" mb="1" weight="bold">
+
               Address
+
             </Text>
+
             <TextField.Root
+
               value={address ?? ''}
+
               onChange={(e) => setAddress(e.target.value)}
-              onKeyPress={(e) => {
-                if (/[0-9]/.test(e.key)) {
-                  e.preventDefault();
-                }
-              }}
+
               placeholder="Enter address"
+
             />
+
           </label>
+
           <label>
+
             <Text as="div" size="2" mb="1" weight="bold">
-              Symptom
-            </Text>
-            <TextField.Root
-              value={symptom}
-              onChange={(e) => setSymptom(e.target.value)}
-              onKeyPress={(e) => {
-                if (/[0-9]/.test(e.key)) {
-                  e.preventDefault();
-                }
-              }}
-              placeholder="Enter symptom"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Diagnosis
-            </Text>
-            <TextField.Root
-              value={diagnosis}
-              onChange={(e) => setDiagnosis(e.target.value)}
-              onKeyPress={(e) => {
-                if (/[0-9]/.test(e.key)) {
-                  e.preventDefault();
-                }
-              }}
-              placeholder="Enter diagnosis"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
+
               Gender
+
             </Text>
+
             <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => setGender(value)}>
+
               <Select.Trigger placeholder="Select gender" />
+
               <Select.Content>
+
                 <Select.Item value="male">Male</Select.Item>
+
                 <Select.Item value="female">Female</Select.Item>
+
               </Select.Content>
+
             </Select.Root>
+
           </label>
+
         </Flex>
 
+
+
         <Flex gap="3" mt="4" justify="end">
+
           <Dialog.Close>
+
             <Button variant="soft" color="gray">
+
               Cancel
+
             </Button>
+
           </Dialog.Close>
+
           <Button onClick={handleSubmit}>Save</Button>
+
         </Flex>
+
       </Dialog.Content>
+
     </Dialog.Root>
+
   );
+
 };
 
 const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
@@ -178,8 +231,6 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
   const [telephone, setTelephone] = useState('');
   const [age, setAge] = useState<string>('');
   const [address, setAddress] = useState('');
-  const [symptom, setSymptom] = useState('');
-  const [diagnosis, setDiagnosis] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
 
   useEffect(() => {
@@ -188,8 +239,6 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
       setTelephone((patient.telephone ?? patient.phone ?? '') as string);
       setAge(patient.age?.toString() ?? '');
       setAddress(patient.address ?? '');
-      setSymptom(patient.symptom ?? '');
-      setDiagnosis(patient.diagnosis ?? '');
       setGender((patient.gender as 'male' | 'female') ?? 'male');
     }
   }, [patient]);
@@ -203,10 +252,8 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
       ...patient,
       name,
       telephone,
-      age: age ? parseInt(age) : undefined,
+      age: age,
       address,
-      symptom,
-      diagnosis,
       gender,
     };
     onUpdatePatient(updatedPatient);
@@ -249,7 +296,7 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
               Age
             </Text>
             <TextField.Root
-              type="number"
+              type="text"
               value={age}
               onChange={(e) => setAge(e.target.value)}
               placeholder="Enter age"
@@ -264,26 +311,6 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Enter address"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Symptom
-            </Text>
-            <TextField.Root
-              value={symptom}
-              onChange={(e) => setSymptom(e.target.value)}
-              placeholder="Enter symptom"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Diagnosis
-            </Text>
-            <TextField.Root
-              value={diagnosis}
-              onChange={(e) => setDiagnosis(e.target.value)}
-              placeholder="Enter diagnosis"
             />
           </label>
           <label>
@@ -319,9 +346,7 @@ export default function PatientListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
-  const [diagnosisFilter, setDiagnosisFilter] = useState('');
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Patient; direction: 'asc' | 'desc' } | null>(null);
   const [isAddPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
   const [isEditPatientDialogOpen, setEditPatientDialogOpen] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<Patient | null>(null);
@@ -350,17 +375,6 @@ export default function PatientListPage() {
 
   useEffect(() => {
     let sortedPatients = [...patientsData];
-    if (sortConfig !== null) {
-      sortedPatients.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
-      });
-    }
 
     const lowercasedFilter = searchTerm.toLowerCase();
     let filtered = sortedPatients.filter(patient => {
@@ -373,12 +387,6 @@ export default function PatientListPage() {
       
       // Search by address
       if (patient.address && patient.address.toLowerCase().includes(lowercasedFilter)) return true;
-      
-      // Search by symptom
-      if (patient.symptom && patient.symptom.toLowerCase().includes(lowercasedFilter)) return true;
-      
-      // Search by diagnosis
-      if (patient.diagnosis && patient.diagnosis.toLowerCase().includes(lowercasedFilter)) return true;
       
       // Search by created_at date
       if (patient.created_at) {
@@ -430,24 +438,11 @@ export default function PatientListPage() {
       });
     }
 
-    if (diagnosisFilter) {
-      const diagnosisLower = diagnosisFilter.toLowerCase();
-      filtered = filtered.filter(patient => 
-        patient.diagnosis && patient.diagnosis.toLowerCase().includes(diagnosisLower)
-      );
-    }
-
     setFilteredPatients(filtered);
     setCurrentPage(1);
-  }, [searchTerm, sortConfig, patientsData, genderFilter, dateFilter, diagnosisFilter]);
+  }, [searchTerm, patientsData, genderFilter, dateFilter]);
 
-  const handleSort = (key: keyof Patient) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
+
 
   const handleAddPatient = async (payload: any) => {
     try {
@@ -515,7 +510,6 @@ export default function PatientListPage() {
     setSearchTerm('');
     setGenderFilter('all');
     setDateFilter(null);
-    setDiagnosisFilter('');
   };
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -552,7 +546,7 @@ export default function PatientListPage() {
         <Flex gap="4" align="center" wrap="wrap" className="w-full">
           <Box className="flex-grow min-w-[250px]">
             <TextField.Root
-              placeholder="Search by name, phone, address, symptom, diagnosis, date..."
+              placeholder="Search by name, phone, address, date..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             >
@@ -577,14 +571,7 @@ export default function PatientListPage() {
               onChange={(date) => setDateFilter(date)}
             />
           </Box>
-          <Box className="flex-shrink-0" style={{ minWidth: '200px' }}>
-            <TextField.Root
-              placeholder="Search by diagnosis..."
-              value={diagnosisFilter}
-              onChange={(e) => setDiagnosisFilter(e.target.value)}
-            />
-          </Box>
-          <Button variant="soft" color={genderFilter !== 'all' || dateFilter || diagnosisFilter ? 'red' : 'gray'} onClick={handleResetFilters}>
+          <Button variant="soft" color={genderFilter !== 'all' || dateFilter ? 'red' : 'gray'} onClick={handleResetFilters}>
             <RotateCcw size={16} />
             Reset Filters
           </Button>
@@ -622,76 +609,25 @@ export default function PatientListPage() {
               <Table.Header>
                 <Table.Row>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Name"
-                      sortKey="name"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Name
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Telephone"
-                      sortKey="telephone"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Telephone
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Age"
-                      sortKey="age"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Age
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Address"
-                      sortKey="address"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Address
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Symptom"
-                      sortKey="symptom"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Gender
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Diagnosis"
-                      sortKey="diagnosis"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Created At
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Gender"
-                      sortKey="gender"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Created At"
-                      sortKey="created_at"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    <SortableHeader
-                      label="Updated At"
-                      sortKey="updated_at"
-                      currentSort={sortConfig}
-                      onSort={handleSort}
-                    />
+                    Updated At
                   </Table.ColumnHeaderCell>
                   <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
                 </Table.Row>
@@ -699,7 +635,7 @@ export default function PatientListPage() {
               <Table.Body>
                 {currentItems.length === 0 ? (
                   <Table.Row>
-                    <Table.Cell colSpan={10} className="text-center">
+                    <Table.Cell colSpan={8} className="text-center">
                       <Text size="3" color="gray">No patients found.</Text>
                     </Table.Cell>
                   </Table.Row>
@@ -717,8 +653,6 @@ export default function PatientListPage() {
                         <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
                         <Table.Cell>{patient.age || '-'}</Table.Cell>
                         <Table.Cell>{patient.address || '-'}</Table.Cell>
-                        <Table.Cell>{patient.symptom || '-'}</Table.Cell>
-                        <Table.Cell>{patient.diagnosis || '-'}</Table.Cell>
                         <Table.Cell>{patient.gender || '-'}</Table.Cell>
                         <Table.Cell>
                           {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', { 

@@ -1,12 +1,9 @@
 export type PodPatientPayload = {
   name: string;
   gender?: string | null;
-  age?: number | null;
+  age?: string | null;
   telephone?: string | null;
   address?: string | null;
-  signs_of_life?: string | null;
-  symptom?: string | null;
-  diagnosis?: string | null;
 };
 
 export type PodPatient = PodPatientPayload & { id: number };
