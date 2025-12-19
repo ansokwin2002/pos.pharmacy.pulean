@@ -76,16 +76,6 @@ export default function AddStockPage() {
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.quantity_in_boxes < 0) {
-      newErrors.quantity_in_boxes = 'Quantity in boxes cannot be negative.';
-    }
-    if (formData.strips_per_box < 0) {
-      newErrors.strips_per_box = 'Strips per box cannot be negative.';
-    }
-    if (formData.tablets_per_strip < 0) {
-      newErrors.tablets_per_strip = 'Tablets per strip cannot be negative.';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -99,13 +89,19 @@ export default function AddStockPage() {
 
     setIsUpdating(true);
     try {
-      // The backend API should handle the logic for updating stock based on these values.
-      // We are sending the updated granular quantities.
-      await updateDrug(drug.id, {
+      const dataToSubmit: Partial<Drug> = {
         quantity_in_boxes: formData.quantity_in_boxes,
-        strips_per_box: formData.strips_per_box,
-        tablets_per_strip: formData.tablets_per_strip,
-      });
+      };
+
+      if (drug.type_drug !== 'box-only') {
+        dataToSubmit.strips_per_box = formData.strips_per_box;
+        dataToSubmit.tablets_per_strip = formData.tablets_per_strip;
+      } else {
+        dataToSubmit.strips_per_box = undefined;
+        dataToSubmit.tablets_per_strip = undefined;
+      }
+      
+      await updateDrug(drug.id, dataToSubmit);
       toast.success(`Stock for ${drug.name} updated successfully!`);
       router.push('/drugs'); // Navigate back to drugs list
     } catch (error) {
@@ -170,7 +166,7 @@ export default function AddStockPage() {
             <Grid columns="3" gap="4">
               <Box>
                 <Text as="label" size="2" weight="medium" className="block mb-1">
-                  Quantity in Boxes
+                  Quantity in Stock
                 </Text>
                 <TextField.Root
                   type="number"
@@ -185,39 +181,43 @@ export default function AddStockPage() {
                 )}
               </Box>
 
-              <Box>
-                <Text as="label" size="2" weight="medium" className="block mb-1">
-                  Strips Per Box
-                </Text>
-                <TextField.Root
-                  type="number"
-                  min="0"
-                  value={formData.strips_per_box.toString()}
-                  onChange={(e) => handleInputChange('strips_per_box', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  className={errors.strips_per_box ? 'border-red-500' : ''}
-                />
-                {errors.strips_per_box && (
-                  <Text size="1" color="red" className="mt-1">{errors.strips_per_box}</Text>
-                )}
-              </Box>
+              {drug.type_drug !== 'box-only' && (
+                <>
+                  <Box>
+                    <Text as="label" size="2" weight="medium" className="block mb-1">
+                      Strips Per Box
+                    </Text>
+                    <TextField.Root
+                      type="number"
+                      min="0"
+                      value={formData.strips_per_box.toString()}
+                      onChange={(e) => handleInputChange('strips_per_box', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className={errors.strips_per_box ? 'border-red-500' : ''}
+                    />
+                    {errors.strips_per_box && (
+                      <Text size="1" color="red" className="mt-1">{errors.strips_per_box}</Text>
+                    )}
+                  </Box>
 
-              <Box>
-                <Text as="label" size="2" weight="medium" className="block mb-1">
-                  Tablets Per Strip
-                </Text>
-                <TextField.Root
-                  type="number"
-                  min="0"
-                  value={formData.tablets_per_strip.toString()}
-                  onChange={(e) => handleInputChange('tablets_per_strip', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  className={errors.tablets_per_strip ? 'border-red-500' : ''}
-                />
-                {errors.tablets_per_strip && (
-                  <Text size="1" color="red" className="mt-1">{errors.tablets_per_strip}</Text>
-                )}
-              </Box>
+                  <Box>
+                    <Text as="label" size="2" weight="medium" className="block mb-1">
+                      Tablets Per Strip
+                    </Text>
+                    <TextField.Root
+                      type="number"
+                      min="0"
+                      value={formData.tablets_per_strip.toString()}
+                      onChange={(e) => handleInputChange('tablets_per_strip', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className={errors.tablets_per_strip ? 'border-red-500' : ''}
+                    />
+                    {errors.tablets_per_strip && (
+                      <Text size="1" color="red" className="mt-1">{errors.tablets_per_strip}</Text>
+                    )}
+                  </Box>
+                </>
+              )}
             </Grid>
 
             <Flex gap="3" justify="end" className="mt-6">

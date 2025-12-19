@@ -12,7 +12,7 @@ import {
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import { formatCurrency } from '@/utilities';
-import { Edit, Trash2, Eye, Package } from 'lucide-react';
+import { Edit, Trash2, Eye, Package, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SortableHeader } from '@/components/common/SortableHeader';
 
@@ -39,6 +39,7 @@ export default function DrugsTable({
 }: DrugsTableProps) {
   const router = useRouter();
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [loadingAction, setLoadingAction] = useState<{ drugId: string; action: 'view' | 'add-stock' | 'edit' | 'delete' } | null>(null);
   const allVisibleSelected = drugs.length > 0 && selectedIds.length === drugs.length;
 
 
@@ -179,7 +180,7 @@ export default function DrugsTable({
             </Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>
               <SortableHeader
-                label="Drug Name"
+                label="Brand Name"
                 sortKey="name"
                 currentSort={sortConfig}
                 onSort={handleSort}
@@ -195,7 +196,7 @@ export default function DrugsTable({
             </Table.ColumnHeaderCell>
             <Table.ColumnHeaderCell>
               <SortableHeader
-                label="Brand Name"
+                label="Company Name"
                 sortKey="brand_name"
                 currentSort={sortConfig}
                 onSort={handleSort}
@@ -283,10 +284,16 @@ export default function DrugsTable({
                         color="gray"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setLoadingAction({ drugId: drug.id, action: 'view' });
                           handleViewDrug(drug);
                         }}
+                        disabled={loadingAction?.drugId === drug.id}
                       >
-                        <Eye size={14} />
+                        {loadingAction?.drugId === drug.id && loadingAction?.action === 'view' ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Eye size={14} />
+                        )}
                       </IconButton>
                     </Tooltip>
                     <Tooltip content="Add Stock">
@@ -296,10 +303,16 @@ export default function DrugsTable({
                         color="green"
                         onClick={(e) => {
                           e.stopPropagation();
+                          setLoadingAction({ drugId: drug.id, action: 'add-stock' });
                           router.push(`/drugs/add-stock/${drug.id}`);
                         }}
+                        disabled={loadingAction?.drugId === drug.id}
                       >
-                        <Package size={14} />
+                        {loadingAction?.drugId === drug.id && loadingAction?.action === 'add-stock' ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Package size={14} />
+                        )}
                       </IconButton>
                     </Tooltip>
                     <Tooltip content="Edit Drug">

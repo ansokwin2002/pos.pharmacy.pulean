@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -62,19 +62,20 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
 export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }: DrugFormProps) {
   const [formData, setFormData] = useState<Partial<Drug>>(getInitialData(drug));
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [medicineTypeDisplay, setMedicineTypeDisplay] = useState<'box-strip-tablet' | 'box-only'>(
-    drug && (drug.strips_per_box === undefined || drug.strips_per_box === 0) && (drug.tablets_per_strip === undefined || drug.tablets_per_strip === 0)
-      ? 'box-only'
-      : 'box-strip-tablet'
-  );
+  const [medicineTypeDisplay, setMedicineTypeDisplay] = useState<'box-strip-tablet' | 'box-only'>('box-strip-tablet');
 
   useEffect(() => {
     setFormData(getInitialData(drug));
-    setMedicineTypeDisplay(
-      drug && drug.type_drug === 'box-only'
-        ? 'box-only'
-        : 'box-strip-tablet'
-    );
+    if (drug && typeof drug.type_drug === 'string') {
+      const normalizedType = drug.type_drug.trim().toLowerCase();
+      if (normalizedType === 'box-only') {
+        setMedicineTypeDisplay('box-only');
+      } else {
+        setMedicineTypeDisplay('box-strip-tablet');
+      }
+    } else {
+      setMedicineTypeDisplay('box-strip-tablet'); // Default for new drugs or if type_drug is not a string
+    }
   }, [drug]);
 
   const handleInputChange = (field: keyof Drug, value: any) => {
@@ -110,30 +111,6 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     if (!formData.generic_name?.trim()) {
       newErrors.generic_name = 'Generic name is required';
     }
-
-    if (medicineTypeDisplay === 'box-strip-tablet') {
-      if (formData.strips_per_box === undefined || formData.strips_per_box <= 0) {
-        newErrors.strips_per_box = 'Strips per box is required and must be greater than 0';
-      }
-      if (formData.strip_price === undefined || formData.strip_price <= 0) {
-        newErrors.strip_price = 'Strip price is required and must be greater than 0';
-      }
-      if (formData.strip_cost_price === undefined || formData.strip_cost_price <= 0) {
-        newErrors.strip_cost_price = 'Strip cost price is required and must be greater than 0';
-      }
-      if (formData.tablets_per_strip === undefined || formData.tablets_per_strip <= 0) {
-        newErrors.tablets_per_strip = 'Tablets per strip is required and must be greater than 0';
-      }
-      if (formData.tablet_price === undefined || formData.tablet_price <= 0) {
-        newErrors.tablet_price = 'Tablet price is required and must be greater than 0';
-      }
-      if (formData.tablet_cost_price === undefined || formData.tablet_cost_price <= 0) {
-        newErrors.tablet_cost_price = 'Tablet cost price is required and must be greater than 0';
-      }
-    }
-
-
-
 
     if (!formData.expiry_date) {
       newErrors.expiry_date = 'Expiry date is required';
@@ -278,11 +255,10 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
           </Grid>
 
           {/* Conditional Rendering based on medicineTypeDisplay */}
-          {medicineTypeDisplay === 'box-strip-tablet' || medicineTypeDisplay === 'box-only' ? (
-            <Grid columns="3" gap="4" mt="4">
+          <Grid columns="3" gap="4" mt="4">
               <Box>
                 <Text as="label" size="2" weight="medium" className="block mb-1">
-                  Quantity in Boxes
+                  Quantity in Stock
                 </Text>
                 <TextField.Root
                   type="number"
@@ -333,7 +309,6 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
                 )}
               </Box>
             </Grid>
-          ) : null}
 
           {medicineTypeDisplay === 'box-strip-tablet' ? (
             <>
