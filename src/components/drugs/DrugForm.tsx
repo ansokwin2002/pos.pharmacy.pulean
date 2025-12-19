@@ -104,7 +104,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     const newErrors: Record<string, string> = {};
 
     if (!formData.name?.trim()) {
-      newErrors.name = 'Drug name is required';
+      newErrors.name = 'Brand name is required';
     }
 
     if (!formData.generic_name?.trim()) {
@@ -211,12 +211,12 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
           <Grid columns="3" gap="4">
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Drug Name *
+                Brand Name *
               </Text>
               <TextField.Root
                 value={formData.name || ''}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter drug name"
+                placeholder="Enter brand name"
                 className={errors.name ? 'border-red-500' : ''}
               />
               {errors.name && (
@@ -241,12 +241,12 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
 
             <Box>
               <Text as="label" size="2" weight="medium" className="block mb-1">
-                Brand Name
+                Company Name
               </Text>
               <TextField.Root
                 value={formData.brand_name || ''}
                 onChange={(e) => handleInputChange('brand_name', e.target.value)}
-                placeholder="Enter brand name (optional)"
+                placeholder="Enter company name (optional)"
               />
             </Box>
 
