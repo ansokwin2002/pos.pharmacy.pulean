@@ -15,10 +15,11 @@ export default function RegisterPatientPage() {
     id: string;
     name: string;
     gender: 'male' | 'female';
-    age: number;
+    age: string;
     telephone: string;
     address: string;
-    signOfLife: 'BP' | 'P' | 'T' | 'RR';
+    signOfLife: string;
+    pe: string;
     symptom: string;
     diagnosis: string;
     phone?: string | null;
@@ -34,7 +35,8 @@ export default function RegisterPatientPage() {
   const [age, setAge] = useState<string>('');
   const [telephone, setTelephone] = useState('');
   const [address, setAddress] = useState('');
-  const [signOfLife, setSignOfLife] = useState<'BP' | 'P' | 'T' | 'RR' | ''>('');
+  const [signOfLife, setSignOfLife] = useState('');
+  const [pe, setPe] = useState('');
   const [symptom, setSymptom] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
 
@@ -153,11 +155,9 @@ export default function RegisterPatientPage() {
     
           // Handle signOfLife field (API uses 'signs_of_life', fake uses 'signOfLife')
           const signOfLifeValue = patient.signOfLife || patient.signs_of_life;
-          if (['BP', 'P', 'T', 'RR'].includes(signOfLifeValue)) {
-            setSignOfLife(signOfLifeValue as 'BP' | 'P' | 'T' | 'RR');
-          } else {
-            setSignOfLife('BP'); // Default value
-          }
+          setSignOfLife(signOfLifeValue || 'N/A');
+
+          setPe(patient.pe || 'N/A');
     
           setSymptom(patient.symptom || 'N/A'); // Changed this
           setDiagnosis(patient.diagnosis || 'N/A'); // Changed this
@@ -166,7 +166,7 @@ export default function RegisterPatientPage() {
         } else {
           console.log('Auto-fill skipped. patient or patientIdParam is missing.');
         }
-      }, [selectedPatient, patientIdParam, name, gender, age, telephone, address, signOfLife, symptom, diagnosis]);
+      }, [selectedPatient, patientIdParam, name, gender, age, telephone, address, signOfLife, pe, symptom, diagnosis]);
     
       // Form validation state
       const [errors, setErrors] = useState<{
@@ -176,6 +176,7 @@ export default function RegisterPatientPage() {
         telephone?: string;
         address?: string;
         signOfLife?: string;
+        pe?: string;
         symptom?: string;
         diagnosis?: string;
       }>({});
@@ -184,17 +185,16 @@ export default function RegisterPatientPage() {
         const e: typeof errors = {};
         if (!name.trim()) e.name = 'Name is required';
         if (!gender) e.gender = 'Gender is required';
-        const ageNum = Number(age);
-        if (!age || isNaN(ageNum) || ageNum <= 0) e.age = 'Age must be greater than 0';
+        if (!age.trim()) e.age = 'Age is required';
         if (!telephone.trim()) e.telephone = 'Telephone is required';
         else if (!/^\d{8,12}$/.test(telephone.trim())) e.telephone = 'Telephone must be 8–12 digits';
         if (!address.trim()) e.address = 'Address is required';
-        if (!signOfLife) e.signOfLife = 'Please select a sign of life';
+        if (!pe.trim()) e.pe = 'PE is required';
         if (!symptom.trim()) e.symptom = 'Symptom is required';
         if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
         setErrors(e);
         return Object.keys(e).length === 0;
-      }, [name, gender, age, telephone, address, signOfLife, symptom, diagnosis, setErrors]);
+      }, [name, gender, age, telephone, address, signOfLife, pe, symptom, diagnosis, setErrors]);
     
 
     
@@ -921,6 +921,7 @@ doc.setFont(khmerFontName);
         telephone,
         address,
         signs_of_life: signOfLife,
+        pe,
         symptom,
         diagnosis,
       };
@@ -998,6 +999,7 @@ doc.setFont(khmerFontName);
         if (be?.telephone) newErrs.telephone = String(be.telephone);
         if (be?.address) newErrs.address = String(be.address);
         if (be?.signs_of_life) newErrs.signOfLife = String(be.signs_of_life);
+        if (be?.pe) newErrs.pe = String(be.pe);
         if (be?.symptom) newErrs.symptom = String(be.symptom);
         if (be?.diagnosis) newErrs.diagnosis = String(be.diagnosis);
         setErrors(newErrs);
@@ -1139,13 +1141,11 @@ doc.setFont(khmerFontName);
             <label>
               <Text as="div" size="2" mb="1" weight="bold">Age <Text color="red">*</Text></Text>
               <TextField.Root
-                type="number"
+                type="text"
                 value={age}
                 onChange={(e) => { setAge(e.target.value); if (errors.age) setErrors(prev => ({...prev, age: undefined})); }}
                 placeholder="Enter age"
                 inputMode="numeric"
-                min={1}
-                step={1}
               />
               {errors.age && <Text size="1" className="text-red-500">{errors.age}</Text>}
             </label>
@@ -1173,21 +1173,15 @@ doc.setFont(khmerFontName);
               {errors.address && <Text size="1" className="text-red-500">{errors.address}</Text>}
             </label>
 
-            {/* Signs of Life */}
+            {/* Vital sign */}
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">Signs of Life</Text>
-              <Flex direction="column" align="start" className="w-full">
-                <Select.Root value={signOfLife} onValueChange={(value: 'BP' | 'P' | 'T' | 'RR') => { setSignOfLife(value); if (errors.signOfLife) setErrors(prev => ({...prev, signOfLife: undefined})); }}>
-                  <Select.Trigger placeholder="Select sign" />
-                  <Select.Content>
-                    <Select.Item value="BP">BP</Select.Item>
-                    <Select.Item value="P">P</Select.Item>
-                    <Select.Item value="T">T</Select.Item>
-                    <Select.Item value="RR">RR</Select.Item>
-                  </Select.Content>
-                </Select.Root>
-                {errors.signOfLife && <Text size="1" className="text-red-500 mt-1 pt-4">Please select a sign of life</Text>}
-              </Flex>
+              <Text as="div" size="2" mb="1" weight="bold">Vital sign</Text>
+              <TextArea
+                value={signOfLife}
+                onChange={(e) => { setSignOfLife((e.target as HTMLTextAreaElement).value); if (errors.signOfLife) setErrors(prev => ({...prev, signOfLife: undefined})); }}
+                placeholder="Enter vital sign"
+              />
+              {errors.signOfLife && <Text size="1" className="text-red-500">{errors.signOfLife}</Text>}
             </label>
 
             {/* Symptom */}
@@ -1199,6 +1193,17 @@ doc.setFont(khmerFontName);
                 placeholder="Describe patient symptoms"
               />
               {errors.symptom && <Text size="1" className="text-red-500">{errors.symptom}</Text>}
+            </label>
+
+            {/* PE */}
+            <label>
+              <Text as="div" size="2" mb="1" weight="bold">PE</Text>
+              <TextArea
+                value={pe}
+                onChange={(e) => { setPe((e.target as HTMLTextAreaElement).value); if (errors.pe) setErrors(prev => ({...prev, pe: undefined})); }}
+                placeholder="Enter PE"
+              />
+              {errors.pe && <Text size="1" className="text-red-500">{errors.pe}</Text>}
             </label>
 
             {/* Diagnosis */}
@@ -1657,7 +1662,8 @@ doc.setFont(khmerFontName);
                         <Text size="2"><strong>Age:</strong> {age}</Text>
                         <Text size="2"><strong>Phone:</strong> {telephone}</Text>
                         <Text size="2"><strong>Address:</strong> {address}</Text>
-                        <Text size="2"><strong>Signs of Life:</strong> {signOfLife}</Text>
+                        <Text size="2"><strong>Vital sign:</strong> {signOfLife}</Text>
+                        <Text size="2"><strong>PE:</strong> {pe}</Text>
                         <Text size="2"><strong>Symptom:</strong> {symptom}</Text>
                         <Text size="2"><strong>Diagnosis:</strong> {diagnosis}</Text>
                       </Flex>
