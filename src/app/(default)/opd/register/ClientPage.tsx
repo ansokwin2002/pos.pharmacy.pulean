@@ -1615,10 +1615,22 @@ doc.setFont(khmerFontName);
                 </Table.Body>
               </Table.Root>
               {/* Running total */}
-              <Flex justify="end" mt="4" p="3" style={{ backgroundColor: 'var(--blue-2)', borderRadius: '6px', border: '1px solid var(--blue-6)' }}>
-                <Text size="5" weight="bold" style={{ color: 'var(--blue-11)' }}>
-                  Total Amount: ${prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0).toFixed(2)}
-                </Text>
+              <Flex justify="end" mt="4" p="4" direction="column" gap="2" style={{ backgroundColor: 'var(--gray-12)', borderRadius: '8px', border: '1px solid var(--gray-10)' }}>
+                {(() => {
+                  const usdTotal = prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0);
+                  const khrExchangeRate = 4000;
+                  const khrTotal = usdTotal * khrExchangeRate;
+                  return (
+                    <Flex direction="column" gap="1" align="end">
+                      <Text size="3" weight="bold" style={{ color: 'var(--gray-1)' }}>
+                        Total Amount (USD): ${usdTotal.toFixed(2)}
+                      </Text>
+                      <Text size="3" weight="bold" style={{ color: 'var(--gray-4)' }}>
+                        Total Amount (KHR): ៛{khrTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </Text>
+                    </Flex>
+                  );
+                })()}
               </Flex>
             </Box>
           </Box>
