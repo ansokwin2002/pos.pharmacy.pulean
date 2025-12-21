@@ -1,10 +1,11 @@
 import { API_BASE } from '@/utilities/constants';
 
 export type TempPrescriptionPayload = {
-  json_data: string; // JSON string containing prescription data
+  json_data?: string; // JSON string containing prescription data
+  drugs?: any[]; // For the new API
 };
 
-export async function createTempPrescription(payload: TempPrescriptionPayload) {
+export async function createTempPrescriptionOld(payload: TempPrescriptionPayload) {
   const res = await fetch(`${API_BASE}/temp-prescriptions`, {
     method: 'POST',
     headers: {
@@ -17,8 +18,21 @@ export async function createTempPrescription(payload: TempPrescriptionPayload) {
   return res.json();
 }
 
-export async function listTempPrescriptions() {
-  const res = await fetch(`${API_BASE}/temp-prescriptions`, {
+export async function createTempPrescriptionForPatient(patientId: string, drugs: any[]) {
+  const res = await fetch(`${API_BASE}/temp-prescriptions/patient/${patientId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ drugs }),
+  });
+  if (!res.ok) throw await toError(res);
+  return res.json();
+}
+
+export async function listTempPrescriptions(patientId: string) {
+  const res = await fetch(`${API_BASE}/temp-prescriptions/patient/${patientId}`, {
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) throw await toError(res);
@@ -48,6 +62,15 @@ export async function updateTempPrescription(id: string, payload: TempPrescripti
 
 export async function deleteTempPrescription(id: string) {
   const res = await fetch(`${API_BASE}/temp-prescriptions/${id}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) throw await toError(res);
+  return res.json();
+}
+
+export async function deleteTempPrescriptionsByPatientId(patientId: string) {
+  const res = await fetch(`${API_BASE}/temp-prescriptions/patient/${patientId}`, {
     method: 'DELETE',
     headers: { Accept: 'application/json' },
   });

@@ -56,7 +56,7 @@ export default function RegisterPatientPage() {
   };
 
   const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
-  const [tempPrescriptionId, setTempPrescriptionId] = useState<string | null>(null);
+  const [tempPrescriptionRecordId, setTempPrescriptionRecordId] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [isLoadingPrescriptions, setIsLoadingPrescriptions] = useState(false);
   const [isAddingDrug, setIsAddingDrug] = useState(false);
@@ -81,16 +81,25 @@ export default function RegisterPatientPage() {
     }
   }, [currentTab]);
 
-  // Load temp drugs on mount
-  useEffect(() => {
-    loadTempDrugs();
-  }, []);
-
   // Get search params for secure patient ID lookup
   const searchParams = useSearchParams();
 
   // Extract patient ID from URL parameters (secure approach)
   const patientIdParam = searchParams.get('id');
+
+  // Load temp drugs on mount
+  useEffect(() => {
+    if (currentTab === 'prescription') {
+      loadTempDrugs();
+    }
+  }, [currentTab, patientIdParam]);
+
+  // Prompt user to add prescriptions if none found
+  useEffect(() => {
+    if (currentTab === 'prescription' && prescriptions.length === 0 && !isLoadingPrescriptions) {
+      toast.info('No prescriptions found for this patient. Please add medications.');
+    }
+  }, [currentTab, prescriptions.length, isLoadingPrescriptions]);
   const [isFetchingSelectedDrug, setIsFetchingSelectedDrug] = useState(false);
 
   // State for real patient data from API
@@ -374,17 +383,35 @@ export default function RegisterPatientPage() {
 
   const saveDrugToTempAPI = async (drug: Presc) => {
     try {
-      const { createTempPrescription } = await import('@/utilities/api/tempPrescriptions');
-      const payload = {
-        json_data: JSON.stringify(drug)
+      const { listTempPrescriptions, createTempPrescriptionForPatient, updateTempPrescription } = await import('@/utilities/api/tempPrescriptions');
+      const currentPatientId = patientIdParam || '0';
+
+      const newJsonData = {
+        patient_id: currentPatientId,
+        drugs: drugs,
       };
       
-      const result = await createTempPrescription(payload);
-      console.log('Saved drug to temp API:', result);
+      let result;
+      if (tempPrescriptionRecordId) {
+        // For update, continue to use json_data payload
+        const payload = { json_data: JSON.stringify(newJsonData) };
+        result = await updateTempPrescription(tempPrescriptionRecordId, payload);
+      } else {
+        // For create, use the new function with direct patientId and drugs array
+        if (!currentPatientId) {
+            console.error("Cannot create temp prescription: patientId is missing.");
+            toast.error("Error: Patient ID is missing for new prescription.");
+            return null;
+        }
+        result = await createTempPrescriptionForPatient(currentPatientId, drugs);
+        setTempPrescriptionRecordId(result.id);
+      }
+      
+      console.log('Saved/Updated drug to temp API:', result);
       return result;
     } catch (error: any) {
-      console.warn('Temp API not available, using local storage:', error.message);
-      // Fall back to local state only
+      console.warn('Temp API interaction failed:', error.message);
+      // Fall back to local state only (this might not be ideal without API persistence)
       return null;
     }
   };
@@ -393,20 +420,34 @@ export default function RegisterPatientPage() {
     setIsLoadingPrescriptions(true);
     try {
       const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
-      const temps = await listTempPrescriptions();
+      const currentPatientId = patientIdParam || '0';
+      // Check if patientIdParam is valid before making the API call
+      if (!patientIdParam) {
+        console.warn('Cannot load temp drugs: No patient ID found in URL.');
+        setPrescriptions([]);
+        return;
+      }
+      
+      const temps = await listTempPrescriptions(currentPatientId); // Fetch only for current patient
+
       if (temps && temps.length > 0) {
-        // Parse each temp prescription and build prescriptions array
-        const drugs = temps.map((temp: any) => {
-          const drug = JSON.parse(temp.json_data);
-          return { ...drug, tempId: temp.id }; // Add tempId for deletion
-        });
+        const tempPrescriptionRecord = temps[0]; // Assuming at most one record per patient
+        setTempPrescriptionRecordId(tempPrescriptionRecord.id); // Set the new state
+        const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
+        const drugs = parsedData.drugs; // No need to attach tempId to each drug
         setPrescriptions(drugs);
         console.log('Loaded temp drugs:', drugs);
+      } else {
+        setPrescriptions([]); // No temp prescription found for this patient
       }
     } catch (error: any) {
-      // Silently fail if API is not available or returns error
-      console.warn('Temp prescriptions API not available:', error.message);
-      // Keep prescriptions as empty array
+      // If it's a 404 and indicates no prescriptions found, treat as empty state, not an error.
+      if (error.status === 404 && error.detail?.message === 'No temporary prescriptions found for the given patient ID') {
+        console.warn('No temporary prescriptions found for this patient (handled 404):', error.detail.message);
+      } else {
+        console.error('Failed to load temp prescriptions:', error);
+        toast.error(`Failed to load temporary prescriptions: ${error.message} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
+      }
       setPrescriptions([]);
     } finally {
       setIsLoadingPrescriptions(false);
@@ -519,35 +560,50 @@ export default function RegisterPatientPage() {
   const removeDrug = async (index: number) => {
     console.log('=== REMOVE DRUG START ===');
     console.log('Removing drug at index:', index);
-    console.log('Current prescriptions:', prescriptions.length);
-    console.log('Current drugs:', prescriptions.map((p, i) => `${i}: ${p.name}`));
     
-    // Show loading state for this specific row
     setRemovingDrugIndex(index);
     
     try {
-      // Try to delete from API first
-      const drug = prescriptions[index];
-      const tempId = (drug as any).tempId;
-      if (tempId) {
-        try {
-          const { deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
-          await deleteTempPrescription(tempId);
-        } catch (err) {
-          console.warn('API deletion failed:', err);
-        }
+      const { listTempPrescriptions, updateTempPrescription, deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
+      const currentPatientId = patientIdParam || '0';
+
+      // 1. Fetch the existing record
+      const existingTempPrescriptions = await listTempPrescriptions(currentPatientId);
+      const tempPrescriptionRecord = existingTempPrescriptions[0];
+
+      if (!tempPrescriptionRecord) {
+        toast.error('Temporary prescription record not found for this patient.');
+        return;
+      }
+
+      // 2. Parse existing json_data and remove the drug
+      const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
+      let drugsArray: Presc[] = parsedData.drugs || [];
+      
+      const newDrugsArray = drugsArray.filter((_, i) => i !== index);
+
+      if (newDrugsArray.length === 0) {
+        // If no drugs left, delete the entire temp prescription record
+        await deleteTempPrescription(tempPrescriptionRecordId || '0'); // Use state variable
+        setPrescriptions([]);
+        toast.success('All temporary medications removed.');
+      } else {
+        // Update the existing record with the modified array
+        const newJsonData = {
+          patient_id: currentPatientId,
+          drugs: newDrugsArray,
+        };
+        const payload = {
+          json_data: JSON.stringify(newJsonData),
+        };
+        await updateTempPrescription(tempPrescriptionRecordId || '0', payload); // Use state variable
+        setPrescriptions(newDrugsArray); // No need to attach tempId
+        toast.success('Medication removed.');
       }
       
-      // Update local state
-      const newPrescriptions = prescriptions.filter((_, i) => i !== index);
-      console.log('After filter:', newPrescriptions.length);
-      console.log('New drugs:', newPrescriptions.map((p, i) => `${i}: ${p.name}`));
-      
-      setPrescriptions(newPrescriptions);
       setRenderKey(prev => prev + 1);
       
       console.log('=== REMOVE DRUG END ===');
-      toast.success('Medication removed');
     } catch (error) {
       console.error('Failed to remove drug:', error);
       toast.error('Failed to remove medication');
@@ -917,7 +973,7 @@ doc.setFont(khmerFontName);
         id: selectedPatientId || patientIdParam || undefined, // Include patient ID
         name,
         gender,
-        age: Number(age),
+        age: age,
         telephone,
         address,
         signs_of_life: signOfLife,
@@ -970,17 +1026,12 @@ doc.setFont(khmerFontName);
       setPrescriptions([]);
       setTempPrescriptionId(null);
       
-      // Clear all temp prescriptions from API in background
+      // Clear all temp prescriptions from API in background using the new API
       try {
-        const { listTempPrescriptions, deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
-        const temps = await listTempPrescriptions();
+        const { deleteTempPrescriptionsByPatientId } = await import('@/utilities/api/tempPrescriptions');
+        await deleteTempPrescriptionsByPatientId(patientIdParam || '0'); // Pass current patientIdParam
         
-        // Delete all temp prescriptions
-        for (const temp of temps) {
-          await deleteTempPrescription(temp.id);
-        }
-        
-        console.log('Cleared all temp prescriptions from API');
+        console.log(`Cleared all temp prescriptions from API for patient ID ${patientIdParam}`);
       } catch (error) {
         console.error('Failed to clear temp prescriptions from API:', error);
       }
