@@ -381,72 +381,106 @@ export default function RegisterPatientPage() {
   const [afterMeal, setAfterMeal] = useState<boolean>(false);
   const [beforeMeal, setBeforeMeal] = useState<boolean>(false);
 
-  const saveDrugToTempAPI = async (drug: Presc) => {
+  const savePrescriptionsToTempAPI = async (drugsToSave: Presc[]) => {
     try {
-      const { listTempPrescriptions, createTempPrescriptionForPatient, updateTempPrescription } = await import('@/utilities/api/tempPrescriptions');
-      const currentPatientId = patientIdParam || '0';
+      const { createTempPrescriptionForPatient } = await import('@/utilities/api/tempPrescriptions');
+      const currentPatientId = patientIdParam;
 
-      const newJsonData = {
-        patient_id: currentPatientId,
-        drugs: drugs,
-      };
-      
-      let result;
-      if (tempPrescriptionRecordId) {
-        // For update, continue to use json_data payload
-        const payload = { json_data: JSON.stringify(newJsonData) };
-        result = await updateTempPrescription(tempPrescriptionRecordId, payload);
-      } else {
-        // For create, use the new function with direct patientId and drugs array
-        if (!currentPatientId) {
-            console.error("Cannot create temp prescription: patientId is missing.");
-            toast.error("Error: Patient ID is missing for new prescription.");
-            return null;
-        }
-        result = await createTempPrescriptionForPatient(currentPatientId, drugs);
-        setTempPrescriptionRecordId(result.id);
+      if (!currentPatientId) {
+          console.error("Cannot save temp prescription: patientId is missing.");
+          toast.error("Error: Patient ID is missing.");
+          return null;
       }
       
-      console.log('Saved/Updated drug to temp API:', result);
+      const result = await createTempPrescriptionForPatient(currentPatientId, drugsToSave);
+      
+      console.log('Saved prescriptions to temp API:', result);
+      setTempPrescriptionRecordId(result.id); 
       return result;
     } catch (error: any) {
       console.warn('Temp API interaction failed:', error.message);
-      // Fall back to local state only (this might not be ideal without API persistence)
+      toast.error('Failed to save temporary prescription.');
       return null;
     }
   };
 
+
+
   const loadTempDrugs = async () => {
     setIsLoadingPrescriptions(true);
+    console.log('loadTempDrugs: Fetching for patientIdParam:', patientIdParam);
+
     try {
       const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
-      const currentPatientId = patientIdParam || '0';
-      // Check if patientIdParam is valid before making the API call
-      if (!patientIdParam) {
-        console.warn('Cannot load temp drugs: No patient ID found in URL.');
+      const currentPatientId = patientIdParam;
+      if (!currentPatientId) {
+        console.warn('loadTempDrugs: No patient ID found in URL.');
         setPrescriptions([]);
+        setIsLoadingPrescriptions(false);
         return;
       }
       
-      const temps = await listTempPrescriptions(currentPatientId); // Fetch only for current patient
+      const temps = await listTempPrescriptions(currentPatientId);
+      console.log('loadTempDrugs: Raw temporary prescriptions received:', temps);
 
-      if (temps && temps.length > 0) {
-        const tempPrescriptionRecord = temps[0]; // Assuming at most one record per patient
-        setTempPrescriptionRecordId(tempPrescriptionRecord.id); // Set the new state
-        const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
-        const drugs = parsedData.drugs; // No need to attach tempId to each drug
+      if (temps && Array.isArray(temps) && temps.length > 0) {
+        // Sort by ID (descending) as a fallback for created_at, assuming higher ID is newer.
+        temps.sort((a, b) => {
+          const idA = a.id ? parseInt(a.id, 10) : 0;
+          const idB = b.id ? parseInt(b.id, 10) : 0;
+          return idB - idA;
+        });
+        const tempPrescriptionRecord = temps[0];
+        console.log('loadTempDrugs: Latest temporary prescription record selected (by ID):', tempPrescriptionRecord);
+
+        setTempPrescriptionRecordId(tempPrescriptionRecord.id);
+        
+        let drugs = [];
+        if (tempPrescriptionRecord) { // Ensure record is not null/undefined
+            // Check if json_data is already an object (parsed by Laravel/ORM)
+            if (typeof tempPrescriptionRecord.json_data === 'object' && tempPrescriptionRecord.json_data !== null) {
+                console.log('loadTempDrugs: json_data is already an object:', tempPrescriptionRecord.json_data);
+                if (Array.isArray(tempPrescriptionRecord.json_data.drugs)) {
+                    drugs = tempPrescriptionRecord.json_data.drugs;
+                } else {
+                    console.warn('loadTempDrugs: json_data.drugs is not an array, defaulting to empty.');
+                }
+            } else if (typeof tempPrescriptionRecord.json_data === 'string') {
+                // Otherwise, treat it as a string and attempt parsing
+                console.log('loadTempDrugs: json_data before parsing (string assumption):', tempPrescriptionRecord.json_data);
+                try {
+                    const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
+                    console.log('loadTempDrugs: parsedData after first parse:', parsedData);
+
+                    // Check if the parsed data is another string (double-encoded)
+                    if (typeof parsedData === 'string') {
+                        const innerParsed = JSON.parse(parsedData);
+                        console.log('loadTempDrugs: innerParsed data:', innerParsed);
+                        drugs = innerParsed.drugs || [];
+                    } else {
+                        drugs = parsedData.drugs || [];
+                    }
+                } catch (e) {
+                    console.error("loadTempDrugs: Failed to parse temp prescription json_data (string assumed)", e);
+                    drugs = [];
+                }
+            } else {
+                console.warn('loadTempDrugs: tempPrescriptionRecord.json_data is neither object nor string, defaulting to empty drugs array.');
+            }
+        }
+        
         setPrescriptions(drugs);
-        console.log('Loaded temp drugs:', drugs);
+        console.log('loadTempDrugs: Final drugs array set to state:', drugs);
       } else {
-        setPrescriptions([]); // No temp prescription found for this patient
+        console.log('loadTempDrugs: No temporary prescriptions found or response is not an array.');
+        setPrescriptions([]);
       }
     } catch (error: any) {
-      // If it's a 404 and indicates no prescriptions found, treat as empty state, not an error.
-      if (error.status === 404 && error.detail?.message === 'No temporary prescriptions found for the given patient ID') {
-        console.warn('No temporary prescriptions found for this patient (handled 404):', error.detail.message);
+      if (error.status === 404) {
+        console.warn('loadTempDrugs: No temporary prescriptions found for this patient (API returned 404).');
       } else {
-        console.error('Failed to load temp prescriptions:', error);
-        toast.error(`Failed to load temporary prescriptions: ${error.message} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
+        console.error('loadTempDrugs: Failed to load temp prescriptions:', error);
+        toast.error(`Failed to load temporary prescriptions: ${error.message || 'Unknown error'} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
       }
       setPrescriptions([]);
     } finally {
@@ -526,14 +560,15 @@ export default function RegisterPatientPage() {
     setIsAddingDrug(true);
 
     try {
-      // Save to temp API first
-      const result = await saveDrugToTempAPI(entry);
+      const newPrescriptions = [...prescriptions, entry];
+      const result = await savePrescriptionsToTempAPI(newPrescriptions);
       if (result) {
-        // API save successful, reload from API
-        await loadTempDrugs();
+        // API save successful, update state
+        setPrescriptions(newPrescriptions);
       } else {
-        // API not available, use local state
-        setPrescriptions(prev => [...prev, entry]);
+        // API not available, use local state but show error
+        setPrescriptions(newPrescriptions);
+        toast.error('Failed to save medication to the server. Your changes are saved locally for now.');
       }
       toast.success('Medication added');
     } catch (error) {
@@ -564,41 +599,14 @@ export default function RegisterPatientPage() {
     setRemovingDrugIndex(index);
     
     try {
-      const { listTempPrescriptions, updateTempPrescription, deleteTempPrescription } = await import('@/utilities/api/tempPrescriptions');
-      const currentPatientId = patientIdParam || '0';
+      const newPrescriptions = prescriptions.filter((_, i) => i !== index);
+      const result = await savePrescriptionsToTempAPI(newPrescriptions);
 
-      // 1. Fetch the existing record
-      const existingTempPrescriptions = await listTempPrescriptions(currentPatientId);
-      const tempPrescriptionRecord = existingTempPrescriptions[0];
-
-      if (!tempPrescriptionRecord) {
-        toast.error('Temporary prescription record not found for this patient.');
-        return;
-      }
-
-      // 2. Parse existing json_data and remove the drug
-      const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
-      let drugsArray: Presc[] = parsedData.drugs || [];
-      
-      const newDrugsArray = drugsArray.filter((_, i) => i !== index);
-
-      if (newDrugsArray.length === 0) {
-        // If no drugs left, delete the entire temp prescription record
-        await deleteTempPrescription(tempPrescriptionRecordId || '0'); // Use state variable
-        setPrescriptions([]);
-        toast.success('All temporary medications removed.');
-      } else {
-        // Update the existing record with the modified array
-        const newJsonData = {
-          patient_id: currentPatientId,
-          drugs: newDrugsArray,
-        };
-        const payload = {
-          json_data: JSON.stringify(newJsonData),
-        };
-        await updateTempPrescription(tempPrescriptionRecordId || '0', payload); // Use state variable
-        setPrescriptions(newDrugsArray); // No need to attach tempId
+      if (result) {
+        setPrescriptions(newPrescriptions);
         toast.success('Medication removed.');
+      } else {
+        toast.error('Failed to remove medication on the server. Please try again.');
       }
       
       setRenderKey(prev => prev + 1);
