@@ -222,9 +222,7 @@ function MenuContent() {
 export default function MenuPage() {
   return (
     <FilterBranchProvider>
-      <Suspense fallback={<div>Loading...</div>}>
-        <MenuContent />
-      </Suspense>
+      <MenuContent />
     </FilterBranchProvider>
   );
 }
