@@ -1,5 +1,6 @@
 // lib/api/auth.ts
 'use client';
+import Cookies from 'js-cookie';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
 
@@ -17,17 +18,17 @@ type LoginInput = {
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
+  return Cookies.get('auth_token') || null;
 }
 
 function setToken(token: string) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('auth_token', token);
+  Cookies.set('auth_token', token, { expires: 7, path: '/' });
 }
 
 function clearToken() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('auth_token');
+  Cookies.remove('auth_token');
 }
 
 async function request(path: string, options: RequestInit = {}) {

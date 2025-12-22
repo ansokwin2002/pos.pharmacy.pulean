@@ -16,9 +16,9 @@ import {
 import { useRouter, useParams } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { ArrowLeft, FileText, Download, Printer, X, Search } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Printer, Search } from 'lucide-react';
 import { getPatientHistoriesByPatientId } from '@/utilities/api/patientHistories';
-import { format } from 'date-fns';
+
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
 

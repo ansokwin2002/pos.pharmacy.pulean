@@ -8,6 +8,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Theme } from "@radix-ui/themes";
 import { Toaster } from "sonner";
 import NProgressProvider from "./nprogress-provider";
+import LogoutListener from "@/components/common/LogoutListener";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -92,6 +93,7 @@ function RadixThemeWrapper({ children }: { children: ReactNode }) {
       appearance={isDarkMode ? 'dark' : 'light'}
     >
       {children}
+      <LogoutListener />
     </Theme>
   );
 }

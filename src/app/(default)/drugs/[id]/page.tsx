@@ -191,7 +191,7 @@ export default function DrugDetailPage() {
           <Text size="2" color="gray" className="block mb-1">Stock</Text>
           <Flex align="center" gap="2">
             <Text size="4" weight="bold">{drug.quantity}</Text>
-            <Text size="2" color="gray">{drug.unit}</Text>
+            {/* Removed drug.unit as it's not defined in the Drug interface */}
           </Flex>
           <Box className="mt-1">
             {getStockBadge(drug.quantity)}
@@ -253,17 +253,7 @@ export default function DrugDetailPage() {
 
                   )}
 
-                  {drug.brand_id && (
 
-                    <Box className="pb-2 border-b border-gray-200 dark:border-gray-700">
-
-                      <Text size="2" color="gray" className="block mb-2 uppercase tracking-wide">Brand ID</Text>
-
-                      <Text size="3" weight="medium">{drug.brand_id}</Text>
-
-                    </Box>
-
-                  )}
 
                               {drug.category_id && (
 

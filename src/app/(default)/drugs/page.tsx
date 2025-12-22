@@ -183,7 +183,6 @@ export default function DrugsPage() {
       // Ensure all required fields are present, even if partial
       name: drugData.name || 'Unnamed Drug',
       generic_name: drugData.generic_name || '',
-      unit: drugData.unit || 'units',
       price: drugData.price || 0,
       cost_price: drugData.cost_price || 0,
       quantity: drugData.quantity || 0,

@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs, IconButton } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 import SearchableSelect from '@/components/common/SearchableSelect';
 // PDF generation libs will be loaded dynamically in the browser to avoid SSR issues
-import { User, Pill, CheckCircle, FileText, Trash2, Plus, ArrowRight, Save, ArrowLeft, RefreshCcw } from 'lucide-react';
+import { User, Pill, CheckCircle, FileText, Trash2, Plus, ArrowRight, Save, ArrowLeft } from 'lucide-react';
 import useDebounce from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 

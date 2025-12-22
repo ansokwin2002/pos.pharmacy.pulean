@@ -14,7 +14,7 @@ import {
   Dialog
 } from '@radix-ui/themes';
 import { PageHeading } from '@/components/common/PageHeading';
-import { Search, FileText, Download, Printer, X } from 'lucide-react';
+import { Search, FileText, Download, Printer } from 'lucide-react';
 import { SortableHeader } from '@/components/common/SortableHeader';
 import Pagination from '@/components/common/Pagination';
 import { toast } from 'sonner';
