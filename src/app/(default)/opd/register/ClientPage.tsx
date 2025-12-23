@@ -53,6 +53,7 @@ export default function RegisterPatientPage() {
     qty: number;
     afterMeal: boolean;
     beforeMeal: boolean;
+    unitType: 'box' | 'strip' | 'tablet'; // Added for stock deduction
   };
 
   const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
@@ -285,7 +286,6 @@ export default function RegisterPatientPage() {
         search: searchTerm,
         page: page,
         per_page: 15, // as requested
-        type_drug: medicineTypeFilter === 'box-only' ? 'box-only' : 'box-strip-tablet',
       });
       
       const newDrugs = response.data.map((drug: any) => ({
@@ -554,6 +554,7 @@ export default function RegisterPatientPage() {
       qty: quantity,
       afterMeal,
       beforeMeal,
+      unitType: medicineTypeFilter === 'box-only' ? 'box' : (medicineTypeFilter === 'strip-only' ? 'strip' : 'tablet'),
     };
 
     // Show loading state
@@ -736,6 +737,7 @@ export default function RegisterPatientPage() {
 
       // Save to patient-histories API
       const { createPatientHistory } = await import('@/utilities/api/patientHistories');
+      const { deductDrugStock } = await import('@/utilities/api/stock'); // Import the new stock deduction API
       const payload = {
         type: 'opd',
         json_data: JSON.stringify(historyData),
@@ -747,6 +749,21 @@ export default function RegisterPatientPage() {
       setSavedHistoryId(saved.id); // Store the saved history ID
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
+      // --- Stock Deduction Logic ---
+      try {
+        const stockDeductions = prescriptions.map(p => ({
+          drug_id: p.id,
+          deducted_quantity: p.qty,
+          deduction_unit: p.unitType,
+        }));
+        await deductDrugStock({ deductions: stockDeductions });
+        toast.success('Drug stock deducted successfully!');
+      } catch (stockErr: any) {
+        console.error('Failed to deduct drug stock:', stockErr);
+        toast.error(stockErr.detail?.message || stockErr.message || 'Failed to deduct drug stock');
+      }
+      // --- End Stock Deduction Logic ---
+
       // Clear prescriptions from UI immediately
       setPrescriptions([]);
       setTempPrescriptionRecordId(null);
@@ -1052,16 +1069,10 @@ export default function RegisterPatientPage() {
                                                   <SearchableSelect
                                                     options={drugOptions.map(d => {
                                                       let priceDisplay = '';
-                                                      if (medicineTypeFilter === 'box-only') {
-                                                        console.log('Debugging box_price:', d.box_price, typeof d.box_price); // Debug log for box_price
-                                                        priceDisplay = `B: $${(d.box_price || 0).toFixed(2)}`;
-                                                      } else if (medicineTypeFilter === 'strip-only') {
-                                                        console.log('Debugging strip_price:', d.strip_price, typeof d.strip_price); // Debug log for strip_price
-                                                        priceDisplay = `S: $${(d.strip_price || 0).toFixed(2)}`;
-                                                      } else { // box-strip-tablet
-                                                        console.log('Debugging tablet_price:', d.tablet_price, typeof d.tablet_price); // Debug log for tablet_price
-                                                        priceDisplay = `T: $${(d.tablet_price || 0).toFixed(2)}`;
-                                                      }
+                                                      const tabletPrice = (d.tablet_price || 0).toFixed(2);
+                                                      const stripPrice = (d.strip_price || 0).toFixed(2);
+                                                      const boxPrice = (d.box_price || 0).toFixed(2);
+                                                      priceDisplay = `T: $${tabletPrice} | S: $${stripPrice} | B: $${boxPrice}`;
                                                       return {
                                                         value: d.id,
                                                         label: `${d.name} ${d.generic_name ? `(${d.generic_name})` : ''} ${d.unit ? `(${d.unit})` : ''} — ${priceDisplay}`
