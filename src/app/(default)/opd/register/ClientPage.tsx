@@ -1084,13 +1084,16 @@ export default function RegisterPatientPage() {
                                                           const { getDrug } = await import('@/utilities/api/drugs');
                                                           const fetchedDrug = await getDrug(value);
                                                           // Update the specific drug in allDrugOptions with the latest data
-                                                          setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
-                                                            ...fetchedDrug,
-                                                            price: Number(fetchedDrug.price),
-                                                            generic_name: fetchedDrug.generic_name,
-                                                            unit: fetchedDrug.unit,
-                                                          } : d));
-                                                        } catch (error) {
+                                                                                                                      setDrugOptions(prev => prev.map(d => d.id === fetchedDrug.id ? {
+                                                                                                                        ...d, // Keep existing fields
+                                                                                                                        ...fetchedDrug,
+                                                                                                                        price: Number(fetchedDrug.price),
+                                                                                                                        generic_name: fetchedDrug.generic_name,
+                                                                                                                        unit: fetchedDrug.unit,
+                                                                                                                        tablet_price: Number(fetchedDrug.tablet_price || 0),
+                                                                                                                        box_price: Number(fetchedDrug.box_price || 0),
+                                                                                                                        strip_price: Number(fetchedDrug.strip_price || 0),
+                                                                                                                      } : d));                                                        } catch (error) {
                                                           console.error('Failed to fetch selected drug details:', error);
                                                           toast.error('Failed to load selected drug details');
                                                         } finally {
