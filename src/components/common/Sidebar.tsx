@@ -703,6 +703,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
                 link: "#",
                 subMenu: [
                   { title: "Drugs", link: "/drugs" },
+                  { title: "Companies", link: "/companies" },
                 ],
               }]}
               openMenu={openMenu}
