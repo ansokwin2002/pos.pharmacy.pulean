@@ -247,4 +247,6 @@ export interface Drug {
   created_at?: Date;
   updated_at?: Date;
   type_drug?: string;
+  price?: number; 
+  cost_price?: number;
 }

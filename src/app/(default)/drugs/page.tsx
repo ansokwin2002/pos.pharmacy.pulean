@@ -189,6 +189,14 @@ export default function DrugsPage() {
       expiry_date: drugData.expiry_date ? new Date(drugData.expiry_date as any) : new Date(),
       status: drugData.status || 'active',
       slug: drugData.name ? drugData.name.toLowerCase().replace(/ /g, '-') : '',
+      // Add default values for required price properties
+      box_price: drugData.box_price || 0,
+      box_cost_price: drugData.box_cost_price || 0,
+      strip_price: drugData.strip_price || 0,
+      strip_cost_price: drugData.strip_cost_price || 0,
+      tablet_price: drugData.tablet_price || 0,
+      tablet_cost_price: drugData.tablet_cost_price || 0,
+      quantity_in_boxes: drugData.quantity_in_boxes || 0, // Add default for quantity_in_boxes
     };
 
     // Optimistically add to the UI

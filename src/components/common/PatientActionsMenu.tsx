@@ -10,7 +10,7 @@ interface Patient {
   telephone?: string | null;
   address?: string | null;
   gender?: 'male' | 'female' | string | null;
-  age?: number | null;
+  age?: string | null;
   signs_of_life?: string | null;
   symptom?: string | null;
   diagnosis?: string | null;
@@ -126,7 +126,8 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
       )}
 
       <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenu.Trigger asChild>
+        {/* @ts-ignore */}
+        <DropdownMenu.Trigger asChild={true}>
           <span
             onContextMenu={handleRightClick}
             style={{

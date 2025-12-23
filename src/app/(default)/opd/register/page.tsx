@@ -2,8 +2,13 @@ export const metadata = {
   title: 'Register — punleukrek pharmacy'
 };
 
+import { Suspense } from 'react';
 import ClientPage from './ClientPage';
 
 export default function Page() {
-  return <ClientPage />;
+  return (
+    <Suspense>
+      <ClientPage />
+    </Suspense>
+  );
 }

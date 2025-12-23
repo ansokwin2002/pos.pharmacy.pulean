@@ -1,5 +1,10 @@
 import ClientPage from './ClientPage';
+import { Suspense } from 'react';
 
 export default function OPDHistoryPage() {
-  return <ClientPage />;
+  return (
+    <Suspense>
+      <ClientPage />
+    </Suspense>
+  );
 }

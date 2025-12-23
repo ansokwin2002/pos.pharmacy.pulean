@@ -243,8 +243,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           neutral90: isDarkMode ? 'var(--slate-12)' : theme.colors.neutral90,
         }
       })}
-      rightSlot={rightSlot} // Pass rightSlot to the Select component so it's available in Control
-      {...props}
+      {...props} // Spread props here, after `rightSlot` has been destructured
     />
   );
 };

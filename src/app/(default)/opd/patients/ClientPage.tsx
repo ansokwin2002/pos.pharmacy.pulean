@@ -20,6 +20,8 @@ interface Patient {
   email?: string;
   phone?: string;
   city?: string;
+  created_at?: string; // Added to fix the error
+  updated_at?: string; // Added to fix the error
 }
 
 const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
@@ -248,11 +250,11 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
       toast.error('Patient name is required.');
       return;
     }
-    const updatedPatient: Patient = {
+    const updatedPatient: Partial<Patient> = {
       ...patient,
       name,
       telephone,
-      age: age,
+      age: age !== null ? String(age) : null, // Convert age to string
       address,
       gender,
     };

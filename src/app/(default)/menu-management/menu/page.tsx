@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Box, Tabs, Flex, Button, Text } from '@radix-ui/themes';
 import { PlusIcon, LayoutDashboard, List } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -222,7 +222,9 @@ function MenuContent() {
 export default function MenuPage() {
   return (
     <FilterBranchProvider>
-      <MenuContent />
+      <Suspense>
+        <MenuContent />
+      </Suspense>
     </FilterBranchProvider>
   );
 }
