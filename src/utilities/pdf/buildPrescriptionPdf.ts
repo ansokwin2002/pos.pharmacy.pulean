@@ -2,16 +2,16 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export interface PrescriptionData {
-  patient?: {
-    name?: string;
-    age?: number | string;
-    gender?: string;
-    address?: string;
-    signs_of_life?: string;
-    symptom?: string;
-    diagnosis?: string;
-  };
-  patient_info?: {
+      patient?: {
+        name?: string;
+        age?: number | string;
+        gender?: string;
+        address?: string;
+        signs_of_life?: string;
+        symptom?: string;
+        diagnosis?: string;
+        pe?: string; // Added PE field
+      };  patient_info?: {
     name?: string;
     age?: number | string;
     gender?: string;
@@ -205,6 +205,9 @@ export async function buildPrescriptionPdf(
 
   y += 7;
   doc.text(`Diagnosis: ${pdfData.patient?.diagnosis || "N/A"}`, margin, y);
+
+  y += 7; // Add new line for PE
+  doc.text(`PE: ${pdfData.patient?.pe || "N/A"}`, margin, y);
 
   y += 5;
   doc.line(margin, y, pageWidth - margin, y);

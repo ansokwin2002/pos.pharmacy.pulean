@@ -176,7 +176,7 @@ export default function RegisterPatientPage() {
         } else {
           console.log('Auto-fill skipped. patient or patientIdParam is missing.');
         }
-      }, [selectedPatient, patientIdParam, name, gender, age, telephone, address, signOfLife, pe, symptom, diagnosis]);
+      }, [selectedPatient, patientIdParam]);
     
       // Form validation state
       const [errors, setErrors] = useState<{
@@ -301,6 +301,7 @@ export default function RegisterPatientPage() {
       }));
 
       setDrugOptions(prev => append ? [...prev, ...newDrugs] : newDrugs);
+      console.log('Fetched newDrugs with box_price:', newDrugs.map(d => ({ id: d.id, name: d.name, box_price: d.box_price, type_drug: d.type_drug })));
       setHasMoreDrugs(response.data.length > 0 && response.total > (page * response.per_page));
       setDrugPage(page);
 
