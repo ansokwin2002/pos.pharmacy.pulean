@@ -19,6 +19,7 @@ export interface PrescriptionData {
     signs_of_life?: string;
     symptom?: string;
     diagnosis?: string;
+    pe?: string; // Added PE field
   };
   prescriptions?: any[];
   prescription?: any[];
