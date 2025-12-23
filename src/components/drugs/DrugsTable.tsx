@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Badge,
   Box,
@@ -12,6 +12,8 @@ import {
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import { formatCurrency } from '@/utilities';
+import { Company } from '@/types/company'; // Need to import Company type
+import { API_BASE } from '@/utilities/constants'; // Need API_BASE for fetching
 import { Edit, Trash2, Eye, Package, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SortableHeader } from '@/components/common/SortableHeader';
@@ -41,6 +43,44 @@ export default function DrugsTable({
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [loadingAction, setLoadingAction] = useState<{ drugId: string; action: 'view' | 'add-stock' | 'edit' | 'delete' } | null>(null);
   const allVisibleSelected = drugs.length > 0 && selectedIds.length === drugs.length;
+
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [companyError, setCompanyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setIsLoadingCompanies(true);
+      setCompanyError(null);
+      try {
+        const response = await fetch(`${API_BASE}/companies`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setCompanies(data.data);
+      } catch (error: any) {
+        setCompanyError(`Failed to load companies: ${error.message}`);
+        console.error('Failed to fetch companies:', error);
+      } finally {
+        setIsLoadingCompanies(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []); // Run once on component mount
+
+  // Create a map for quick lookup
+  const companyMap = useMemo(() => {
+    return new Map(companies.map(company => [company.id, company.name]));
+  }, [companies]);
+
+  // Function to get company name
+  const getCompanyName = useCallback((companyId: number | undefined) => {
+    if (companyId === undefined || companyId === null) return '-';
+    return companyMap.get(companyId) || '-';
+  }, [companyMap]);
+
 
 
   const handleSort = (key: string) => {
@@ -132,6 +172,10 @@ export default function DrugsTable({
           aValue = a.brand_name || '';
           bValue = b.brand_name || '';
           break;
+        case 'company_name':
+          aValue = getCompanyName(a.company_id);
+          bValue = getCompanyName(b.company_id);
+          break;
         case 'quantity':
           aValue = a.quantity;
           bValue = b.quantity;
@@ -197,7 +241,7 @@ export default function DrugsTable({
             <Table.ColumnHeaderCell>
               <SortableHeader
                 label="Company Name"
-                sortKey="brand_name"
+                sortKey="company_name"
                 currentSort={sortConfig}
                 onSort={handleSort}
               />
@@ -261,11 +305,7 @@ export default function DrugsTable({
                 </Table.Cell>
                 <Table.Cell>{drug.generic_name}</Table.Cell>
                 <Table.Cell>
-                  {drug.brand_name ? (
-                    <Text>{drug.brand_name}</Text>
-                  ) : (
-                    <Text color="gray">-</Text>
-                  )}
+                  <Text>{getCompanyName(drug.company_id)}</Text>
                 </Table.Cell>
                 <Table.Cell>
                   <Flex align="center" gap="2">

@@ -16,8 +16,8 @@ import {
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import DateInput from '@/components/common/DateInput';
-import { mockSuppliers } from '@/data/SupplierData';
 import { Company } from '@/types/company';
+import { API_BASE } from '@/utilities/constants';
 
 interface DrugFormProps {
   drug?: Drug;
@@ -26,11 +26,12 @@ interface DrugFormProps {
   isLoading?: boolean;
 }
 
-const getInitialData = (drug?: Drug): Partial<Drug> => {
+const getInitialData = (drug?: Drug, companies: Company[] = []): Partial<Drug> => {
   const defaults = {
     name: '',
     generic_name: '',
-    brand_name: '',
+
+    company_id: undefined, // Initialize company_id
     box_price: 0,
     box_cost_price: 0,
     strip_price: 0,
@@ -48,14 +49,18 @@ const getInitialData = (drug?: Drug): Partial<Drug> => {
   };
 
   if (drug) {
-    return {
+    const initialData = {
       ...defaults,
       ...drug,
       expiry_date: new Date(drug.expiry_date),
       strips_per_box: drug.strips_per_box ?? undefined, // Ensure it's undefined if null/0 from backend
       tablets_per_strip: drug.tablets_per_strip ?? undefined,
       type_drug: drug.type_drug || 'box-strip-tablet', // Ensure type_drug is set
+      company_id: drug.company_id ?? undefined, // Populate company_id
     };
+
+
+    return initialData;
   }
 
   return defaults;
@@ -66,14 +71,34 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [medicineTypeDisplay, setMedicineTypeDisplay] = useState<'box-strip-tablet' | 'box-only'>('box-strip-tablet');
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [companyError, setCompanyError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, you'd fetch this from an API
-    setCompanies(mockSuppliers.map(s => ({ id: s.id, name: s.name, status: s.active })));
+    const fetchCompanies = async () => {
+      setIsLoadingCompanies(true);
+      setCompanyError(null);
+      try {
+        const response = await fetch(`${API_BASE}/companies`); // Assuming /api/companies is the endpoint
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // The API returns paginated data, so we need to access the 'data' property
+        setCompanies(data.data);
+      } catch (error: any) {
+        setCompanyError(`Failed to load companies: ${error.message}`);
+        console.error('Failed to fetch companies:', error);
+      } finally {
+        setIsLoadingCompanies(false);
+      }
+    };
+
+    fetchCompanies();
   }, []);
 
   useEffect(() => {
-    setFormData(getInitialData(drug));
+    setFormData(getInitialData(drug, companies)); // Ensure companies are passed
     if (drug && typeof drug.type_drug === 'string') {
       const normalizedType = drug.type_drug.trim().toLowerCase();
       if (normalizedType === 'box-only') {
@@ -84,7 +109,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
     } else {
       setMedicineTypeDisplay('box-strip-tablet'); // Default for new drugs or if type_drug is not a string
     }
-  }, [drug]);
+  }, [drug, companies]);
 
   const handleInputChange = (field: keyof Drug, value: any) => {
     let newValue = value;
@@ -92,6 +117,8 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
       newValue = value === '' ? undefined : parseInt(value) || 0;
     } else if (field === 'box_price' || field === 'box_cost_price' || field === 'strip_price' || field === 'strip_cost_price' || field === 'tablet_price' || field === 'tablet_cost_price') {
       newValue = value === '' ? undefined : parseFloat(value) || 0;
+    } else if (field === 'company_id') {
+      newValue = value ? parseInt(value) : undefined;
     }
 
 
@@ -147,22 +174,7 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
         dataToSubmit.tablet_cost_price = undefined;
       }
       
-      // Calculate total quantity (total tablets)
-      const quantityInBoxes = dataToSubmit.quantity_in_boxes || 0;
-      const stripsPerBox = dataToSubmit.strips_per_box || 0;
-      const tabletsPerStrip = dataToSubmit.tablets_per_strip || 0;
-      
-      // The logic for total tablets depends on what's available.
-      // If we have strips and tablets per strip, we can calculate total from boxes.
-      if (stripsPerBox > 0 && tabletsPerStrip > 0) {
-        dataToSubmit.quantity = quantityInBoxes * stripsPerBox * tabletsPerStrip;
-      } else if (stripsPerBox > 0) {
-        // Case where we only have strips per box
-        dataToSubmit.quantity = quantityInBoxes * stripsPerBox;
-      } else {
-        // Fallback to just quantity in boxes if other units are not defined
-        dataToSubmit.quantity = quantityInBoxes;
-      }
+
 
       if (dataToSubmit.expiry_date) {
         dataToSubmit.expiry_date = dataToSubmit.expiry_date.toISOString().split('T')[0] as any; // Format to YYYY-MM-DD string
@@ -229,13 +241,17 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
                 Company Name
               </Text>
               <Select.Root
-                value={formData.brand_name || ''}
-                onValueChange={(value) => handleInputChange('brand_name', value)}
+                value={formData.company_id?.toString() || ''}
+                onValueChange={(value) => handleInputChange('company_id', value)}
+                disabled={isLoadingCompanies}
               >
-                <Select.Trigger placeholder="Select a company" className="w-full" />
+                <Select.Trigger placeholder={isLoadingCompanies ? 'Loading companies...' : 'Select a company'} className="w-full" />
                 <Select.Content>
+                  {companyError && <Select.Item value="error-companies-status" disabled>{companyError}</Select.Item>}
+                  {isLoadingCompanies && <Select.Item value="loading-companies-status" disabled>Loading companies...</Select.Item>}
+                  {!isLoadingCompanies && companies.length === 0 && <Select.Item value="no-companies-found-status" disabled>No companies found</Select.Item>}
                   {companies.map((company) => (
-                    <Select.Item key={company.id} value={company.name}>
+                    <Select.Item key={company.id} value={company.id.toString()}>
                       {company.name}
                     </Select.Item>
                   ))}

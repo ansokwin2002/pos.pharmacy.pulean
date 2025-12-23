@@ -223,6 +223,7 @@ export interface Drug {
   slug: string;
   generic_name: string;
   brand_name?: string;
+  company_id?: number;
   category_id?: number;
   image?: string;
   box_price: number;
