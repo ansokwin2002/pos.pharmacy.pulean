@@ -32,6 +32,7 @@ export default function CompaniesTable({
             <Checkbox
               checked={allSelected}
               onCheckedChange={onSelectAll}
+              aria-label="Select all rows"
             />
           </Table.ColumnHeaderCell>
           <Table.ColumnHeaderCell>Company Name</Table.ColumnHeaderCell>
@@ -40,12 +41,13 @@ export default function CompaniesTable({
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {companies.map((company) => (
+        {companies.map((company, idx) => (
           <Table.Row key={company.id} align="center">
             <Table.Cell>
               <Checkbox
                 checked={selectedIds.includes(company.id)}
                 onCheckedChange={() => onSelectionChange(company.id)}
+                aria-label={`Select row ${company.id}`}
               />
             </Table.Cell>
             <Table.RowHeaderCell>{company.name}</Table.RowHeaderCell>

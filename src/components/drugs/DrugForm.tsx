@@ -16,6 +16,8 @@ import {
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import DateInput from '@/components/common/DateInput';
+import { mockSuppliers } from '@/data/SupplierData';
+import { Company } from '@/types/company';
 
 interface DrugFormProps {
   drug?: Drug;
@@ -63,6 +65,12 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
   const [formData, setFormData] = useState<Partial<Drug>>(getInitialData(drug));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [medicineTypeDisplay, setMedicineTypeDisplay] = useState<'box-strip-tablet' | 'box-only'>('box-strip-tablet');
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  useEffect(() => {
+    // In a real app, you'd fetch this from an API
+    setCompanies(mockSuppliers.map(s => ({ id: s.id, name: s.name, status: s.active })));
+  }, []);
 
   useEffect(() => {
     setFormData(getInitialData(drug));
@@ -220,11 +228,19 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
               <Text as="label" size="2" weight="medium" className="block mb-1">
                 Company Name
               </Text>
-              <TextField.Root
+              <Select.Root
                 value={formData.brand_name || ''}
-                onChange={(e) => handleInputChange('brand_name', e.target.value)}
-                placeholder="Enter company name (optional)"
-              />
+                onValueChange={(value) => handleInputChange('brand_name', value)}
+              >
+                <Select.Trigger placeholder="Select a company" className="w-full" />
+                <Select.Content>
+                  {companies.map((company) => (
+                    <Select.Item key={company.id} value={company.name}>
+                      {company.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
             </Box>
 
             <Box>
