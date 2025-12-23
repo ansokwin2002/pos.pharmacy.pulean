@@ -602,7 +602,24 @@ export default function RegisterPatientPage() {
     
     try {
       const newPrescriptions = prescriptions.filter((_, i) => i !== index);
-      const result = await savePrescriptionsToTempAPI(newPrescriptions);
+      let result = null;
+
+      // If newPrescriptions is empty, delete the temp prescription record
+      if (newPrescriptions.length === 0) {
+        const { deleteTempPrescriptionsByPatientId } = await import('@/utilities/api/tempPrescriptions');
+        if (patientIdParam) { // Ensure patientIdParam is available
+          await deleteTempPrescriptionsByPatientId(patientIdParam);
+          result = { success: true }; // Simulate a successful result for the if (result) check
+          setTempPrescriptionRecordId(null); // Clear the temp record ID
+        } else {
+          console.error("Cannot delete temp prescription: patientId is missing.");
+          toast.error("Error: Patient ID is missing.");
+          setRemovingDrugIndex(null); // Important to reset loading state
+          return;
+        }
+      } else {
+        result = await savePrescriptionsToTempAPI(newPrescriptions);
+      }
 
       if (result) {
         setPrescriptions(newPrescriptions);
