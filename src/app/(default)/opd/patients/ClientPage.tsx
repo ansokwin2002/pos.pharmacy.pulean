@@ -402,12 +402,18 @@ export default function PatientListPage() {
     try {
       await updatePodPatient(updatedPatient.id as string, updatedPatient);
       toast.success('Patient updated successfully!');
-    } catch (e: any) {
+    }
+    catch (e: any) {
       console.error('Failed to update patient:', e);
       toast.error(e.detail?.message || e.message || 'Failed to update patient');
       setPatientsData(originalPatients);
     }
   };
+
+  function handleEditPatient(patient: Patient) {
+    setPatientToEdit(patient);
+    setEditPatientDialogOpen(true);
+  }
 
   const handleDeletePatient = (patient: Patient) => {
     setPatientToDelete(patient);
@@ -437,9 +443,10 @@ export default function PatientListPage() {
     setDateFilter(null);
   };
 
-  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
-  const currentItems = filteredPatients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
+      const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, filteredPatients.length);
+      const currentItems = filteredPatients.slice(startIndex, endIndex);
   return (
     <Box className="space-y-4 w-full px-4">
       <Flex justify="between" align="start" mb="5" className="w-full">
@@ -520,7 +527,7 @@ export default function PatientListPage() {
               </Table.Body>
             </Table.Root>
           </Box>
-          {filteredPatients.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} itemsPerPage={itemsPerPage} totalItems={filteredPatients.length} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />}
+          {filteredPatients.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} itemsPerPage={itemsPerPage} totalItems={filteredPatients.length} startIndex={startIndex} endIndex={endIndex} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />}
         </>
       )}
       <AddPatientDialog open={isAddPatientDialogOpen} setOpen={setAddPatientDialogOpen} onAddPatient={handleAddPatient} />
