@@ -1,5 +1,5 @@
 'use client';
-import { DropdownMenu, IconButton, Text, Spinner, Flex } from "@radix-ui/themes";
+import { DropdownMenu, IconButton, Text, Spinner, Flex, Button } from "@radix-ui/themes";
 import { MoreVertical, UserPlus, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -61,14 +61,12 @@ interface PatientNameWithMenuProps {
 export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
   console.log('Patient prop in PatientNameWithMenu:', patient);
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string>('');
 
   const handleOPDClick = () => {
     setLoadingAction('OPD');
     setIsLoading(true);
-    setIsOpen(false);
     // Navigate to register page with secure patient ID
     router.push(`/opd/register?id=${patient.id}`);
   };
@@ -76,13 +74,7 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
   const handleHistoryClick = () => {
     setLoadingAction('History');
     setIsLoading(true);
-    setIsOpen(false);
     router.push(`/opd/patients/${patient.id}/history`);
-  };
-
-  const handleRightClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsOpen(true);
   };
 
   return (
@@ -125,33 +117,19 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
         </div>
       )}
 
-      <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
-        {/* @ts-ignore */}
-        <DropdownMenu.Trigger asChild={true}>
-          <span
-            onContextMenu={handleRightClick}
-            style={{
-              cursor: 'context-menu',
-              userSelect: 'none',
-              display: 'inline-block'
-            }}
-            className="hover:bg-gray-100 dark:hover:bg-gray-800 px-1 py-0.5 rounded transition-colors"
-            title="Right-click for quick actions (OPD, History)"
-          >
-            <Text>{patient.name || 'N/A'}</Text>
-          </span>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Content>
-          <DropdownMenu.Item onClick={handleOPDClick}>
-            <UserPlus size={14} />
-            OPD
-          </DropdownMenu.Item>
-          <DropdownMenu.Item onClick={handleHistoryClick}>
-            <History size={14} />
-            History
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
+      <Flex align="center" gap="3">
+        <Text>{patient.name || 'N/A'}</Text>
+        <Flex align="center" gap="2">
+            <Button size="1" variant="soft" onClick={handleOPDClick}>
+                <UserPlus size={12} />
+                OPD
+            </Button>
+            <Button size="1" variant="soft" color="gray" onClick={handleHistoryClick}>
+                <History size={12} />
+                History
+            </Button>
+        </Flex>
+      </Flex>
     </>
   );
 }

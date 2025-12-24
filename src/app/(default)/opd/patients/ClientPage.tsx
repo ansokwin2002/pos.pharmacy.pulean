@@ -2,14 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Flex, Table, Button, TextField, Dialog, Text, Select, IconButton, Tooltip } from "@radix-ui/themes";
 import { listPodPatients, createPodPatient, updatePodPatient, deletePodPatient } from '@/utilities/api/podPatients';
+import { listAllPatientHistories } from '@/utilities/api/patientHistories';
 import { PageHeading } from '@/components/common/PageHeading';
 import { PatientNameWithMenu } from '@/components/common/PatientActionsMenu';
-import { Search, Plus, RotateCcw, Pencil, Trash2 } from 'lucide-react';
+import { Search, Plus, RotateCcw, Pencil, Trash2, FileText, Download, Printer } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import DateInput from '@/components/common/DateInput';
 
+// Interfaces
 interface Patient {
   id: number | string;
   name: string;
@@ -17,215 +19,116 @@ interface Patient {
   address?: string | null;
   gender?: 'male' | 'female' | string | null;
   age?: string | null;
+  signs_of_life?: string | null;
+  symptom?: string | null;
+  diagnosis?: string | null;
   email?: string;
   phone?: string;
   city?: string;
-  created_at?: string; // Added to fix the error
-  updated_at?: string; // Added to fix the error
+  created_at?: string;
+  updated_at?: string;
 }
 
+interface PatientInfo {
+  name: string;
+  gender: string;
+  age: number;
+  telephone: string;
+  address: string;
+  signs_of_life: string;
+  symptom: string;
+  diagnosis: string;
+}
+
+interface PrescriptionDrug {
+  id: string;
+  name: string;
+  price: number;
+  morning: number;
+  afternoon: number;
+  evening: number;
+  night: number;
+  period: string;
+  qty: number;
+  afterMeal: boolean;
+  beforeMeal: boolean;
+}
+
+interface HistoryData {
+  patient_info?: PatientInfo;
+  patient?: PatientInfo;
+  prescription?: PrescriptionDrug[];
+  prescriptions?: PrescriptionDrug[];
+  total?: number;
+  totalAmount?: number;
+}
+
+// Dialog Components
 const AddPatientDialog = ({ open, setOpen, onAddPatient }) => {
-
   const [name, setName] = useState('');
-
   const [telephone, setTelephone] = useState('');
-
   const [address, setAddress] = useState('');
-
   const [gender, setGender] = useState<'male' | 'female'>('male');
-
   const [age, setAge] = useState<string>('');
 
-
-
-
-
   const handleSubmit = () => {
-
     if (!name) {
-
       toast.error('Patient name is required.');
-
       return;
-
     }
-
     const payload = { name, gender, age, telephone, address };
-
     onAddPatient(payload);
-
     setOpen(false);
-
     setName('');
-
     setTelephone('');
-
     setAddress('');
-
     setGender('male');
-
     setAge('');
-
     toast.success('Patient added successfully!');
-
   };
 
-
-
   return (
-
     <Dialog.Root open={open} onOpenChange={setOpen}>
-
       <Dialog.Content style={{ maxWidth: 450 }}>
-
         <Dialog.Title>Add New Patient</Dialog.Title>
-
         <Dialog.Description size="2" mb="4">
-
           Fill in the details of the new patient.
-
         </Dialog.Description>
-
-
-
         <Flex direction="column" gap="3">
-
           <label>
-
-            <Text as="div" size="2" mb="1" weight="bold">
-
-              Name
-
-            </Text>
-
-            <TextField.Root
-
-              value={name}
-
-              onChange={(e) => setName(e.target.value)}
-
-              placeholder="Enter full name"
-
-              required
-
-            />
-
+            <Text as="div" size="2" mb="1" weight="bold">Name</Text>
+            <TextField.Root value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter full name" required />
           </label>
-
           <label>
-
-            <Text as="div" size="2" mb="1" weight="bold">
-
-              Telephone
-
-            </Text>
-
-            <TextField.Root
-
-              value={telephone}
-
-              onChange={(e) => setTelephone(e.target.value)}
-
-              placeholder="Enter telephone"
-
-            />
-
+            <Text as="div" size="2" mb="1" weight="bold">Telephone</Text>
+            <TextField.Root value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="Enter telephone" />
           </label>
-
           <label>
-
-            <Text as="div" size="2" mb="1" weight="bold">
-
-              Age
-
-            </Text>
-
-            <TextField.Root
-
-              type="text"
-
-              value={age}
-
-              onChange={(e) => setAge(e.target.value)}
-
-              placeholder="Enter age"
-
-              min={0}
-
-            />
-
+            <Text as="div" size="2" mb="1" weight="bold">Age</Text>
+            <TextField.Root type="text" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Enter age" min={0} />
           </label>
-
           <label>
-
-            <Text as="div" size="2" mb="1" weight="bold">
-
-              Address
-
-            </Text>
-
-            <TextField.Root
-
-              value={address ?? ''}
-
-              onChange={(e) => setAddress(e.target.value)}
-
-              placeholder="Enter address"
-
-            />
-
+            <Text as="div" size="2" mb="1" weight="bold">Address</Text>
+            <TextField.Root value={address ?? ''} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" />
           </label>
-
           <label>
-
-            <Text as="div" size="2" mb="1" weight="bold">
-
-              Gender
-
-            </Text>
-
+            <Text as="div" size="2" mb="1" weight="bold">Gender</Text>
             <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => setGender(value)}>
-
               <Select.Trigger placeholder="Select gender" />
-
               <Select.Content>
-
                 <Select.Item value="male">Male</Select.Item>
-
                 <Select.Item value="female">Female</Select.Item>
-
               </Select.Content>
-
             </Select.Root>
-
           </label>
-
         </Flex>
-
-
-
         <Flex gap="3" mt="4" justify="end">
-
-          <Dialog.Close>
-
-            <Button variant="soft" color="gray">
-
-              Cancel
-
-            </Button>
-
-          </Dialog.Close>
-
+          <Dialog.Close><Button variant="soft" color="gray">Cancel</Button></Dialog.Close>
           <Button onClick={handleSubmit}>Save</Button>
-
         </Flex>
-
       </Dialog.Content>
-
     </Dialog.Root>
-
   );
-
 };
 
 const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
@@ -251,12 +154,9 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
       return;
     }
     const updatedPatient: Partial<Patient> = {
-      ...patient,
-      name,
-      telephone,
-      age: age !== null ? String(age) : null, // Convert age to string
-      address,
-      gender,
+      ...patient, name, telephone,
+      age: age !== null ? String(age) : null,
+      address, gender,
     };
     onUpdatePatient(updatedPatient);
     setOpen(false);
@@ -267,58 +167,13 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Content style={{ maxWidth: 650, width: '100%' }}>
         <Dialog.Title>Edit Patient</Dialog.Title>
-        <Dialog.Description size="2" mb="4">
-          Update the details of the patient.
-        </Dialog.Description>
-
+        <Dialog.Description size="2" mb="4">Update the details of the patient.</Dialog.Description>
         <Flex direction="column" gap="3">
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Name
-            </Text>
-            <TextField.Root
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter full name"
-              required
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Telephone
-            </Text>
-            <TextField.Root
-              value={telephone ?? ''}
-              onChange={(e) => setTelephone(e.target.value)}
-              placeholder="Enter telephone"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Age
-            </Text>
-            <TextField.Root
-              type="text"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              placeholder="Enter age"
-              min={0}
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Address
-            </Text>
-            <TextField.Root
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter address"
-            />
-          </label>
-          <label>
-            <Text as="div" size="2" mb="1" weight="bold">
-              Gender
-            </Text>
+          <label><Text as="div" size="2" mb="1" weight="bold">Name</Text><TextField.Root value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter full name" required /></label>
+          <label><Text as="div" size="2" mb="1" weight="bold">Telephone</Text><TextField.Root value={telephone ?? ''} onChange={(e) => setTelephone(e.target.value)} placeholder="Enter telephone" /></label>
+          <label><Text as="div" size="2" mb="1" weight="bold">Age</Text><TextField.Root type="text" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Enter age" min={0} /></label>
+          <label><Text as="div" size="2" mb="1" weight="bold">Address</Text><TextField.Root value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" /></label>
+          <label><Text as="div" size="2" mb="1" weight="bold">Gender</Text>
             <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => setGender(value)}>
               <Select.Trigger placeholder="Select gender" />
               <Select.Content>
@@ -328,17 +183,58 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
             </Select.Root>
           </label>
         </Flex>
-
         <Flex gap="3" mt="4" justify="end">
-          <Dialog.Close>
-            <Button variant="soft" color="gray">
-              Cancel
-            </Button>
-          </Dialog.Close>
+          <Dialog.Close><Button variant="soft" color="gray">Cancel</Button></Dialog.Close>
           <Button onClick={handleSubmit}>Save</Button>
         </Flex>
       </Dialog.Content>
     </Dialog.Root>
+  );
+};
+
+// History Results Table
+const HistoryResultsTable = ({ records, isLoading, onViewPdf }) => {
+  if (isLoading) {
+    return <Text>Searching history...</Text>;
+  }
+  if (records.length === 0) {
+    return <Text>No history records found for this diagnosis.</Text>
+  }
+  return (
+    <Table.Root variant="surface">
+      <Table.Header>
+        <Table.Row>
+          <Table.ColumnHeaderCell>Patient Name</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Diagnosis</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Date</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {records.map(history => {
+          try {
+            const data = JSON.parse(history.json_data);
+            const patientInfo = data.patient || data.patient_info;
+            return (
+              <Table.Row key={history.id}>
+                <Table.Cell>{patientInfo?.name || 'N/A'}</Table.Cell>
+                <Table.Cell>{patientInfo?.diagnosis || 'N/A'}</Table.Cell>
+                <Table.Cell>{new Date(history.created_at).toLocaleDateString()}</Table.Cell>
+                <Table.Cell>
+                  <Tooltip content="View Prescription PDF">
+                    <IconButton size="1" variant="ghost" color="blue" onClick={() => onViewPdf(history)}>
+                      <FileText size={14} />
+                    </IconButton>
+                  </Tooltip>
+                </Table.Cell>
+              </Table.Row>
+            );
+          } catch {
+            return null;
+          }
+        })}
+      </Table.Body>
+    </Table.Root>
   );
 };
 
@@ -357,14 +253,24 @@ export default function PatientListPage() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isPaginating, setIsPaginating] = useState(false);
   const tableRef = React.useRef<HTMLDivElement>(null);
+  const [diagnosisSearchTerm, setDiagnosisSearchTerm] = useState('');
+  const [allHistories, setAllHistories] = useState<any[]>([]);
+  const [filteredHistories, setFilteredHistories] = useState<any[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [selectedHistoryData, setSelectedHistoryData] = useState<HistoryData | null>(null);
+  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
+  const [selectedHistoryCreatedAt, setSelectedHistoryCreatedAt] = useState<string | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  // Effects for patient list
   useEffect(() => {
     const load = async () => {
+      if (diagnosisSearchTerm) return;
       setIsPaginating(true);
       try {
         const data = await listPodPatients({ search: searchTerm || undefined, page: currentPage, per_page: itemsPerPage });
-        const items = Array.isArray(data?.data) ? data.data : data;
-        setPatientsData(items);
+        setPatientsData(Array.isArray(data?.data) ? data.data : []);
       } catch (e) {
         console.error(e);
         toast.error('Failed to load patients');
@@ -373,84 +279,115 @@ export default function PatientListPage() {
       }
     };
     load();
-  }, [searchTerm, currentPage, itemsPerPage]);
+  }, [searchTerm, currentPage, itemsPerPage, diagnosisSearchTerm]);
 
   useEffect(() => {
-    let sortedPatients = [...patientsData];
-
-    const lowercasedFilter = searchTerm.toLowerCase();
-    let filtered = sortedPatients.filter(patient => {
-      // Search by name
-      if (patient.name && patient.name.toLowerCase().includes(lowercasedFilter)) return true;
-      
-      // Search by telephone
-      if (patient.telephone && patient.telephone.toLowerCase().includes(lowercasedFilter)) return true;
-      if (patient.phone && patient.phone.toLowerCase().includes(lowercasedFilter)) return true;
-      
-      // Search by address
-      if (patient.address && patient.address.toLowerCase().includes(lowercasedFilter)) return true;
-      
-      // Search by created_at date
-      if (patient.created_at) {
-        const createdDate = new Date(patient.created_at).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
-        if (createdDate.toLowerCase().includes(lowercasedFilter)) return true;
-      }
-      
-      // Search by updated_at date
-      if (patient.updated_at) {
-        const updatedDate = new Date(patient.updated_at).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
-        if (updatedDate.toLowerCase().includes(lowercasedFilter)) return true;
-      }
-      
-      return false;
-    });
-
+    if (diagnosisSearchTerm) return;
+    let filtered = [...patientsData].filter(patient =>
+      !searchTerm ||
+      (patient.name && patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (patient.telephone && patient.telephone.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
     if (genderFilter !== 'all') {
       filtered = filtered.filter(patient => patient.gender === genderFilter);
     }
-
     if (dateFilter) {
-      filtered = filtered.filter(patient => {
-        if (!patient.created_at) return false;
-        
-        // Parse patient date and filter date
-        const patientDate = new Date(patient.created_at);
-        const filterDate = new Date(dateFilter);
-        
-        // Compare year, month, and day separately to avoid timezone issues
-        const patientYear = patientDate.getFullYear();
-        const patientMonth = patientDate.getMonth();
-        const patientDay = patientDate.getDate();
-        
-        const filterYear = filterDate.getFullYear();
-        const filterMonth = filterDate.getMonth();
-        const filterDay = filterDate.getDate();
-        
-        return patientYear === filterYear && 
-               patientMonth === filterMonth && 
-               patientDay === filterDay;
-      });
+      filtered = filtered.filter(patient =>
+        patient.created_at && new Date(patient.created_at).toDateString() === dateFilter.toDateString()
+      );
     }
-
     setFilteredPatients(filtered);
     setCurrentPage(1);
-  }, [searchTerm, patientsData, genderFilter, dateFilter]);
+  }, [searchTerm, patientsData, genderFilter, dateFilter, diagnosisSearchTerm]);
 
+  // Effects for history search
+  useEffect(() => {
+    const fetchAllHistories = async () => {
+      try {
+        const historyData = await listAllPatientHistories();
+        setAllHistories(Array.isArray(historyData) ? historyData.filter((h: any) => h.type === 'opd') : []);
+      } catch (err) {
+        console.error('Failed to fetch all histories:', err);
+        toast.error('Failed to load history data for searching.');
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    };
+    fetchAllHistories();
+  }, []);
 
+  useEffect(() => {
+    if (!diagnosisSearchTerm) {
+      setFilteredHistories([]);
+      return;
+    }
+    const lowercasedTerm = diagnosisSearchTerm.toLowerCase();
+    const historiesWithDiagnosis = allHistories.filter(history => {
+      try {
+        const data = JSON.parse(history.json_data);
+        const patientInfo = data.patient || data.patient_info;
+        return patientInfo?.diagnosis?.toLowerCase().includes(lowercasedTerm);
+      } catch {
+        return false;
+      }
+    });
+    setFilteredHistories(historiesWithDiagnosis);
+  }, [diagnosisSearchTerm, allHistories]);
 
+  // PDF generation logic
+  useEffect(() => {
+    if (!isPdfPreviewOpen && pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+  }, [isPdfPreviewOpen, pdfPreviewUrl]);
+
+  const handleViewPdf = async (historyRecord: any) => {
+    setIsGeneratingPdf(true);
+    try {
+      const data: HistoryData = JSON.parse(historyRecord.json_data);
+      setSelectedHistoryData(data);
+      setSelectedHistoryCreatedAt(historyRecord.created_at);
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { doc } = await buildPrescriptionPdf(data, historyRecord.created_at);
+      const blob = doc.output('blob');
+      setPdfPreviewUrl(URL.createObjectURL(blob));
+      setIsPdfPreviewOpen(true);
+    } catch (e) {
+      console.error('Failed to parse history data:', e);
+      toast.error('Failed to load history details.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const downloadPdf = async () => {
+    if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
+    try {
+      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { doc, fileName } = await buildPrescriptionPdf(selectedHistoryData, selectedHistoryCreatedAt);
+      doc.save(fileName);
+      toast.success('Prescription PDF downloaded');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to download PDF');
+    }
+  };
+
+  const printPdf = () => {
+    if (!pdfPreviewUrl) return;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = pdfPreviewUrl;
+    document.body.appendChild(iframe);
+    iframe.onload = () => iframe.contentWindow?.print();
+  };
+
+  // CRUD handlers
   const handleAddPatient = async (payload: any) => {
     try {
       const { normalizePatientPayload } = await import('@/utilities/api/normalizePatient');
-      const normalized = normalizePatientPayload(payload);
-      const saved = await createPodPatient(normalized);
+      const saved = await createPodPatient(normalizePatientPayload(payload));
       setPatientsData(prev => [saved, ...prev]);
     } catch (e) {
       console.error(e);
@@ -458,25 +395,16 @@ export default function PatientListPage() {
     }
   };
 
-  const handleEditPatient = (patient: Patient) => {
-    setPatientToEdit(patient);
-    setEditPatientDialogOpen(true);
-  };
-
   const handleUpdatePatient = async (updatedPatient: Patient) => {
     const originalPatients = [...patientsData];
-    // Optimistic UI update
     setPatientsData(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
     setEditPatientDialogOpen(false);
-    setPatientToEdit(null);
-
     try {
       await updatePodPatient(updatedPatient.id as string, updatedPatient);
       toast.success('Patient updated successfully!');
     } catch (e: any) {
       console.error('Failed to update patient:', e);
       toast.error(e.detail?.message || e.message || 'Failed to update patient');
-      // Rollback on failure
       setPatientsData(originalPatients);
     }
   };
@@ -487,282 +415,138 @@ export default function PatientListPage() {
   };
 
   const confirmDelete = async () => {
-    if (!patientToDelete) {
-      setConfirmDialogOpen(false);
-      return;
-    }
-    const deleting = patientToDelete;
-    // Optimistic UI update
-    setPatientsData(prev => prev.filter(p => p.id !== deleting.id));
+    if (!patientToDelete) return;
+    const originalPatients = [...patientsData];
+    setPatientsData(prev => prev.filter(p => p.id !== patientToDelete.id));
     setConfirmDialogOpen(false);
-    setPatientToDelete(null);
     try {
-      await deletePodPatient(deleting.id);
-      toast.success(`Patient \"${deleting.name}\" deleted successfully.`);
+      await deletePodPatient(patientToDelete.id);
+      toast.success(`Patient "${patientToDelete.name}" deleted successfully.`);
     } catch (e: any) {
-      // Rollback on failure
-      setPatientsData(prev => [deleting, ...prev]);
+      setPatientsData(originalPatients);
       console.error(e);
-      const msg = e?.detail?.message || e?.message || 'Failed to delete patient';
-      toast.error(msg);
+      toast.error(e?.detail?.message || e?.message || 'Failed to delete patient');
     }
+    setPatientToDelete(null);
   };
 
   const handleResetFilters = () => {
     setSearchTerm('');
+    setDiagnosisSearchTerm('');
     setGenderFilter('all');
     setDateFilter(null);
   };
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, filteredPatients.length);
-  const currentItems = filteredPatients.slice(startIndex, endIndex);
+  const currentItems = filteredPatients.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <Box className="space-y-4 w-full px-4">
       <Flex justify="between" align="start" mb="5" className="w-full">
-      <Box
-        style={{
-          backgroundColor: 'var(--gray-2)',
-          padding: 'var(--space-3)',
-          borderRadius: 'var(--radius-3)',
-          marginBottom: 'var(--space-5)',
-          width: '100%', // Ensure it takes full width
-        }}
-      >
-        <PageHeading 
-          title="Patient List" 
-          description="View and manage all patients" 
-          titleStyle={{ color: '#fc7f19', fontWeight: 'bold' }} 
-        />
-      </Box>
+        <Box style={{ backgroundColor: 'var(--gray-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-3)', marginBottom: 'var(--space-5)', width: '100%' }}>
+          <PageHeading title={diagnosisSearchTerm ? 'History Search Results' : 'Patient List'} description={diagnosisSearchTerm ? 'Showing history records matching the diagnosis' : 'View and manage all patients'} titleStyle={{ color: '#fc7f19', fontWeight: 'bold' }} />
+        </Box>
       </Flex>
-      <Flex justify="start" mb="5"> {/* New Flex container to align button to the right, or adjust as needed */}
-        <Button onClick={() => setAddPatientDialogOpen(true)}>
-          <Plus size={16} /> Add Patient
-        </Button>
-      </Flex>
+
+      {!diagnosisSearchTerm && (
+        <Flex justify="start" mb="5">
+          <Button onClick={() => setAddPatientDialogOpen(true)}><Plus size={16} /> Add Patient</Button>
+        </Flex>
+      )}
 
       <Box className="w-full">
         <Flex gap="4" align="center" wrap="wrap" className="w-full">
           <Box className="flex-grow min-w-[250px]">
-            <TextField.Root
-              placeholder="Search by name, phone, address, date..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            >
-              <TextField.Slot>
-                <Search size={16} />
-              </TextField.Slot>
+            <TextField.Root placeholder="Search by diagnosis to see history..." value={diagnosisSearchTerm} onChange={(e) => setDiagnosisSearchTerm(e.target.value)}>
+              <TextField.Slot><Search size={16} /></TextField.Slot>
             </TextField.Root>
           </Box>
-          <Flex align="center" gap="2" className="flex-shrink-0">
-            <Select.Root value={genderFilter} onValueChange={setGenderFilter}>
-              <Select.Trigger placeholder="All Genders" />
-              <Select.Content>
-                <Select.Item value="all">All Genders</Select.Item>
-                <Select.Item value="male">Male</Select.Item>
-                <Select.Item value="female">Female</Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Flex>
-          <Box className="flex-shrink-0" style={{ minWidth: '150px' }}>
-            <DateInput
-              value={dateFilter}
-              onChange={(date) => setDateFilter(date)}
-            />
-          </Box>
-          <Button variant="soft" color={genderFilter !== 'all' || dateFilter ? 'red' : 'gray'} onClick={handleResetFilters}>
-            <RotateCcw size={16} />
-            Reset Filters
+          {!diagnosisSearchTerm && (
+            <>
+              <Box className="flex-grow min-w-[250px]">
+                <TextField.Root placeholder="Search by name, phone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}>
+                  <TextField.Slot><Search size={16} /></TextField.Slot>
+                </TextField.Root>
+              </Box>
+              <Flex align="center" gap="2" className="flex-shrink-0">
+                <Select.Root value={genderFilter} onValueChange={setGenderFilter}>
+                  <Select.Trigger placeholder="All Genders" />
+                  <Select.Content>
+                    <Select.Item value="all">All Genders</Select.Item>
+                    <Select.Item value="male">Male</Select.Item>
+                    <Select.Item value="female">Female</Select.Item>
+                  </Select.Content>
+                </Select.Root>
+              </Flex>
+              <Box className="flex-shrink-0" style={{ minWidth: '150px' }}>
+                <DateInput value={dateFilter} onChange={setDateFilter} />
+              </Box>
+            </>
+          )}
+          <Button variant="soft" color={genderFilter !== 'all' || !!dateFilter || !!searchTerm || !!diagnosisSearchTerm ? 'red' : 'gray'} onClick={handleResetFilters}>
+            <RotateCcw size={16} /> Reset Filters
           </Button>
         </Flex>
       </Box>
 
-      <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
-            {isPaginating && (
-              <Box style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 10,
-                borderRadius: '8px'
-              }}>
-                <Flex direction="column" align="center" gap="2">
-                  <Box className="animate-spin" style={{
-                    width: '32px',
-                    height: '32px',
-                    border: '3px solid var(--gray-6)',
-                    borderTopColor: 'var(--blue-9)',
-                    borderRadius: '50%'
-                  }} />
-                  <Text size="2" color="gray">Loading...</Text>
-                </Flex>
-              </Box>
-            )}
+      {diagnosisSearchTerm ? (
+        <HistoryResultsTable records={filteredHistories} isLoading={isHistoryLoading} onViewPdf={handleViewPdf} />
+      ) : (
+        <>
+          <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
+            {isPaginating && <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: '8px' }}><Flex direction="column" align="center" gap="2"><Box className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid var(--gray-6)', borderTopColor: 'var(--blue-9)', borderRadius: '50%' }} /><Text size="2" color="gray">Loading...</Text></Flex></Box>}
             <Table.Root variant="surface" style={{ width: '100%' }}>
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeaderCell>
-                    Name
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    Telephone
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    Age
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    Address
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    Gender
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    Created At
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>
-                    Updated At
-                  </Table.ColumnHeaderCell>
-                  <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
-                </Table.Row>
-              </Table.Header>
+              <Table.Header><Table.Row><Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Telephone</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Age</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Address</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Gender</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Created At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Updated At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell></Table.Row></Table.Header>
               <Table.Body>
                 {currentItems.length === 0 ? (
-                  <Table.Row>
-                    <Table.Cell colSpan={8} className="text-center">
-                      <Text size="3" color="gray">No patients found.</Text>
-                    </Table.Cell>
-                  </Table.Row>
+                  <Table.Row><Table.Cell colSpan={8} className="text-center"><Text size="3" color="gray">No patients found.</Text></Table.Cell></Table.Row>
                 ) : (
-                  currentItems.map((patient) => {
-                    return (
-                      <Table.Row key={patient.id}>
-                        <Table.RowHeaderCell>
-                          <Flex align="center" justify="between">
-                            <PatientNameWithMenu
-                              patient={patient}
-                            />
-                          </Flex>
-                        </Table.RowHeaderCell>
-                        <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
-                        <Table.Cell>{patient.age || '-'}</Table.Cell>
-                        <Table.Cell>{patient.address || '-'}</Table.Cell>
-                        <Table.Cell>{patient.gender || '-'}</Table.Cell>
-                        <Table.Cell>
-                          {patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : '-'}
-                        </Table.Cell>
-                        <Table.Cell>
-                          {patient.updated_at ? new Date(patient.updated_at).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : '-'}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Flex gap="2">
-                            <Tooltip content="Edit Patient">
-                              <IconButton
-                                size="1"
-                                variant="ghost"
-                                color="blue"
-                                onClick={() => handleEditPatient(patient)}
-                              >
-                                <Pencil size={14} />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip content="Delete Patient">
-                              <IconButton
-                                size="1"
-                                variant="ghost"
-                                color="red"
-                                onClick={() => handleDeletePatient(patient)}
-                              >
-                                <Trash2 size={14} />
-                              </IconButton>
-                            </Tooltip>
-                          </Flex>
-                        </Table.Cell>
-                      </Table.Row>
-                    );
-                  })
+                  currentItems.map((patient) => (
+                    <Table.Row key={patient.id}>
+                      <Table.RowHeaderCell><Flex align="center" justify="between"><PatientNameWithMenu patient={patient} /></Flex></Table.RowHeaderCell>
+                      <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
+                      <Table.Cell>{patient.age || '-'}</Table.Cell>
+                      <Table.Cell>{patient.address || '-'}</Table.Cell>
+                      <Table.Cell>{patient.gender || '-'}</Table.Cell>
+                      <Table.Cell>{patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</Table.Cell>
+                      <Table.Cell>{patient.updated_at ? new Date(patient.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</Table.Cell>
+                      <Table.Cell><Flex gap="2">
+                        <Tooltip content="Edit Patient"><IconButton size="1" variant="ghost" color="blue" onClick={() => handleEditPatient(patient)}><Pencil size={14} /></IconButton></Tooltip>
+                        <Tooltip content="Delete Patient"><IconButton size="1" variant="ghost" color="red" onClick={() => handleDeletePatient(patient)}><Trash2 size={14} /></IconButton></Tooltip>
+                      </Flex></Table.Cell>
+                    </Table.Row>
+                  ))
                 )}
               </Table.Body>
             </Table.Root>
+          </Box>
+          {filteredPatients.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} itemsPerPage={itemsPerPage} totalItems={filteredPatients.length} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />}
+        </>
+      )}
+      <AddPatientDialog open={isAddPatientDialogOpen} setOpen={setAddPatientDialogOpen} onAddPatient={handleAddPatient} />
+      <EditPatientDialog open={isEditPatientDialogOpen} setOpen={setEditPatientDialogOpen} patient={patientToEdit} onUpdatePatient={handleUpdatePatient} />
+      <ConfirmDialog open={isConfirmDialogOpen} onOpenChange={setConfirmDialogOpen} title="Delete Patient" description={`Are you sure you want to delete patient "${patientToDelete?.name}"? This action cannot be undone.`} onConfirm={confirmDelete} />
+      <Dialog.Root open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
+        <Dialog.Content style={{ maxWidth: '90vw', maxHeight: '90vh', padding: 0 }}>
+          <Flex direction="column" style={{ height: '90vh' }}>
+            <Flex justify="between" align="center" p="4" style={{ borderBottom: '1px solid var(--gray-6)' }}>
+              <Dialog.Title>View Prescription PDF</Dialog.Title>
+              <Flex gap="2">
+                <Button size="2" variant="soft" color="gray" onClick={() => setIsPdfPreviewOpen(false)}>Cancel</Button>
+                <Button size="2" variant="soft" onClick={downloadPdf}><Download size={16} /> Download</Button>
+                <Button size="2" variant="soft" onClick={printPdf}><Printer size={16} /> Print</Button>
+              </Flex>
+            </Flex>
+            <Box style={{ flex: 1, position: 'relative' }}>
+              {isGeneratingPdf ? (
+                <Flex justify="center" align="center" style={{ height: '100%' }}><Flex direction="column" align="center" gap="3"><Box className="animate-spin" style={{ width: '48px', height: '48px', border: '4px solid var(--gray-6)', borderTopColor: 'var(--blue-9)', borderRadius: '50%' }} /><Text>Generating PDF...</Text></Flex></Flex>
+              ) : pdfPreviewUrl ? (
+                <iframe src={pdfPreviewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF Preview" />
+              ) : null}
             </Box>
-      
-            {filteredPatients.length > 0 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                itemsPerPage={itemsPerPage}
-                totalItems={filteredPatients.length}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                onPageChange={(page) => {
-                  setIsPaginating(true);
-                  setCurrentPage(page);
-                  // Smooth scroll to table top with offset
-                  setTimeout(() => {
-                    if (tableRef.current) {
-                      const yOffset = -20; // 20px offset from top
-                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    // Hide loading after a short delay to show smooth transition
-                    setTimeout(() => setIsPaginating(false), 300);
-                  }, 0);
-                }}
-                onItemsPerPageChange={(newSize) => {
-                  setIsPaginating(true);
-                  setItemsPerPage(newSize);
-                  setCurrentPage(1);
-                  // Smooth scroll to table top with offset
-                  setTimeout(() => {
-                    if (tableRef.current) {
-                      const yOffset = -20; // 20px offset from top
-                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    // Hide loading after a short delay to show smooth transition
-                    setTimeout(() => setIsPaginating(false), 300);
-                  }, 0);
-                }}
-              />
-            )}
-      <AddPatientDialog 
-        open={isAddPatientDialogOpen} 
-        setOpen={setAddPatientDialogOpen}
-        onAddPatient={handleAddPatient}
-      />
-      <EditPatientDialog
-        open={isEditPatientDialogOpen}
-        setOpen={setEditPatientDialogOpen}
-        patient={patientToEdit}
-        onUpdatePatient={handleUpdatePatient}
-      />
-      <ConfirmDialog
-        open={isConfirmDialogOpen}
-        onOpenChange={setConfirmDialogOpen}
-        title="Delete Patient"
-        description={`Are you sure you want to delete patient "${patientToDelete?.name}"? This action cannot be undone.`}
-        onConfirm={confirmDelete}
-      />
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     </Box>
   );
 }
