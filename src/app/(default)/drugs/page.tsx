@@ -145,16 +145,15 @@ export default function DrugsPage() {
         // This would require backend changes or client-side filtering after fetching all.
         // For now, we'll only pass 'in_stock' if selected.
 
-        const response = await listDrugs(params);
-        // Assuming the API returns a structure like { data: Drug[], total: number, current_page: number, per_page: number }
-        const drugs = response.data.map((drug: any) => ({
+        const fetchedDrugs = await listDrugs(params);
+        const drugs = fetchedDrugs.map((drug: any) => ({
           ...drug,
           expiry_date: new Date(drug.expiry_date),
           created_at: drug.created_at ? new Date(drug.created_at) : undefined,
           updated_at: drug.updated_at ? new Date(drug.updated_at) : undefined,
         }));
         setDrugsData(drugs);
-        setTotalDrugs(response.total);
+        setTotalDrugs(drugs.length); // Assuming listDrugs returns an array and total is its length if no backend pagination total is provided. This might need adjustment if backend implements full pagination.
       } catch (err: any) {
         console.error('Failed to fetch drugs:', err);
         setError(err.message || 'Failed to fetch drugs');

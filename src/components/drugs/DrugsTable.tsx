@@ -58,7 +58,7 @@ export default function DrugsTable({
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setCompanies(data.data);
+        setCompanies(data);
       } catch (error: any) {
         setCompanyError(`Failed to load companies: ${error.message}`);
         console.error('Failed to fetch companies:', error);

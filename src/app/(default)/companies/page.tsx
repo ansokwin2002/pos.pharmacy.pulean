@@ -34,14 +34,14 @@ export default function CompaniesPage() {
     const fetchCompanies = async () => {
       setIsLoading(true);
       try {
-        const response = await listCompanies({
+        const companies = await listCompanies({
           search: searchTerm,
           page: currentPage,
           per_page: ITEMS_PER_PAGE,
           status: statusFilter === 'all' ? undefined : statusFilter,
         } as any);
-        setCompaniesData(response.data);
-        setTotalCompanies(response.total);
+        setCompaniesData(companies);
+        setTotalCompanies(companies.length); // Assuming listCompanies returns an array and total is its length if no backend pagination total is provided. This might need adjustment if backend implements full pagination.
       } catch (error) {
         toast.error('Failed to fetch companies.');
       } finally {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -18,6 +18,8 @@ import { Drug } from '@/types/inventory';
 import DateInput from '@/components/common/DateInput';
 import { Company } from '@/types/company';
 import { API_BASE } from '@/utilities/constants';
+import SearchableSelect from '@/components/common/SearchableSelect';
+import useDebounce from '@/hooks/useDebounce';
 
 interface DrugFormProps {
   drug?: Drug;
@@ -73,29 +75,52 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const [companySearchTerm, setCompanySearchTerm] = useState('');
+  const [companyPage, setCompanyPage] = useState(1);
+  const [hasMoreCompanies, setHasMoreCompanies] = useState(true);
+  const [isFetchingMoreCompanies, setIsFetchingMoreCompanies] = useState(false);
+    const debouncedCompanySearchTerm = useDebounce(companySearchTerm, 300);
+
+  const fetchCompanies = useCallback(async (searchTerm = '', page = 1, append = false) => {
+    if (!append) {
+      setIsLoadingCompanies(true);
+    } else {
+      setIsFetchingMoreCompanies(true);
+    }
+    setCompanyError(null);
+    try {
+      const { listCompanies } = await import('@/utilities/api/companies');
+      const companiesResponse = await listCompanies({
+        search: searchTerm,
+        page: page,
+        per_page: 15, // Using a fixed per_page for now
+      });
+      
+      setCompanies(prev => append ? [...prev, ...companiesResponse] : companiesResponse);
+      setHasMoreCompanies(companiesResponse.length > 0 && companiesResponse.length === 15); // Heuristic for hasMore
+      setCompanyPage(page);
+
+    } catch (error: any) {
+      setCompanyError(`Failed to load companies: ${error.message}`);
+      console.error('Failed to fetch companies:', error);
+    } finally {
+      setIsLoadingCompanies(false);
+      setIsFetchingMoreCompanies(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      setIsLoadingCompanies(true);
-      setCompanyError(null);
-      try {
-        const response = await fetch(`${API_BASE}/companies`); // Assuming /api/companies is the endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        // The API returns paginated data, so we need to access the 'data' property
-        setCompanies(data.data);
-      } catch (error: any) {
-        setCompanyError(`Failed to load companies: ${error.message}`);
-        console.error('Failed to fetch companies:', error);
-      } finally {
-        setIsLoadingCompanies(false);
-      }
-    };
+    fetchCompanies(debouncedCompanySearchTerm, 1);
+  }, [debouncedCompanySearchTerm, fetchCompanies]);
 
-    fetchCompanies();
-  }, []);
+  // Effect to re-fetch companies when initial drug data is loaded and company_id might be set
+  useEffect(() => {
+    if (drug?.company_id && companies.length === 0 && !isLoadingCompanies && !companyError) {
+      // If a drug is being edited and has a company_id, ensure that company is loaded
+      // This is a simple re-fetch, a more robust solution might fetch only that company
+      fetchCompanies('', 1);
+    }
+  }, [drug?.company_id, companies.length, isLoadingCompanies, companyError, fetchCompanies]);
 
   useEffect(() => {
     setFormData(getInitialData(drug, companies)); // Ensure companies are passed
@@ -240,23 +265,25 @@ export default function DrugForm({ drug, onSubmit, onCancel, isLoading = false }
               <Text as="label" size="2" weight="medium" className="block mb-1">
                 Company Name
               </Text>
-              <Select.Root
+              <SearchableSelect
+                options={companies.map(c => ({ value: c.id.toString(), label: c.name }))}
                 value={formData.company_id?.toString() || ''}
-                onValueChange={(value) => handleInputChange('company_id', value)}
-                disabled={isLoadingCompanies}
-              >
-                <Select.Trigger placeholder={isLoadingCompanies ? 'Loading companies...' : 'Select a company'} className="w-full" />
-                <Select.Content>
-                  {companyError && <Select.Item value="error-companies-status" disabled>{companyError}</Select.Item>}
-                  {isLoadingCompanies && <Select.Item value="loading-companies-status" disabled>Loading companies...</Select.Item>}
-                  {!isLoadingCompanies && companies.length === 0 && <Select.Item value="no-companies-found-status" disabled>No companies found</Select.Item>}
-                  {companies.map((company) => (
-                    <Select.Item key={company.id} value={company.id.toString()}>
-                      {company.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+                onChange={(value) => handleInputChange('company_id', value)}
+                onInputChange={(value) => setCompanySearchTerm(value)}
+                onMenuScrollToBottom={() => {
+                  if (hasMoreCompanies && !isFetchingMoreCompanies) {
+                    fetchCompanies(companySearchTerm, companyPage + 1, true);
+                  }
+                }}
+                placeholder={isLoadingCompanies ? 'Loading companies...' : 'Search a company...'}
+                isLoading={isLoadingCompanies || isFetchingMoreCompanies}
+                usePortal={true}
+                customStyles={{ width: '100%', maxWidth: '700px', height: '35px' }} // Adjust styles as needed
+              />
+              {companyError && <Text size="1" color="red" className="mt-1">{companyError}</Text>}
+              {!isLoadingCompanies && !companyError && companies.length === 0 && (
+                <Text size="1" color="gray" className="mt-1">No companies found. Try a different search.</Text>
+              )}
             </Box>
 
             <Box>

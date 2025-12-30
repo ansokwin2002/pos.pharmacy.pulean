@@ -282,13 +282,13 @@ export default function RegisterPatientPage() {
     }
     try {
       const { listDrugs } = await import('@/utilities/api/drugs');
-      const response = await listDrugs({
+      const drugsResponse = await listDrugs({
         search: searchTerm,
         page: page,
         per_page: 15, // as requested
       });
       
-      const newDrugs = response.data.map((drug: any) => ({
+      const newDrugs = drugsResponse.map((drug: any) => ({
         id: drug.id,
         name: drug.name,
         price: Number(medicineTypeFilter === 'box-only' ? drug.box_price : (medicineTypeFilter === 'strip-only' ? drug.strip_price : drug.tablet_price)),
@@ -302,7 +302,7 @@ export default function RegisterPatientPage() {
 
       setDrugOptions(prev => append ? [...prev, ...newDrugs] : newDrugs);
       console.log('Fetched newDrugs with box_price:', newDrugs.map(d => ({ id: d.id, name: d.name, box_price: d.box_price, type_drug: d.type_drug })));
-      setHasMoreDrugs(response.data.length > 0 && response.total > (page * response.per_page));
+      setHasMoreDrugs(newDrugs.length > 0 && newDrugs.length === 15); // Assuming 15 is the per_page limit. If backend doesn't send 'total', this is a heuristic.
       setDrugPage(page);
 
     } catch (error) {
