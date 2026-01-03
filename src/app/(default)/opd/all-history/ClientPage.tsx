@@ -24,6 +24,7 @@ import DateInput from '@/components/common/DateInput';
 import AllHistoryTableSkeleton from '@/components/opd/AllHistoryTableSkeleton';
 import { patientHistoryData } from '@/data/PatientHistoryData';
 import { format } from 'date-fns';
+import useDebounce from '@/hooks/useDebounce'; // Import useDebounce
 
 interface PatientHistory {
   id: string;
@@ -48,6 +49,7 @@ export default function AllHistoryClientPage() {
   const [histories, setHistories] = useState<PatientHistory[]>([]);
   const [unpaginatedFilteredHistories, setUnpaginatedFilteredHistories] = useState<PatientHistory[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search term
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -133,12 +135,12 @@ export default function AllHistoryClientPage() {
     let newFilteredHistories = [...histories];
 
     // Filtering logic
-    if (searchTerm) {
+    if (debouncedSearchTerm) { // Use debouncedSearchTerm here
       newFilteredHistories = newFilteredHistories.filter(history =>
-        history.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        history.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        history.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        history.created_at.includes(searchTerm)
+        history.patient_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        history.type.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        history.id.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        history.created_at.includes(debouncedSearchTerm)
       );
     }
 
@@ -177,13 +179,7 @@ export default function AllHistoryClientPage() {
       });
     }
     return newFilteredHistories;
-  }, [histories, searchTerm, dateFilter, sortConfig]);
-
-  // Update unpaginatedFilteredHistories whenever filteredAndSortedHistories changes
-  useEffect(() => {
-    setUnpaginatedFilteredHistories(filteredAndSortedHistories);
-    setCurrentPage(1); // Reset to first page when filters or sort change
-  }, [filteredAndSortedHistories]);
+  }, [histories, debouncedSearchTerm, dateFilter, sortConfig]); // Update dependency array
 
   // Effect to fetch histories when component mounts
   useEffect(() => {

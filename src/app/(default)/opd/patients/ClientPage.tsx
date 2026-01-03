@@ -11,6 +11,10 @@ import { toast } from 'sonner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import DateInput from '@/components/common/DateInput';
 import PatientsTableSkeleton from '@/components/opd/PatientsTableSkeleton';
+import HistoryResultsTableSkeleton from '@/components/opd/HistoryResultsTableSkeleton';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
+import useDebounce from '@/hooks/useDebounce'; // Import useDebounce
 
 // Interfaces
 interface Patient {
@@ -253,6 +257,7 @@ export default function PatientListPage() {
   const [patientsData, setPatientsData] = useState<Patient[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search term
   const [genderFilter, setGenderFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -264,6 +269,7 @@ export default function PatientListPage() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const tableRef = React.useRef<HTMLDivElement>(null);
   const [diagnosisSearchTerm, setDiagnosisSearchTerm] = useState('');
+  const debouncedDiagnosisSearchTerm = useDebounce(diagnosisSearchTerm, 500); // Debounce diagnosis search term
   const [allHistories, setAllHistories] = useState<any[]>([]);
   const [filteredHistories, setFilteredHistories] = useState<any[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
@@ -293,10 +299,10 @@ export default function PatientListPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (diagnosisSearchTerm) return;
+      if (debouncedDiagnosisSearchTerm) return; // Use debouncedDiagnosisSearchTerm here
       setIsLoadingPatients(true); // Set loading to true
       try {
-        const data = await listPodPatients({ search: searchTerm || undefined, page: currentPage, per_page: itemsPerPage });
+        const data = await listPodPatients({ search: debouncedSearchTerm || undefined, page: currentPage, per_page: itemsPerPage }); // Use debouncedSearchTerm here
         setPatientsData(Array.isArray(data?.data) ? data.data : []);
       } catch (e) {
         console.error(e);
@@ -306,14 +312,14 @@ export default function PatientListPage() {
       }
     };
     load();
-  }, [searchTerm, currentPage, itemsPerPage, diagnosisSearchTerm]);
+  }, [debouncedSearchTerm, currentPage, itemsPerPage, debouncedDiagnosisSearchTerm]); // Update dependency array
 
   useEffect(() => {
-    if (diagnosisSearchTerm) return;
+    if (debouncedDiagnosisSearchTerm) return; // Use debouncedDiagnosisSearchTerm here
     let filtered = [...patientsData].filter(patient =>
-      !searchTerm ||
-      (patient.name && patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (patient.telephone && patient.telephone.toLowerCase().includes(searchTerm.toLowerCase()))
+      !debouncedSearchTerm || // Use debouncedSearchTerm here
+      (patient.name && patient.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) || // Use debouncedSearchTerm here
+      (patient.telephone && patient.telephone.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) // Use debouncedSearchTerm here
     );
     if (genderFilter !== 'all') {
       filtered = filtered.filter(patient => patient.gender === genderFilter);
@@ -325,7 +331,7 @@ export default function PatientListPage() {
     }
     setFilteredPatients(filtered);
     setCurrentPage(1);
-  }, [searchTerm, patientsData, genderFilter, dateFilter, diagnosisSearchTerm]);
+  }, [debouncedSearchTerm, patientsData, genderFilter, dateFilter, debouncedDiagnosisSearchTerm]); // Update dependency array
 
   // Effects for history search
   useEffect(() => {
@@ -344,11 +350,11 @@ export default function PatientListPage() {
   }, []);
 
   useEffect(() => {
-    if (!diagnosisSearchTerm) {
+    if (!debouncedDiagnosisSearchTerm) { // Use debouncedDiagnosisSearchTerm here
       setFilteredHistories([]);
       return;
     }
-    const lowercasedTerm = diagnosisSearchTerm.toLowerCase();
+    const lowercasedTerm = debouncedDiagnosisSearchTerm.toLowerCase(); // Use debouncedDiagnosisSearchTerm here
     const historiesWithDiagnosis = allHistories.filter(history => {
       try {
         const data = JSON.parse(history.json_data);
@@ -359,7 +365,7 @@ export default function PatientListPage() {
       }
     });
     setFilteredHistories(historiesWithDiagnosis);
-  }, [diagnosisSearchTerm, allHistories]);
+  }, [debouncedDiagnosisSearchTerm, allHistories]); // Update dependency array
 
   // PDF generation logic
   useEffect(() => {

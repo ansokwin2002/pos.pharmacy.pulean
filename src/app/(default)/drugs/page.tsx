@@ -23,6 +23,7 @@ import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { listDrugs, createDrug, updateDrug, deleteDrug, getDrug } from '@/utilities/api/drugs';
 import { toast } from 'sonner';
+import useDebounce from '@/hooks/useDebounce';
 
 const ITEMS_PER_PAGE = 25;
 
@@ -42,6 +43,7 @@ export default function DrugsPage() {
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search term with 500ms delay
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'low-stock' | 'out-of-stock'>('all');
   
@@ -131,7 +133,7 @@ export default function DrugsPage() {
           sort_dir: 'desc',
         };
 
-        if (searchTerm) params.search = searchTerm;
+        if (debouncedSearchTerm) params.search = debouncedSearchTerm;
         if (statusFilter !== 'all') params.status = statusFilter;
         if (stockFilter === 'in-stock') params.in_stock = true;
         // The backend API doesn't directly support 'low-stock' or 'out-of-stock' as filters.
@@ -157,7 +159,7 @@ export default function DrugsPage() {
     };
 
     fetchDrugs();
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter]);
+  }, [currentPage, itemsPerPage, debouncedSearchTerm, statusFilter, stockFilter]);
 
   const totalPages = Math.ceil(totalDrugs / itemsPerPage);
   const paginatedDrugs = drugsData; // drugsData is already paginated by the API
@@ -358,7 +360,11 @@ export default function DrugsPage() {
 
           <Callout.Root color="blue" size="1" mb="4">
             <Callout.Text>
-              Manage your pharmaceutical inventory. Track drug quantities, expiry dates, and maintain accurate records.
+              {searchTerm ? (
+                <>Showing results for "<strong>{searchTerm}</strong>"</>
+              ) : (
+                <>Manage your pharmaceutical inventory. Track drug quantities, expiry dates, and maintain accurate records.</>
+              )}
             </Callout.Text>
           </Callout.Root>
 

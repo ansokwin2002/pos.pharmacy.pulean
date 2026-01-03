@@ -12,6 +12,7 @@ import CompaniesTableSkeleton from '@/components/companies/CompaniesTableSkeleto
 import { Company } from '@/types/company';
 import { listCompanies, createCompany, updateCompany, deleteCompany } from '@/utilities/api/companies';
 import { toast } from 'sonner';
+import useDebounce from '@/hooks/useDebounce';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -22,6 +23,7 @@ export default function CompaniesPage() {
   const [totalCompanies, setTotalCompanies] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search term with 500ms delay
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
   const [selectedIds, setSelectedIds] = useState<(string | number)[]>([]);
@@ -51,7 +53,7 @@ export default function CompaniesPage() {
       setIsLoading(true);
       try {
         const companies = await listCompanies({
-          search: searchTerm,
+          search: debouncedSearchTerm,
           page: currentPage,
           per_page: ITEMS_PER_PAGE,
           status: statusFilter === 'all' ? undefined : statusFilter,
@@ -65,7 +67,7 @@ export default function CompaniesPage() {
       }
     };
     fetchCompanies();
-  }, [searchTerm, currentPage, statusFilter]);
+  }, [debouncedSearchTerm, currentPage, statusFilter]);
 
   const handleAddCompany = async (companyData: Partial<Company>) => {
     try {
@@ -157,7 +159,7 @@ export default function CompaniesPage() {
   return (
     <Box className="space-y-4">
       <Flex direction={{ initial: "column", sm: "row" }} justify="between" align={{ initial: "stretch", sm: "center" }} gap={{ initial: "4", sm: "0" }} mb="5">
-        <PageHeading title="Companies" description="Manage supplier companies" noMarginBottom />
+        <PageHeading title="Companies" noMarginBottom />
         {selectedIds.length > 0 && (
           <Button color="red" onClick={handleDeleteSelected}>
             <Trash2 size={16} /> Delete Selected ({selectedIds.length})
@@ -196,6 +198,16 @@ export default function CompaniesPage() {
         </Button>
       </Flex>
       
+      <Callout.Root color="blue" size="1" mb="4">
+        <Callout.Text>
+          {debouncedSearchTerm ? (
+            <>Showing results for "<strong>{debouncedSearchTerm}</strong>"</>
+          ) : (
+            <>Manage your supplier companies. Track company details and maintain accurate records.</>
+          )}
+        </Callout.Text>
+      </Callout.Root>
+      
       {isLoading ? (
         <div data-aos="fade-up">
           <CompaniesTableSkeleton />
@@ -203,20 +215,14 @@ export default function CompaniesPage() {
       ) : (
         <div data-aos="fade-up">
 
-          {companiesData.length === 0 ? (
-            <Callout.Root>
-              <Callout.Text>No companies found.</Callout.Text>
-            </Callout.Root>
-          ) : (
-            <CompaniesTable
-              companies={companiesData}
-              selectedIds={selectedIds}
-              onEdit={handleEditCompany}
-              onDelete={handleDeleteCompany}
-              onSelectionChange={handleSelectionChange}
-              onSelectAll={handleSelectAll}
-            />
-          )}
+          <CompaniesTable
+            companies={companiesData}
+            selectedIds={selectedIds}
+            onEdit={handleEditCompany}
+            onDelete={handleDeleteCompany}
+            onSelectionChange={handleSelectionChange}
+            onSelectAll={handleSelectAll}
+          />
 
           {totalPages > 1 && (
             <Box mt="4">
