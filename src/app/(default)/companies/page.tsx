@@ -8,6 +8,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import Pagination from '@/components/common/Pagination';
 import CompaniesTable from '@/components/companies/CompaniesTable';
 import CompanyForm from '@/components/companies/CompanyForm';
+import CompaniesTableSkeleton from '@/components/companies/CompaniesTableSkeleton';
 import { Company } from '@/types/company';
 import { listCompanies, createCompany, updateCompany, deleteCompany } from '@/utilities/api/companies';
 import { toast } from 'sonner';
@@ -29,6 +30,21 @@ export default function CompaniesPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleteSelectedDialogOpen, setIsDeleteSelectedDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('aos')
+        .then((module) => {
+          module.default.init({
+            duration: 1000,
+            once: true,
+          });
+          import('aos/dist/aos.css');
+        })
+        .catch((error) => console.error('Failed to load AOS:', error));
+    }
+  }, []);
+
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -155,34 +171,37 @@ export default function CompaniesPage() {
         </Button>
       </Flex>
 
+      <Flex gap="4" align="center" wrap="wrap" mb="4">
+        <Box className="flex-grow min-w-[250px]">
+          <TextField.Root
+            placeholder="Search by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          >
+            <TextField.Slot><Search size={16} /></TextField.Slot>
+          </TextField.Root>
+        </Box>
+        <Flex align="center" gap="2" className="flex-shrink-0">
+          <Select.Root value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
+            <Select.Trigger placeholder="All Status" />
+            <Select.Content>
+              <Select.Item value="all">All Status</Select.Item>
+              <Select.Item value="active">Active</Select.Item>
+              <Select.Item value="inactive">Inactive</Select.Item>
+            </Select.Content>
+          </Select.Root>
+        </Flex>
+        <Button variant="soft" color={statusFilter !== 'all' || searchTerm !== '' ? 'red' : 'gray'} onClick={handleResetFilters} disabled={statusFilter === 'all' && searchTerm === ''}>
+          <RefreshCcw size={16} /> Reset Filters
+        </Button>
+      </Flex>
+      
       {isLoading ? (
-        <Text>Loading companies...</Text>
+        <div data-aos="fade-up">
+          <CompaniesTableSkeleton />
+        </div>
       ) : (
-        <>
-          <Flex gap="4" align="center" wrap="wrap" mb="4">
-            <Box className="flex-grow min-w-[250px]">
-              <TextField.Root
-                placeholder="Search by name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              >
-                <TextField.Slot><Search size={16} /></TextField.Slot>
-              </TextField.Root>
-            </Box>
-            <Flex align="center" gap="2" className="flex-shrink-0">
-              <Select.Root value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
-                <Select.Trigger placeholder="All Status" />
-                <Select.Content>
-                  <Select.Item value="all">All Status</Select.Item>
-                  <Select.Item value="active">Active</Select.Item>
-                  <Select.Item value="inactive">Inactive</Select.Item>
-                </Select.Content>
-              </Select.Root>
-            </Flex>
-            <Button variant="soft" color={statusFilter !== 'all' || searchTerm !== '' ? 'red' : 'gray'} onClick={handleResetFilters} disabled={statusFilter === 'all' && searchTerm === ''}>
-              <RefreshCcw size={16} /> Reset Filters
-            </Button>
-          </Flex>
+        <div data-aos="fade-up">
 
           {companiesData.length === 0 ? (
             <Callout.Root>
@@ -200,18 +219,20 @@ export default function CompaniesPage() {
           )}
 
           {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              itemsPerPage={ITEMS_PER_PAGE}
-              totalItems={totalCompanies}
-              startIndex={(currentPage - 1) * ITEMS_PER_PAGE + 1}
-              endIndex={Math.min(currentPage * ITEMS_PER_PAGE, totalCompanies)}
-              onItemsPerPageChange={() => {}}
-            />
+            <Box mt="4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={ITEMS_PER_PAGE}
+                totalItems={totalCompanies}
+                startIndex={(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                endIndex={Math.min(currentPage * ITEMS_PER_PAGE, totalCompanies)}
+                onItemsPerPageChange={() => {}}
+              />
+            </Box>
           )}
-        </>
+        </div>
       )}
 
       {/* Add Company Dialog */}

@@ -14,6 +14,7 @@ import {
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import DrugsTable from '@/components/drugs/DrugsTable';
+import DrugsTableSkeleton from '@/components/drugs/DrugsTableSkeleton';
 import DrugForm from '@/components/drugs/DrugForm';
 import Pagination from '@/components/common/Pagination';
 import { Plus, Search, RefreshCcw, Trash2 } from 'lucide-react';
@@ -35,7 +36,6 @@ export default function DrugsPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const tableRef = React.useRef<HTMLDivElement>(null);
-  const [isPaginating, setIsPaginating] = useState(false);
   
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -50,27 +50,25 @@ export default function DrugsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
-  const [isFetchingSingleDrug, setIsFetchingSingleDrug] = useState(false);
 
-  const handleEditDrug = async (drug: Drug) => {
-    setSelectedDrug(drug); // Set immediately for optimistic UI or to show old data
-    setIsEditDialogOpen(true);
-    setIsFetchingSingleDrug(true);
-    try {
-      const fetchedDrug = await getDrug(drug.id);
-      setSelectedDrug({
-        ...fetchedDrug,
-        expiry_date: new Date(fetchedDrug.expiry_date),
-        created_at: fetchedDrug.created_at ? new Date(fetchedDrug.created_at) : undefined,
-        updated_at: fetchedDrug.updated_at ? new Date(fetchedDrug.updated_at) : undefined,
-      });
-    } catch (err: any) {
-      console.error('Failed to fetch single drug:', err);
-      toast.error(err.detail?.message || err.message || 'Failed to fetch drug details');
-      setIsEditDialogOpen(false); // Close dialog if fetch fails
-    } finally {
-      setIsFetchingSingleDrug(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('aos')
+        .then((module) => {
+          module.default.init({
+            duration: 1000,
+            once: true,
+          });
+          import('aos/dist/aos.css');
+        })
+        .catch((error) => console.error('Failed to load AOS:', error));
     }
+  }, []);
+
+
+  const handleEditDrug = (drug: Drug) => {
+    setSelectedDrug(drug);
+    setIsEditDialogOpen(true);
   };
 
   const handleSelectionChange = (id: string) => {
@@ -123,12 +121,7 @@ export default function DrugsPage() {
   // Fetch drugs when filters or pagination change
   useEffect(() => {
     const fetchDrugs = async () => {
-      // Only show full loading on initial load, use isPaginating for page changes
-      if (drugsData.length === 0) {
-        setIsLoading(true);
-      } else {
-        setIsPaginating(true);
-      }
+      setIsLoading(true);
       setError(null);
       try {
         const params: any = {
@@ -160,12 +153,11 @@ export default function DrugsPage() {
         toast.error(err.detail?.message || err.message || 'Failed to fetch drugs');
       } finally {
         setIsLoading(false);
-        setIsPaginating(false);
       }
     };
 
     fetchDrugs();
-  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter, drugsData.length]);
+  }, [currentPage, itemsPerPage, searchTerm, statusFilter, stockFilter]);
 
   const totalPages = Math.ceil(totalDrugs / itemsPerPage);
   const paginatedDrugs = drugsData; // drugsData is already paginated by the API
@@ -307,59 +299,62 @@ export default function DrugsPage() {
         </Button>
       </Flex>
       
+      <Flex gap="4" align="center" wrap="wrap" mb="4">
+        <Box className="flex-grow min-w-[250px]">
+          <TextField.Root
+            placeholder="Search by name, generic name, brand, or barcode..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          >
+            <TextField.Slot>
+              <Search size={16} />
+            </TextField.Slot>
+          </TextField.Root>
+        </Box>
+        
+        <Flex align="center" gap="2" className="flex-shrink-0">
+          <Select.Root value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
+            <Select.Trigger placeholder="All Status" />
+            <Select.Content>
+              <Select.Item value="all">All Status</Select.Item>
+              <Select.Item value="active">Active</Select.Item>
+              <Select.Item value="inactive">Inactive</Select.Item>
+            </Select.Content>
+          </Select.Root>
+
+          <Select.Root value={stockFilter} onValueChange={(value: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock') => setStockFilter(value)}>
+            <Select.Trigger placeholder="All Stock" />
+            <Select.Content>
+              <Select.Item value="all">All Stock</Select.Item>
+              <Select.Item value="in-stock">In Stock</Select.Item>
+              <Select.Item value="low-stock">Low Stock</Select.Item>
+              <Select.Item value="out-of-stock">Out of Stock</Select.Item>
+            </Select.Content>
+          </Select.Root>
+        </Flex>
+
+        <Button
+          variant="soft"
+          color={(statusFilter !== 'all' || stockFilter !== 'all' || searchTerm !== '') ? 'red' : 'gray'}
+          onClick={handleResetFilters}
+          className="flex-shrink-0"
+          disabled={(statusFilter === 'all' && stockFilter === 'all' && searchTerm === '')}
+        >
+          <RefreshCcw size={16} />
+          Reset Filters
+        </Button>
+      </Flex>
+      
       {isLoading ? (
-        <p>Loading drugs...</p>
+        <div data-aos="fade-up">
+          <DrugsTableSkeleton />
+        </div>
       ) : error ? (
         <Callout.Root color="red" size="1" mb="4">
           <Callout.Text>{error}</Callout.Text>
         </Callout.Root>
       ) : (
-        <>
-          <Flex gap="4" align="center" wrap="wrap" mb="4">
-            <Box className="flex-grow min-w-[250px]">
-              <TextField.Root
-                placeholder="Search by name, generic name, brand, or barcode..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              >
-                <TextField.Slot>
-                  <Search size={16} />
-                </TextField.Slot>
-              </TextField.Root>
-            </Box>
-            
-            <Flex align="center" gap="2" className="flex-shrink-0">
-              <Select.Root value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
-                <Select.Trigger placeholder="All Status" />
-                <Select.Content>
-                  <Select.Item value="all">All Status</Select.Item>
-                  <Select.Item value="active">Active</Select.Item>
-                  <Select.Item value="inactive">Inactive</Select.Item>
-                </Select.Content>
-              </Select.Root>
-
-              <Select.Root value={stockFilter} onValueChange={(value: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock') => setStockFilter(value)}>
-                <Select.Trigger placeholder="All Stock" />
-                <Select.Content>
-                  <Select.Item value="all">All Stock</Select.Item>
-                  <Select.Item value="in-stock">In Stock</Select.Item>
-                  <Select.Item value="low-stock">Low Stock</Select.Item>
-                  <Select.Item value="out-of-stock">Out of Stock</Select.Item>
-                </Select.Content>
-              </Select.Root>
-            </Flex>
-
-            <Button
-              variant="soft"
-              color={(statusFilter !== 'all' || stockFilter !== 'all' || searchTerm !== '') ? 'red' : 'gray'}
-              onClick={handleResetFilters}
-              className="flex-shrink-0"
-              disabled={(statusFilter === 'all' && stockFilter === 'all' && searchTerm === '')}
-            >
-              <RefreshCcw size={16} />
-              Reset Filters
-            </Button>
-          </Flex>
+        <div data-aos="fade-up">
 
           <Callout.Root color="blue" size="1" mb="4">
             <Callout.Text>
@@ -367,33 +362,6 @@ export default function DrugsPage() {
             </Callout.Text>
           </Callout.Root>
 
-                <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
-                {isPaginating && (
-                  <Box style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
-                    borderRadius: '8px'
-                  }}>
-                    <Flex direction="column" align="center" gap="2">
-                      <Box className="animate-spin" style={{
-                        width: '32px',
-                        height: '32px',
-                        border: '3px solid var(--gray-6)',
-                        borderTopColor: 'var(--blue-9)',
-                        borderRadius: '50%'
-                      }} />
-                      <RadixText size="2" color="gray">Loading...</RadixText>
-                    </Flex>
-                  </Box>
-                )}
                 <DrugsTable
                   drugs={paginatedDrugs}
                   selectedIds={selectedIds}
@@ -403,41 +371,42 @@ export default function DrugsPage() {
                   onSelectionChange={handleSelectionChange}
                   onSelectAll={handleSelectAll}
                 />
-                </Box>
           {totalDrugs > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              itemsPerPage={itemsPerPage}
-              totalItems={totalDrugs}
-              startIndex={(currentPage - 1) * itemsPerPage + 1}
-              endIndex={Math.min(currentPage * itemsPerPage, totalDrugs)}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-                // Smooth scroll to table top with offset
-                setTimeout(() => {
-                  if (tableRef.current) {
-                    const yOffset = -20; // 20px offset from top
-                    const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                  }
-                }, 0);
-              }}
-              onItemsPerPageChange={(newSize) => {
-                setItemsPerPage(newSize);
-                setCurrentPage(1);
-                // Smooth scroll to table top with offset
-                setTimeout(() => {
-                  if (tableRef.current) {
-                    const yOffset = -20; // 20px offset from top
-                    const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                  }
-                }, 0);
-              }}
-            />
+            <Box mt="4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                totalItems={totalDrugs}
+                startIndex={(currentPage - 1) * itemsPerPage + 1}
+                endIndex={Math.min(currentPage * itemsPerPage, totalDrugs)}
+                onPageChange={(page) => {
+                  setCurrentPage(page);
+                  // Smooth scroll to table top with offset
+                  setTimeout(() => {
+                    if (tableRef.current) {
+                      const yOffset = -20; // 20px offset from top
+                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                      window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                  }, 0);
+                }}
+                onItemsPerPageChange={(newSize) => {
+                  setItemsPerPage(newSize);
+                  setCurrentPage(1);
+                  // Smooth scroll to table top with offset
+                  setTimeout(() => {
+                    if (tableRef.current) {
+                      const yOffset = -20; // 20px offset from top
+                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                      window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+                  }, 0);
+                }}
+              />
+            </Box>
           )}
-        </>
+        </div>
       )}
 
       {/* Add Drug Dialog */}
@@ -455,11 +424,6 @@ export default function DrugsPage() {
       <Dialog.Root open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <Dialog.Content style={{ maxWidth: 800 }}>
           <Dialog.Title>Edit Drug</Dialog.Title>
-          {isFetchingSingleDrug ? (
-            <Flex justify="center" align="center" style={{ height: '200px' }}>
-              <RadixText size="4" color="gray">Loading drug details...</RadixText>
-            </Flex>
-          ) : (
             <DrugForm
               drug={selectedDrug || undefined}
               onSubmit={handleUpdateDrug}
@@ -468,7 +432,6 @@ export default function DrugsPage() {
                 setSelectedDrug(null);
               }}
             />
-          )}
         </Dialog.Content>
       </Dialog.Root>
 

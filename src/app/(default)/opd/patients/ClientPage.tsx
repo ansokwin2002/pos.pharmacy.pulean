@@ -10,6 +10,7 @@ import Pagination from '@/components/common/Pagination';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import DateInput from '@/components/common/DateInput';
+import PatientsTableSkeleton from '@/components/opd/PatientsTableSkeleton';
 
 // Interfaces
 interface Patient {
@@ -195,50 +196,56 @@ const EditPatientDialog = ({ open, setOpen, patient, onUpdatePatient }) => {
 // History Results Table
 const HistoryResultsTable = ({ records, isLoading, onViewPdf }) => {
   if (isLoading) {
-    return <Text>Searching history...</Text>;
+    return (
+      <div data-aos="fade-up">
+        <HistoryResultsTableSkeleton />
+      </div>
+    );
   }
   if (records.length === 0) {
     return <Text>No history records found for this diagnosis.</Text>
   }
   return (
-    <Table.Root variant="surface">
-      <Table.Header>
-        <Table.Row>
-          <Table.ColumnHeaderCell>Patient Name</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Diagnosis</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Date</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
-        </Table.Row>
-      </Table.Header>
-      <Table.Body>
-        {records.map(history => {
-          try {
-            const data = JSON.parse(history.json_data);
-            const patientInfo = data.patient || data.patient_info;
-            return (
-              <Table.Row key={history.id}>
-                <Table.Cell>
-                  <Button variant="ghost" onClick={() => onViewPdf(history)}>
-                    {patientInfo?.name || 'N/A'}
-                  </Button>
-                </Table.Cell>
-                <Table.Cell>{patientInfo?.diagnosis || 'N/A'}</Table.Cell>
-                <Table.Cell>{new Date(history.created_at).toLocaleDateString()}</Table.Cell>
-                <Table.Cell>
-                  <Tooltip content="View Prescription PDF">
-                    <IconButton size="2" variant="ghost" color="blue" onClick={() => onViewPdf(history)}>
-                      <FileText size={18} />
-                    </IconButton>
-                  </Tooltip>
-                </Table.Cell>
-              </Table.Row>
-            );
-          } catch {
-            return null;
-          }
-        })}
-      </Table.Body>
-    </Table.Root>
+    <div data-aos="fade-up">
+      <Table.Root variant="surface">
+        <Table.Header>
+          <Table.Row>
+            <Table.ColumnHeaderCell>Patient Name</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Diagnosis</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Date</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {records.map(history => {
+            try {
+              const data = JSON.parse(history.json_data);
+              const patientInfo = data.patient || data.patient_info;
+              return (
+                <Table.Row key={history.id}>
+                  <Table.Cell>
+                    <Button variant="ghost" onClick={() => onViewPdf(history)}>
+                      {patientInfo?.name || 'N/A'}
+                    </Button>
+                  </Table.Cell>
+                  <Table.Cell>{patientInfo?.diagnosis || 'N/A'}</Table.Cell>
+                  <Table.Cell>{new Date(history.created_at).toLocaleDateString()}</Table.Cell>
+                  <Table.Cell>
+                    <Tooltip content="View Prescription PDF">
+                      <IconButton size="2" variant="ghost" color="blue" onClick={() => onViewPdf(history)}>
+                        <FileText size={18} />
+                      </IconButton>
+                    </Tooltip>
+                  </Table.Cell>
+                </Table.Row>
+              );
+            } catch {
+              return null;
+            }
+          })}
+        </Table.Body>
+      </Table.Root>
+    </div>
   );
 };
 
@@ -255,12 +262,12 @@ export default function PatientListPage() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
-  const [isPaginating, setIsPaginating] = useState(false);
   const tableRef = React.useRef<HTMLDivElement>(null);
   const [diagnosisSearchTerm, setDiagnosisSearchTerm] = useState('');
   const [allHistories, setAllHistories] = useState<any[]>([]);
   const [filteredHistories, setFilteredHistories] = useState<any[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true); // New state for patient list loading
   const [selectedHistoryData, setSelectedHistoryData] = useState<HistoryData | null>(null);
   const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState(false);
   const [selectedHistoryCreatedAt, setSelectedHistoryCreatedAt] = useState<string | null>(null);
@@ -269,9 +276,25 @@ export default function PatientListPage() {
 
   // Effects for patient list
   useEffect(() => {
+    // Dynamically import AOS on client side
+    if (typeof window !== 'undefined') {
+      import('aos')
+        .then((module) => { // Renamed parameter to 'module' for clarity
+          module.default.init({ // Correctly access the default export
+            duration: 1000,
+            once: true,
+          });
+          // Import AOS CSS after initialization
+          import('aos/dist/aos.css');
+        })
+        .catch((error) => console.error('Failed to load AOS:', error));
+    }
+  }, []);
+
+  useEffect(() => {
     const load = async () => {
       if (diagnosisSearchTerm) return;
-      setIsPaginating(true);
+      setIsLoadingPatients(true); // Set loading to true
       try {
         const data = await listPodPatients({ search: searchTerm || undefined, page: currentPage, per_page: itemsPerPage });
         setPatientsData(Array.isArray(data?.data) ? data.data : []);
@@ -279,7 +302,7 @@ export default function PatientListPage() {
         console.error(e);
         toast.error('Failed to load patients');
       } finally {
-        setIsPaginating(false);
+        setIsLoadingPatients(false); // Set loading to false
       }
     };
     load();
@@ -507,37 +530,46 @@ export default function PatientListPage() {
       {diagnosisSearchTerm ? (
         <HistoryResultsTable records={filteredHistories} isLoading={isHistoryLoading} onViewPdf={handleViewPdf} />
       ) : (
-        <>
-          <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
-            {isPaginating && <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: '8px' }}><Flex direction="column" align="center" gap="2"><Box className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid var(--gray-6)', borderTopColor: 'var(--blue-9)', borderRadius: '50%' }} /><Text size="2" color="gray">Loading...</Text></Flex></Box>}
-            <Table.Root variant="surface" style={{ width: '100%' }}>
-              <Table.Header><Table.Row><Table.ColumnHeaderCell>No</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Telephone</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Age</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Address</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Gender</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Created At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Updated At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell></Table.Row></Table.Header>
-              <Table.Body>
-                {currentItems.length === 0 ? (
-                  <Table.Row><Table.Cell colSpan={9} className="text-center"><Text size="3" color="gray">No patients found.</Text></Table.Cell></Table.Row>
-                ) : (
-                  currentItems.map((patient, index) => (
-                    <Table.Row key={patient.id}>
-                      <Table.Cell>{(currentPage - 1) * itemsPerPage + index + 1}</Table.Cell>
-                      <Table.RowHeaderCell><Flex align="center" justify="between"><PatientNameWithMenu patient={patient} /></Flex></Table.RowHeaderCell>
-                      <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
-                      <Table.Cell>{patient.age || '-'}</Table.Cell>
-                      <Table.Cell>{patient.address || '-'}</Table.Cell>
-                      <Table.Cell>{patient.gender || '-'}</Table.Cell>
-                      <Table.Cell>{patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</Table.Cell>
-                      <Table.Cell>{patient.updated_at ? new Date(patient.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</Table.Cell>
-                      <Table.Cell><Flex gap="2">
-                        <Tooltip content="Edit Patient"><IconButton size="1" variant="ghost" color="blue" onClick={() => handleEditPatient(patient)}><Pencil size={14} /></IconButton></Tooltip>
-                        <Tooltip content="Delete Patient"><IconButton size="1" variant="ghost" color="red" onClick={() => handleDeletePatient(patient)}><Trash2 size={14} /></IconButton></Tooltip>
-                      </Flex></Table.Cell>
-                    </Table.Row>
-                  ))
-                )}
-              </Table.Body>
-            </Table.Root>
-          </Box>
-          {filteredPatients.length > 0 && <Pagination currentPage={currentPage} totalPages={totalPages} itemsPerPage={itemsPerPage} totalItems={filteredPatients.length} startIndex={startIndex} endIndex={endIndex} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />}
-        </>
+        <div data-aos="fade-up">
+          {isLoadingPatients ? (
+            <PatientsTableSkeleton />
+          ) : (
+            <>
+              <Box ref={tableRef} style={{ position: 'relative' }}>
+                <Table.Root variant="surface" style={{ width: '100%' }}>
+                  <Table.Header><Table.Row><Table.ColumnHeaderCell>No</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Telephone</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Age</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Address</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Gender</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Created At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Updated At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell></Table.Row></Table.Header>
+                  <Table.Body>
+                    {currentItems.length === 0 ? (
+                      <Table.Row><Table.Cell colSpan={9} className="text-center"><Text size="3" color="gray">No patients found.</Text></Table.Cell></Table.Row>
+                    ) : (
+                      currentItems.map((patient, index) => (
+                        <Table.Row key={patient.id}>
+                          <Table.Cell>{(currentPage - 1) * itemsPerPage + index + 1}</Table.Cell>
+                          <Table.RowHeaderCell><Flex align="center" justify="between"><PatientNameWithMenu patient={patient} /></Flex></Table.RowHeaderCell>
+                          <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
+                          <Table.Cell>{patient.age || '-'}</Table.Cell>
+                          <Table.Cell>{patient.address || '-'}</Table.Cell>
+                          <Table.Cell>{patient.gender || '-'}</Table.Cell>
+                          <Table.Cell>{patient.created_at ? new Date(patient.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</Table.Cell>
+                          <Table.Cell>{patient.updated_at ? new Date(patient.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</Table.Cell>
+                          <Table.Cell><Flex gap="2">
+                            <Tooltip content="Edit Patient"><IconButton size="1" variant="ghost" color="blue" onClick={() => handleEditPatient(patient)}><Pencil size={14} /></IconButton></Tooltip>
+                            <Tooltip content="Delete Patient"><IconButton size="1" variant="ghost" color="red" onClick={() => handleDeletePatient(patient)}><Trash2 size={14} /></IconButton></Tooltip>
+                          </Flex></Table.Cell>
+                        </Table.Row>
+                      ))
+                    )}
+                  </Table.Body>
+                </Table.Root>
+              </Box>
+              {filteredPatients.length > 0 && (
+                <Box mt="4">
+                  <Pagination currentPage={currentPage} totalPages={totalPages} itemsPerPage={itemsPerPage} totalItems={filteredPatients.length} startIndex={startIndex} endIndex={endIndex} onPageChange={setCurrentPage} onItemsPerPageChange={setItemsPerPage} />
+                </Box>
+              )}
+            </>
+          )}
+        </div>
       )}
       <AddPatientDialog open={isAddPatientDialogOpen} setOpen={setAddPatientDialogOpen} onAddPatient={handleAddPatient} />
       <EditPatientDialog open={isEditPatientDialogOpen} setOpen={setEditPatientDialogOpen} patient={patientToEdit} onUpdatePatient={handleUpdatePatient} />

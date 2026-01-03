@@ -11,7 +11,8 @@ import {
   TextField,
   IconButton,
   Tooltip,
-  Dialog
+  Dialog,
+  Skeleton
 } from '@radix-ui/themes';
 import { PageHeading } from '@/components/common/PageHeading';
 import { Search, FileText, Download, Printer } from 'lucide-react';
@@ -20,6 +21,7 @@ import Pagination from '@/components/common/Pagination';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import DateInput from '@/components/common/DateInput';
+import AllHistoryTableSkeleton from '@/components/opd/AllHistoryTableSkeleton';
 import { patientHistoryData } from '@/data/PatientHistoryData';
 import { format } from 'date-fns';
 
@@ -50,7 +52,6 @@ export default function AllHistoryClientPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [isLoading, setIsLoading] = useState(false);
-  const [isPaginating, setIsPaginating] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ key: keyof PatientHistory; direction: 'asc' | 'desc' } | null>(null);
   const [selectedHistory, setSelectedHistory] = useState<PatientHistory | null>(null);
   const tableRef = React.useRef<HTMLDivElement>(null);
@@ -58,6 +59,21 @@ export default function AllHistoryClientPage() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [selectedHistoryFileName, setSelectedHistoryFileName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('aos')
+        .then((module) => {
+          module.default.init({
+            duration: 1000,
+            once: true,
+          });
+          import('aos/dist/aos.css');
+        })
+        .catch((error) => console.error('Failed to load AOS:', error));
+    }
+  }, []);
+
 
   const handleSort = (key: keyof PatientHistory) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -272,36 +288,13 @@ export default function AllHistoryClientPage() {
       </Flex>
 
       {/* Table */}
-      <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
-
-            
-            {isPaginating && (
-              <Box style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 10,
-                borderRadius: '8px'
-              }}>
-                <Flex direction="column" align="center" gap="2">
-                  <Box className="animate-spin" style={{
-                    width: '32px',
-                    height: '32px',
-                    border: '3px solid var(--gray-6)',
-                    borderTopColor: 'var(--blue-9)',
-                    borderRadius: '50%'
-                  }} />
-                  <Text size="2" color="gray">Loading...</Text>
-                </Flex>
-              </Box>
-            )}
-            
+      {isLoading ? (
+        <div data-aos="fade-up">
+          <AllHistoryTableSkeleton />
+        </div>
+      ) : (
+        <div data-aos="fade-up">
+          <Box ref={tableRef}>
             <Card>
               <Table.Root variant="surface">
                 <Table.Header>
@@ -394,45 +387,43 @@ export default function AllHistoryClientPage() {
               </Table.Root>
             </Card>
           </Box>
+        </div>
+      )}
 
-          {/* Pagination */}
-          {unpaginatedFilteredHistories.length > 0 && (
-            <Box mt="4">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                itemsPerPage={itemsPerPage}
-                totalItems={unpaginatedFilteredHistories.length}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                onPageChange={(page) => {
-                  setIsPaginating(true);
-                  setCurrentPage(page);
-                  setTimeout(() => {
-                    if (tableRef.current) {
-                      const yOffset = -20;
-                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    setTimeout(() => setIsPaginating(false), 300);
-                  }, 0);
-                }}
-                onItemsPerPageChange={(newSize) => {
-                  setIsPaginating(true);
-                  setItemsPerPage(newSize);
-                  setCurrentPage(1);
-                  setTimeout(() => {
-                    if (tableRef.current) {
-                      const yOffset = -20;
-                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    setTimeout(() => setIsPaginating(false), 300);
-                  }, 0);
-                }}
-              />
-            </Box>
-          )}
+      {/* Pagination */}
+      {unpaginatedFilteredHistories.length > 0 && (
+        <Box mt="4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={unpaginatedFilteredHistories.length}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              setTimeout(() => {
+                if (tableRef.current) {
+                  const yOffset = -20;
+                  const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+              }, 0);
+            }}
+            onItemsPerPageChange={(newSize) => {
+              setItemsPerPage(newSize);
+              setCurrentPage(1);
+              setTimeout(() => {
+                if (tableRef.current) {
+                  const yOffset = -20;
+                  const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                  window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+              }, 0);
+            }}
+          />
+        </Box>
+      )}
 
       {/* PDF Preview Modal */}
       <Dialog.Root open={isPdfPreviewOpen} onOpenChange={setIsPdfPreviewOpen}>
