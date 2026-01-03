@@ -1,6 +1,6 @@
 'use client';
 import { DropdownMenu, IconButton, Text, Spinner, Flex, Button } from "@radix-ui/themes";
-import { MoreVertical, UserPlus, History } from 'lucide-react';
+import { MoreVertical, UserPlus, History, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -61,71 +61,30 @@ interface PatientNameWithMenuProps {
 export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
   console.log('Patient prop in PatientNameWithMenu:', patient);
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingAction, setLoadingAction] = useState<string>('');
+  const [isOPDLoading, setIsOPDLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   const handleOPDClick = () => {
-    setLoadingAction('OPD');
-    setIsLoading(true);
-    // Navigate to register page with secure patient ID
+    setIsOPDLoading(true);
     router.push(`/opd/register?id=${patient.id}`);
   };
 
   const handleHistoryClick = () => {
-    setLoadingAction('History');
-    setIsLoading(true);
+    setIsHistoryLoading(true);
     router.push(`/opd/patients/${patient.id}/history`);
   };
 
   return (
     <>
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: '32px 48px',
-              borderRadius: '12px',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
-              textAlign: 'center',
-            }}
-          >
-            <Flex direction="column" gap="4" align="center">
-              <Spinner size="3" />
-              <Text size="4" weight="medium">
-                Loading {loadingAction}...
-              </Text>
-              <Text size="2" color="gray">
-                Please wait while we prepare the page
-              </Text>
-            </Flex>
-          </div>
-        </div>
-      )}
-
       <Flex align="center" gap="3">
         <Text>{patient.name || 'N/A'}</Text>
         <Flex align="center" gap="2">
-            <Button size="1" variant="soft" onClick={handleOPDClick}>
-                <UserPlus size={12} />
+            <Button size="1" variant="soft" onClick={handleOPDClick} disabled={isOPDLoading}>
+                {isOPDLoading ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
                 OPD
             </Button>
-            <Button size="1" variant="soft" color="gray" onClick={handleHistoryClick}>
-                <History size={12} />
+            <Button size="1" variant="soft" color="gray" onClick={handleHistoryClick} disabled={isHistoryLoading}>
+                {isHistoryLoading ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
                 History
             </Button>
         </Flex>

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs, IconButton } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 import SearchableSelect from '@/components/common/SearchableSelect';
@@ -10,6 +10,7 @@ import useDebounce from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
+  const router = useRouter(); // Initialize useRouter
   // Existing patient selection (fake dataset)
   type Patient = {
     id: string;
@@ -782,11 +783,16 @@ export default function RegisterPatientPage() {
 
   return (
     <Box className="space-y-4 w-full px-4">
-
       <PageHeading
         title="Add New Patient"
         description="Complete the patient registration process step by step."
       />
+      <Flex justify="start" mb="4">
+        <Button variant="ghost" onClick={() => router.push('/opd/patients')}>
+          <ArrowLeft size={16} />
+          Back to Patient List
+        </Button>
+      </Flex>
 
 
       <Card style={{ width: '100%' }}>
@@ -863,114 +869,120 @@ export default function RegisterPatientPage() {
                   </Text>
                 </Box>
                 <Flex direction="column" gap="3">
-            {/* Name */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Name <Text color="red">*</Text></Text>
-              <TextField.Root
-                value={name}
-                onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({...prev, name: undefined})); }}
-                placeholder="Enter full name"
-                required
-              />
-              {errors.name && <Text size="1" className="text-red-500">{errors.name}</Text>}
-            </label>
+                  {/* First Row: Name, Age */}
+                  <Flex gap="3" wrap="wrap">
+                    {/* Name */}
+                    <label className="flex-1 min-w-[180px]">
+                      <Text as="div" size="2" mb="1" weight="bold">Name <Text color="red">*</Text></Text>
+                      <TextField.Root
+                        value={name}
+                        onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({...prev, name: undefined})); }}
+                        placeholder="Enter full name"
+                        required
+                      />
+                      {errors.name && <Text size="1" className="text-red-500">{errors.name}</Text>}
+                    </label>
 
-            {/* Gender */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Gender <Text color="red">*</Text></Text>
-              <Flex direction="column" align="start" className="w-full">
-                <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => { setGender(value); if (errors.gender) setErrors(prev => ({...prev, gender: undefined})); }}>
-                  <Select.Trigger placeholder="Select gender" />
-                  <Select.Content>
-                    <Select.Item value="male">Male</Select.Item>
-                    <Select.Item value="female">Female</Select.Item>
-                  </Select.Content>
-                </Select.Root>
-                {errors.gender && (
-                  <Text size="1" className="text-red-500 mt-1 pt-4">Gender is required</Text>
-                )}
-              </Flex>
-            </label>
+                    {/* Age */}
+                    <label className="flex-1 min-w-[120px]">
+                      <Text as="div" size="2" mb="1" weight="bold">Age <Text color="red">*</Text></Text>
+                      <TextField.Root
+                        type="text"
+                        value={age}
+                        onChange={(e) => { setAge(e.target.value); if (errors.age) setErrors(prev => ({...prev, age: undefined})); }}
+                        placeholder="Enter age"
+                        inputMode="numeric"
+                      />
+                      {errors.age && <Text size="1" className="text-red-500">{errors.age}</Text>}
+                    </label>
+                  </Flex>
 
-            {/* Age */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Age <Text color="red">*</Text></Text>
-              <TextField.Root
-                type="text"
-                value={age}
-                onChange={(e) => { setAge(e.target.value); if (errors.age) setErrors(prev => ({...prev, age: undefined})); }}
-                placeholder="Enter age"
-                inputMode="numeric"
-              />
-              {errors.age && <Text size="1" className="text-red-500">{errors.age}</Text>}
-            </label>
+                  {/* Second Row: Gender, Telephone, Address */}
+                  <Flex gap="3" wrap="wrap">
+                    {/* Gender */}
+                    <label className="flex-1 min-w-[120px]">
+                      <Text as="div" size="2" mb="1" weight="bold">Gender <Text color="red">*</Text></Text>
+                      <Flex direction="column" align="start" className="w-full">
+                        <Select.Root value={gender} onValueChange={(value: 'male' | 'female') => { setGender(value); if (errors.gender) setErrors(prev => ({...prev, gender: undefined})); }}>
+                          <Select.Trigger placeholder="Select gender" />
+                          <Select.Content>
+                            <Select.Item value="male">Male</Select.Item>
+                            <Select.Item value="female">Female</Select.Item>
+                          </Select.Content>
+                        </Select.Root>
+                        {errors.gender && (
+                          <Text size="1" className="text-red-500 mt-1 pt-4">Gender is required</Text>
+                        )}
+                      </Flex>
+                    </label>
 
-            {/* Telephone */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Telephone <Text color="red">*</Text></Text>
-              <TextField.Root
-                value={telephone}
-                onChange={(e) => { setTelephone(e.target.value); if (errors.telephone) setErrors(prev => ({...prev, telephone: undefined})); }}
-                placeholder="Enter telephone number"
-                inputMode="tel"
-              />
-              {errors.telephone && <Text size="1" className="text-red-500">{errors.telephone}</Text>}
-            </label>
+                    {/* Telephone */}
+                    <label className="flex-1 min-w-[180px]">
+                      <Text as="div" size="2" mb="1" weight="bold">Telephone <Text color="red">*</Text></Text>
+                      <TextField.Root
+                        value={telephone}
+                        onChange={(e) => { setTelephone(e.target.value); if (errors.telephone) setErrors(prev => ({...prev, telephone: undefined})); }}
+                        placeholder="Enter telephone number"
+                        inputMode="tel"
+                      />
+                      {errors.telephone && <Text size="1" className="text-red-500">{errors.telephone}</Text>}
+                    </label>
 
-            {/* Address */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Address <Text color="red">*</Text></Text>
-              <TextField.Root
-                value={address}
-                onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors(prev => ({...prev, address: undefined})); }}
-                placeholder="Enter address"
-              />
-              {errors.address && <Text size="1" className="text-red-500">{errors.address}</Text>}
-            </label>
+                    {/* Address */}
+                    <label className="flex-1 min-w-[180px]">
+                      <Text as="div" size="2" mb="1" weight="bold">Address <Text color="red">*</Text></Text>
+                      <TextField.Root
+                        value={address}
+                        onChange={(e) => { setAddress(e.target.value); if (errors.address) setErrors(prev => ({...prev, address: undefined})); }}
+                        placeholder="Enter address"
+                      />
+                      {errors.address && <Text size="1" className="text-red-500">{errors.address}</Text>}
+                    </label>
+                  </Flex>
 
-            {/* Vital sign */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Vital sign</Text>
-              <TextArea
-                value={signOfLife}
-                onChange={(e) => { setSignOfLife((e.target as HTMLTextAreaElement).value); if (errors.signOfLife) setErrors(prev => ({...prev, signOfLife: undefined})); }}
-                placeholder="Enter vital sign"
-              />
-              {errors.signOfLife && <Text size="1" className="text-red-500">{errors.signOfLife}</Text>}
-            </label>
+                  {/* Vital sign */}
+                  <label>
+                    <Text as="div" size="2" mb="1" weight="bold">Vital sign</Text>
+                    <TextArea
+                      value={signOfLife}
+                      onChange={(e) => { setSignOfLife((e.target as HTMLTextAreaElement).value); if (errors.signOfLife) setErrors(prev => ({...prev, signOfLife: undefined})); }}
+                      placeholder="Enter vital sign"
+                    />
+                    {errors.signOfLife && <Text size="1" className="text-red-500">{errors.signOfLife}</Text>}
+                  </label>
 
-            {/* Symptom */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Symptom</Text>
-              <TextArea
-                value={symptom}
-                onChange={(e) => { setSymptom((e.target as HTMLTextAreaElement).value); if (errors.symptom) setErrors(prev => ({...prev, symptom: undefined})); }}
-                placeholder="Describe patient symptoms"
-              />
-              {errors.symptom && <Text size="1" className="text-red-500">{errors.symptom}</Text>}
-            </label>
+                  {/* Symptom */}
+                  <label>
+                    <Text as="div" size="2" mb="1" weight="bold">Symptom</Text>
+                    <TextArea
+                      value={symptom}
+                      onChange={(e) => { setSymptom((e.target as HTMLTextAreaElement).value); if (errors.symptom) setErrors(prev => ({...prev, symptom: undefined})); }}
+                      placeholder="Describe patient symptoms"
+                    />
+                    {errors.symptom && <Text size="1" className="text-red-500">{errors.symptom}</Text>}
+                  </label>
 
-            {/* PE */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">PE</Text>
-              <TextArea
-                value={pe}
-                onChange={(e) => { setPe((e.target as HTMLTextAreaElement).value); if (errors.pe) setErrors(prev => ({...prev, pe: undefined})); }}
-                placeholder="Enter PE"
-              />
-              {errors.pe && <Text size="1" className="text-red-500">{errors.pe}</Text>}
-            </label>
+                  {/* PE */}
+                  <label>
+                    <Text as="div" size="2" mb="1" weight="bold">PE</Text>
+                    <TextArea
+                      value={pe}
+                      onChange={(e) => { setPe((e.target as HTMLTextAreaElement).value); if (errors.pe) setErrors(prev => ({...prev, pe: undefined})); }}
+                      placeholder="Enter PE"
+                    />
+                    {errors.pe && <Text size="1" className="text-red-500">{errors.pe}</Text>}
+                  </label>
 
-            {/* Diagnosis */}
-            <label>
-              <Text as="div" size="2" mb="1" weight="bold">Diagnosis</Text>
-              <TextArea
-                value={diagnosis}
-                onChange={(e) => { setDiagnosis((e.target as HTMLTextAreaElement).value); if (errors.diagnosis) setErrors(prev => ({...prev, diagnosis: undefined})); }}
-                placeholder="Enter diagnosis"
-              />
-              {errors.diagnosis && <Text size="1" className="text-red-500">{errors.diagnosis}</Text>}
-            </label>
+                  {/* Diagnosis */}
+                  <label>
+                    <Text as="div" size="2" mb="1" weight="bold">Diagnosis</Text>
+                    <TextArea
+                      value={diagnosis}
+                      onChange={(e) => { setDiagnosis((e.target as HTMLTextAreaElement).value); if (errors.diagnosis) setErrors(prev => ({...prev, diagnosis: undefined})); }}
+                      placeholder="Enter diagnosis"
+                    />
+                    {errors.diagnosis && <Text size="1" className="text-red-500">{errors.diagnosis}</Text>}
+                  </label>
                 </Flex>
 
                 {/* Tab Navigation */}
