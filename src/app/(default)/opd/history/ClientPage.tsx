@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Box, Flex, Table, TextField, Text, Card, Badge } from "@radix-ui/themes";
+import { Box, Flex, Table, TextField, Text, Card, Badge, Button } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 import { Search, FileText, Calendar, User } from 'lucide-react';
 import { toast } from 'sonner';
@@ -356,7 +356,6 @@ export default function OPDHistoryPage() {
                   return (
                     <Table.Row 
                       key={history.id}
-                      onClick={() => handleRowClick(history)}
                       style={{ cursor: 'pointer' }}
                       className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
@@ -369,7 +368,9 @@ export default function OPDHistoryPage() {
                       <Table.Cell>
                         <Flex align="center" gap="2">
                           <User size={14} />
-                          <Text weight="bold">{data.patient.name}</Text>
+                          <Button variant="ghost" onClick={() => handleRowClick(history)}>
+                            <Text weight="bold">{data.patient.name}</Text>
+                          </Button>
                         </Flex>
                       </Table.Cell>
                       <Table.Cell>

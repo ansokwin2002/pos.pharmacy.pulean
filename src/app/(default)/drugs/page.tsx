@@ -23,7 +23,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { listDrugs, createDrug, updateDrug, deleteDrug, getDrug } from '@/utilities/api/drugs';
 import { toast } from 'sonner';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 25;
 
 export default function DrugsPage() {
   usePageTitle('Drugs');

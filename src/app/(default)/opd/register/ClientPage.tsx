@@ -57,6 +57,7 @@ export default function RegisterPatientPage() {
   };
 
   const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
+  const [historyId, setHistoryId] = useState<string | null>(null);
   const [tempPrescriptionRecordId, setTempPrescriptionRecordId] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [isLoadingPrescriptions, setIsLoadingPrescriptions] = useState(false);
@@ -90,7 +91,7 @@ export default function RegisterPatientPage() {
 
   // Load temp drugs on mount
   useEffect(() => {
-    if (currentTab === 'prescription') {
+    if (currentTab === 'prescription' && !patientIdParam) { // Only load temp drugs for new registrations
       loadTempDrugs();
     }
   }, [currentTab, patientIdParam]);
@@ -128,55 +129,72 @@ export default function RegisterPatientPage() {
 
   // Auto-fill form when patient data is available (secure approach)
       useEffect(() => {
-        const patient = selectedPatient;
-    
-        console.log('Auto-fill effect triggered. patientIdParam:', patientIdParam, 'selectedPatient:', selectedPatient);
-    
-        if (patient && patientIdParam) {
-          console.log('Auto-filling with patient data:', patient);
-          // React 18 automatically batches these state updates
-          setTimeout(() => setSelectedPatientId(String(patient.id)), 0);
-          setName(patient.name || 'N/A');
-    
-          // Handle gender field (API uses string, fake uses 'male'|'female')
-          const genderValue = patient.gender;
-          if (genderValue === 'male' || genderValue === 'female') {
-            setGender(genderValue);
-          } else {
-            setGender('male'); // Default to 'male' if not specified
-          }
-    
-          setAge(String(patient.age || '1')); // Default to '1' if not specified
-    
-          // Handle telephone field (API might use 'telephone' or 'phone')
-          const phoneValue = patient.telephone || patient.phone || '';
-          let validTelephone = String(phoneValue);
-          if (validTelephone && /^\d+$/.test(validTelephone)) {
-            // Pad with leading zeros if too short, truncate if too long
-            if (validTelephone.length < 8) {
-              validTelephone = validTelephone.padStart(8, '0');
-            } else if (validTelephone.length > 12) {
-              validTelephone = validTelephone.slice(0, 12);
-            }
-          }
-          setTelephone(validTelephone || '00000000'); // Default to a valid 8-digit number
-    
-          setAddress(patient.address || 'N/A');
-    
-          // Handle signOfLife field (API uses 'signs_of_life', fake uses 'signOfLife')
-          const signOfLifeValue = patient.signOfLife || patient.signs_of_life;
-          setSignOfLife(signOfLifeValue || 'N/A');
+        const patient = patientIdParam ? allPatients.find(p => String(p.id) === patientIdParam) : null;
+        if (patient) { // Only run if a patient is selected
+          const loadHistoryAndPatientInfo = async () => {
+            setIsLoadingPrescriptions(true); // Use this loading state to indicate that we are loading data
+            try {
+              const { getPatientHistoriesByPatientId } = await import('@/utilities/api/patientHistories');
+              const histories = await getPatientHistoriesByPatientId(patient.id);
 
-          setPe(patient.pe || 'N/A');
-    
-          setSymptom(patient.symptom || 'N/A'); // Changed this
-          setDiagnosis(patient.diagnosis || 'N/A'); // Changed this
-          setErrors({});
-          console.log('Auto-fill completed. Current state:', { name, gender, age, telephone, address, signOfLife, symptom, diagnosis });
-        } else {
-          console.log('Auto-fill skipped. patient or patientIdParam is missing.');
+              if (histories && histories.length > 0) {
+                const latestHistory = histories[0];
+                setHistoryId(latestHistory.id); // Set the history ID for editing
+                const data = JSON.parse(latestHistory.json_data);
+                
+                const patientInfoFromHistory = data.patient || data.patient_info;
+
+                if(patientInfoFromHistory) {
+                    setSelectedPatientId(patient.id);
+                    setName(patientInfoFromHistory.name || '');
+                    const genderValue = patientInfoFromHistory.gender;
+                    if (genderValue === 'male' || genderValue === 'female') {
+                        setGender(genderValue);
+                    } else {
+                        setGender('');
+                    }
+                    setAge(String(patientInfoFromHistory.age || ''));
+                    setTelephone(patientInfoFromHistory.telephone || '');
+                    setAddress(patientInfoFromHistory.address || '');
+                    setSignOfLife(patientInfoFromHistory.signs_of_life || '');
+                    setPe(patientInfoFromHistory.pe || '');
+                    setSymptom(patientInfoFromHistory.symptom || '');
+                    setDiagnosis(patientInfoFromHistory.diagnosis || '');
+                }
+
+                if (data.prescriptions) {
+                  setPrescriptions(data.prescriptions);
+                }
+                
+                setErrors({});
+              } else {
+                // If no history, pre-fill from patient data
+                setName(patient.name || '');
+                const genderValue = patient.gender;
+                if (genderValue === 'male' || genderValue === 'female') {
+                    setGender(genderValue);
+                } else {
+                    setGender('');
+                }
+                setAge(String(patient.age || ''));
+                setTelephone(patient.telephone || '');
+                setAddress(patient.address || '');
+                setSignOfLife(patient.signs_of_life || '');
+                setPe(patient.pe || '');
+                setSymptom(patient.symptom || '');
+                setDiagnosis(patient.diagnosis || '');
+              }
+            } catch (error) {
+              console.error('Failed to load patient history:', error);
+              toast.error('Failed to load patient history');
+            } finally {
+              setIsLoadingPrescriptions(false);
+            }
+          };
+
+          loadHistoryAndPatientInfo();
         }
-      }, [selectedPatient, patientIdParam]);
+      }, [patientIdParam, allPatients]);
     
       // Form validation state
       const [errors, setErrors] = useState<{
@@ -489,7 +507,7 @@ export default function RegisterPatientPage() {
     }
   };
 
-  const addDrugToTable = async () => {
+  const addDrugToTable = () => {
     // Validate required Drug selection
     const d = drugOptions.find(x => x.id === selectedDrugId);
     if (!d) {
@@ -534,51 +552,23 @@ export default function RegisterPatientPage() {
 
     const priceToUse = medicineTypeFilter === 'box-only' ? d.box_price : (medicineTypeFilter === 'strip-only' ? d.strip_price : d.tablet_price);
     
-    console.log('Adding drug:', {
-      name: d.name,
-      morning, afternoon, evening, night,
-      days,
-      quantity,
-      price: priceToUse,
-      total: (priceToUse || 0) * quantity
-    });
-    
     const entry: Presc = {
       id: d.id,
       name: d.name,
       price: priceToUse || 0,
-      morning: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : morning, // Set to 0 if strip-only or box-only
-      afternoon: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : afternoon, // Set to 0 if strip-only or box-only
-      evening: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : evening, // Set to 0 if strip-only or box-only
-      night: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : night, // Set to 0 if strip-only or box-only
-      period: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? '' : period || '', // Set to empty if strip-only or box-only
+      morning: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : morning,
+      afternoon: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : afternoon,
+      evening: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : evening,
+      night: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? 0 : night,
+      period: (medicineTypeFilter === 'strip-only' || medicineTypeFilter === 'box-only') ? '' : period || '',
       qty: quantity,
       afterMeal,
       beforeMeal,
       unitType: medicineTypeFilter === 'box-only' ? 'box' : (medicineTypeFilter === 'strip-only' ? 'strip' : 'tablet'),
     };
 
-    // Show loading state
-    setIsAddingDrug(true);
-
-    try {
-      const newPrescriptions = [...prescriptions, entry];
-      const result = await savePrescriptionsToTempAPI(newPrescriptions);
-      if (result) {
-        // API save successful, update state
-        setPrescriptions(newPrescriptions);
-      } else {
-        // API not available, use local state but show error
-        setPrescriptions(newPrescriptions);
-        toast.error('Failed to save medication to the server. Your changes are saved locally for now.');
-      }
-      toast.success('Medication added');
-    } catch (error) {
-      console.error('Failed to add drug:', error);
-      toast.error('Failed to add medication');
-    } finally {
-      setIsAddingDrug(false);
-    }
+    setPrescriptions(prev => [...prev, entry]);
+    toast.success('Medication added. Save to apply changes.');
 
     // reset inputs
     setSelectedDrugId('');
@@ -594,75 +584,44 @@ export default function RegisterPatientPage() {
     setBeforeMeal(false);
   };
 
-  const removeDrug = async (index: number) => {
-    console.log('=== REMOVE DRUG START ===');
-    console.log('Removing drug at index:', index);
-    
-    setRemovingDrugIndex(index);
-    
-    try {
-      const newPrescriptions = prescriptions.filter((_, i) => i !== index);
-      let result = null;
-
-      // If newPrescriptions is empty, delete the temp prescription record
-      if (newPrescriptions.length === 0) {
-        const { deleteTempPrescriptionsByPatientId } = await import('@/utilities/api/tempPrescriptions');
-        if (patientIdParam) { // Ensure patientIdParam is available
-          await deleteTempPrescriptionsByPatientId(patientIdParam);
-          result = { success: true }; // Simulate a successful result for the if (result) check
-          setTempPrescriptionRecordId(null); // Clear the temp record ID
-        } else {
-          console.error("Cannot delete temp prescription: patientId is missing.");
-          toast.error("Error: Patient ID is missing.");
-          setRemovingDrugIndex(null); // Important to reset loading state
-          return;
-        }
-      } else {
-        result = await savePrescriptionsToTempAPI(newPrescriptions);
-      }
-
-      if (result) {
-        setPrescriptions(newPrescriptions);
-        toast.success('Medication removed.');
-      } else {
-        toast.error('Failed to remove medication on the server. Please try again.');
-      }
-      
-      setRenderKey(prev => prev + 1);
-      
-      console.log('=== REMOVE DRUG END ===');
-    } catch (error) {
-      console.error('Failed to remove drug:', error);
-      toast.error('Failed to remove medication');
-    } finally {
-      setRemovingDrugIndex(null);
-    }
+  const removeDrug = (index: number) => {
+    const newPrescriptions = prescriptions.filter((_, i) => i !== index);
+    setPrescriptions(newPrescriptions);
+    toast.success('Medication removed. Save to apply changes.');
   };
 
 
   
+  const getLatestHistoryData = async () => {
+    const patientId = selectedPatientId || patientIdParam;
+    if (patientId) {
+      const { getPatientHistoriesByPatientId } = await import('@/utilities/api/patientHistories');
+      const histories = await getPatientHistoriesByPatientId(patientId);
+      
+      if (histories && histories.length > 0) {
+        const latestHistory = histories[0];
+        return JSON.parse(latestHistory.json_data);
+      }
+    }
+    return null;
+  }
+
   const downloadPdf = async () => {
     try {
-      let historyData = null;
+      const historyData = await getLatestHistoryData();
       
-      // Fetch the latest patient history by patient ID
-      const patientId = selectedPatientId || patientIdParam;
-      if (patientId) {
-        const { getPatientHistoriesByPatientId } = await import('@/utilities/api/patientHistories');
-        const histories = await getPatientHistoriesByPatientId(patientId);
-        
-        if (histories && histories.length > 0) {
-          // Use the most recent history (first one, since it's ordered by created_at desc)
-          const latestHistory = histories[0];
-          historyData = JSON.parse(latestHistory.json_data);
-          console.log('Fetched latest history data for PDF:', historyData);
-        }
-      }
-      
-      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
       const createdAt = historyData?.created_at || new Date().toISOString();
-      const { doc, fileName } = await buildPrescriptionPdf(historyData, createdAt);
-      doc.save(fileName);
+      const { blob, fileName } = await generatePdfFromComponent(historyData, createdAt);
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
       toast.success('Prescription PDF downloaded');
     } catch (e) {
       console.error(e);
@@ -672,35 +631,21 @@ export default function RegisterPatientPage() {
 
   const previewPrintPdf = async () => {
     try {
-      let historyData = null;
+      const historyData = await getLatestHistoryData();
       
-      // Fetch the latest patient history by patient ID
-      const patientId = selectedPatientId || patientIdParam;
-      if (patientId) {
-        const { getPatientHistoriesByPatientId } = await import('@/utilities/api/patientHistories');
-        const histories = await getPatientHistoriesByPatientId(patientId);
-        
-        if (histories && histories.length > 0) {
-          // Use the most recent history (first one, since it's ordered by created_at desc)
-          const latestHistory = histories[0];
-          historyData = JSON.parse(latestHistory.json_data);
-          console.log('Fetched latest history data for PDF:', historyData);
-        }
-      }
-      
-      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
       const createdAt = historyData?.created_at || new Date().toISOString();
-      const { doc } = await buildPrescriptionPdf(historyData, createdAt);
-      const blob = doc.output('blob');
+      const { blob } = await generatePdfFromComponent(historyData, createdAt);
       const url = URL.createObjectURL(blob);
       
-      // Create hidden iframe for printing (same as other pages)
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = url;
       document.body.appendChild(iframe);
       iframe.onload = () => {
         iframe.contentWindow?.print();
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(url);
       };
     } catch (e) {
       console.error(e);
@@ -753,22 +698,32 @@ export default function RegisterPatientPage() {
         createdAt: new Date().toISOString(),
       };
 
-      // Save to patient-histories API
-      const { createPatientHistory } = await import('@/utilities/api/patientHistories');
-      const { deductDrugStock } = await import('@/utilities/api/stock'); // Import the new stock deduction API
       const payload = {
         type: 'opd',
         json_data: JSON.stringify(historyData),
-        patient_id: selectedPatientId || patientIdParam || undefined, // Add patient_id for database filtering
+        patient_id: selectedPatientId || patientIdParam || undefined,
       };
-      
-      const saved = await createPatientHistory(payload);
+
+      let saved;
+      if (historyId) {
+        // Update existing history
+        const { updatePatientHistory } = await import('@/utilities/api/patientHistories');
+        saved = await updatePatientHistory(historyId, payload);
+        toast.success('OPD history updated successfully!');
+      } else {
+        // Create new history
+        const { createPatientHistory } = await import('@/utilities/api/patientHistories');
+        saved = await createPatientHistory(payload);
+        toast.success('OPD history saved successfully!');
+      }
+
       setHasSaved(true);
-      setSavedHistoryId(saved.id); // Store the saved history ID
+      setSavedHistoryId(saved.id);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
       // --- Stock Deduction Logic ---
       try {
+        const { deductDrugStock } = await import('@/utilities/api/stock');
         const stockDeductions = prescriptions.map(p => ({
           drug_id: p.id,
           deducted_quantity: p.qty,
@@ -782,22 +737,11 @@ export default function RegisterPatientPage() {
       }
       // --- End Stock Deduction Logic ---
 
-      // Clear prescriptions from UI immediately
+      // Clear temp-related states, as the main history is now saved
       setPrescriptions([]);
       setTempPrescriptionRecordId(null);
       
-      // Clear all temp prescriptions from API in background using the new API
-      try {
-        const { deleteTempPrescriptionsByPatientId } = await import('@/utilities/api/tempPrescriptions');
-        await deleteTempPrescriptionsByPatientId(patientIdParam || '0'); // Pass current patientIdParam
-        
-        console.log(`Cleared all temp prescriptions from API for patient ID ${patientIdParam}`);
-      } catch (error) {
-        console.error('Failed to clear temp prescriptions from API:', error);
-      }
-      
-      toast.success('OPD history saved successfully!');
-      console.log('Saved patient history:', saved);
+      console.log('Saved/Updated patient history:', saved);
     } catch (e: any) {
       console.error(e);
       if (e?.detail && typeof e.detail === 'object') {

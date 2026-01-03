@@ -13,6 +13,7 @@
     "@faker-js/faker": "^10.1.0",
     "@fontsource/noto-sans-khmer": "^5.2.8",
     "@radix-ui/themes": "^3.2.1",
+    "@react-pdf/renderer": "^4.3.2",
     "@types/react-date-range": "^1.4.10",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^10.0.0",

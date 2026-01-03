@@ -217,13 +217,17 @@ const HistoryResultsTable = ({ records, isLoading, onViewPdf }) => {
             const patientInfo = data.patient || data.patient_info;
             return (
               <Table.Row key={history.id}>
-                <Table.Cell>{patientInfo?.name || 'N/A'}</Table.Cell>
+                <Table.Cell>
+                  <Button variant="ghost" onClick={() => onViewPdf(history)}>
+                    {patientInfo?.name || 'N/A'}
+                  </Button>
+                </Table.Cell>
                 <Table.Cell>{patientInfo?.diagnosis || 'N/A'}</Table.Cell>
                 <Table.Cell>{new Date(history.created_at).toLocaleDateString()}</Table.Cell>
                 <Table.Cell>
                   <Tooltip content="View Prescription PDF">
-                    <IconButton size="1" variant="ghost" color="blue" onClick={() => onViewPdf(history)}>
-                      <FileText size={14} />
+                    <IconButton size="2" variant="ghost" color="blue" onClick={() => onViewPdf(history)}>
+                      <FileText size={18} />
                     </IconButton>
                   </Tooltip>
                 </Table.Cell>
@@ -248,7 +252,7 @@ export default function PatientListPage() {
   const [isAddPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
   const [isEditPatientDialogOpen, setEditPatientDialogOpen] = useState(false);
   const [patientToEdit, setPatientToEdit] = useState<Patient | null>(null);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isPaginating, setIsPaginating] = useState(false);
@@ -348,9 +352,8 @@ export default function PatientListPage() {
       const data: HistoryData = JSON.parse(historyRecord.json_data);
       setSelectedHistoryData(data);
       setSelectedHistoryCreatedAt(historyRecord.created_at);
-      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
-      const { doc } = await buildPrescriptionPdf(data, historyRecord.created_at);
-      const blob = doc.output('blob');
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
+      const { blob } = await generatePdfFromComponent(data, historyRecord.created_at);
       setPdfPreviewUrl(URL.createObjectURL(blob));
       setIsPdfPreviewOpen(true);
     } catch (e) {
@@ -364,9 +367,17 @@ export default function PatientListPage() {
   const downloadPdf = async () => {
     if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
     try {
-      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
-      const { doc, fileName } = await buildPrescriptionPdf(selectedHistoryData, selectedHistoryCreatedAt);
-      doc.save(fileName);
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
+      const { blob, fileName } = await generatePdfFromComponent(selectedHistoryData, selectedHistoryCreatedAt);
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
       toast.success('Prescription PDF downloaded');
     } catch (e) {
       console.error(e);
@@ -449,11 +460,8 @@ export default function PatientListPage() {
       const currentItems = filteredPatients.slice(startIndex, endIndex);
   return (
     <Box className="space-y-4 w-full px-4">
-      <Flex justify="between" align="start" mb="5" className="w-full">
-        <Box style={{ backgroundColor: 'var(--gray-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-3)', marginBottom: 'var(--space-5)', width: '100%' }}>
-          <PageHeading title={diagnosisSearchTerm ? 'History Search Results' : 'Patient List'} description={diagnosisSearchTerm ? 'Showing history records matching the diagnosis' : 'View and manage all patients'} titleStyle={{ color: '#fc7f19', fontWeight: 'bold' }} />
-        </Box>
-      </Flex>
+      <PageHeading title={diagnosisSearchTerm ? 'History Search Results' : 'Patient List'} description={diagnosisSearchTerm ? 'Showing history records matching the diagnosis' : 'View and manage all patients'} />
+
 
       {!diagnosisSearchTerm && (
         <Flex justify="start" mb="5">
@@ -503,13 +511,14 @@ export default function PatientListPage() {
           <Box ref={tableRef} style={{ position: 'relative', minHeight: isPaginating ? '400px' : 'auto' }}>
             {isPaginating && <Box style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: '8px' }}><Flex direction="column" align="center" gap="2"><Box className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid var(--gray-6)', borderTopColor: 'var(--blue-9)', borderRadius: '50%' }} /><Text size="2" color="gray">Loading...</Text></Flex></Box>}
             <Table.Root variant="surface" style={{ width: '100%' }}>
-              <Table.Header><Table.Row><Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Telephone</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Age</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Address</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Gender</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Created At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Updated At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell></Table.Row></Table.Header>
+              <Table.Header><Table.Row><Table.ColumnHeaderCell>No</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Telephone</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Age</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Address</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Gender</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Created At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Updated At</Table.ColumnHeaderCell><Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell></Table.Row></Table.Header>
               <Table.Body>
                 {currentItems.length === 0 ? (
-                  <Table.Row><Table.Cell colSpan={8} className="text-center"><Text size="3" color="gray">No patients found.</Text></Table.Cell></Table.Row>
+                  <Table.Row><Table.Cell colSpan={9} className="text-center"><Text size="3" color="gray">No patients found.</Text></Table.Cell></Table.Row>
                 ) : (
-                  currentItems.map((patient) => (
+                  currentItems.map((patient, index) => (
                     <Table.Row key={patient.id}>
+                      <Table.Cell>{(currentPage - 1) * itemsPerPage + index + 1}</Table.Cell>
                       <Table.RowHeaderCell><Flex align="center" justify="between"><PatientNameWithMenu patient={patient} /></Flex></Table.RowHeaderCell>
                       <Table.Cell>{patient.telephone || patient.phone || '-'}</Table.Cell>
                       <Table.Cell>{patient.age || '-'}</Table.Cell>

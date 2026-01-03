@@ -1,2 +1,2 @@
-export { buildPrescriptionPdf } from './buildPrescriptionPdf';
-export type { PrescriptionData } from './buildPrescriptionPdf';
+export { generatePdfFromComponent } from './generatePdfFromComponent';
+export type { PrescriptionData } from '@/types/pdf';

@@ -16,8 +16,9 @@ import {
 import { useRouter, useParams } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { ArrowLeft, FileText, Download, Printer, Search } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Printer, Search, Pencil } from 'lucide-react';
 import { getPatientHistoriesByPatientId } from '@/utilities/api/patientHistories';
+import { useMemo } from 'react';
 
 import { toast } from 'sonner';
 import Pagination from '@/components/common/Pagination';
@@ -87,6 +88,35 @@ export default function PatientHistoryPage() {
 
   usePageTitle(patientId ? `History for Patient ${patientId}` : 'Patient History');
 
+  // Memoize the filtered histories to avoid re-calculating on every render
+  const filteredHistories = useMemo(() => {
+    return histories.filter((history) => {
+      try {
+        const data: HistoryData = JSON.parse(history.json_data);
+        const patientInfo = data.patient || data.patient_info;
+        const searchLower = searchTerm.toLowerCase();
+        
+        return (
+          String(history.id).toLowerCase().includes(searchLower) ||
+          history.type.toLowerCase().includes(searchLower) ||
+          (patientInfo?.name || '').toLowerCase().includes(searchLower) ||
+          new Date(history.created_at).toLocaleDateString().includes(searchLower)
+        );
+      } catch {
+        // If json_data is malformed, don't include it in results
+        return false;
+      }
+    });
+  }, [histories, searchTerm]);
+
+  // Calculate pagination based on memoized filtered histories
+  const totalItems = filteredHistories.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedHistories = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredHistories.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredHistories, currentPage, itemsPerPage]);
+
   useEffect(() => {
     if (!patientId) return;
 
@@ -130,9 +160,8 @@ export default function PatientHistoryPage() {
       setSelectedHistoryCreatedAt(historyRecord.created_at);
       
       // Generate PDF preview using shared utility
-      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
-      const { doc } = await buildPrescriptionPdf(data, historyRecord.created_at);
-      const blob = doc.output('blob');
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
+      const { blob } = await generatePdfFromComponent(data, historyRecord.created_at);
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
       
@@ -147,9 +176,17 @@ export default function PatientHistoryPage() {
     const downloadPdf = async () => {
     if (!selectedHistoryData || !selectedHistoryCreatedAt) return;
     try {
-      const { buildPrescriptionPdf } = await import('@/utilities/pdf');
-      const { doc, fileName } = await buildPrescriptionPdf(selectedHistoryData, selectedHistoryCreatedAt);
-      doc.save(fileName);
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
+      const { blob, fileName } = await generatePdfFromComponent(selectedHistoryData, selectedHistoryCreatedAt);
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
       toast.success('Prescription PDF downloaded');
     } catch (e) {
       console.error(e);
@@ -256,41 +293,16 @@ export default function PatientHistoryPage() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {(() => {
-              // Filter histories based on search term
-              const filteredHistories = histories.filter((history) => {
-                const data: HistoryData = JSON.parse(history.json_data);
-                const patientInfo = data.patient || data.patient_info;
-                const searchLower = searchTerm.toLowerCase();
-                
-                return (
-                  String(history.id).toLowerCase().includes(searchLower) ||
-                  history.type.toLowerCase().includes(searchLower) ||
-                  (patientInfo?.name || '').toLowerCase().includes(searchLower) ||
-                  new Date(history.created_at).toLocaleDateString().includes(searchLower)
-                );
-              });
-
-              // Calculate pagination
-              const totalItems = filteredHistories.length;
-              const totalPages = Math.ceil(totalItems / itemsPerPage);
-              const startIndex = (currentPage - 1) * itemsPerPage;
-              const endIndex = startIndex + itemsPerPage;
-              const paginatedHistories = filteredHistories.slice(startIndex, endIndex);
-
-              if (paginatedHistories.length === 0) {
-                return (
-                  <Table.Row>
-                    <Table.Cell colSpan={6}>
-                      <Text align="center" className="py-4 text-slate-500">
-                        {searchTerm ? 'No matching records found.' : 'No history records found for this patient.'}
-                      </Text>
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              }
-
-              return paginatedHistories.map((history) => {
+            {paginatedHistories.length === 0 ? (
+              <Table.Row>
+                <Table.Cell colSpan={6}>
+                  <Text align="center" className="py-4 text-slate-500">
+                    {searchTerm ? 'No matching records found.' : 'No history records found for this patient.'}
+                  </Text>
+                </Table.Cell>
+              </Table.Row>
+            ) : (
+              paginatedHistories.map((history) => {
                 const data: HistoryData = JSON.parse(history.json_data);
                 const patientInfo = data.patient || data.patient_info;
                 const totalAmount = data.totalAmount ?? data.total ?? 0;
@@ -298,101 +310,95 @@ export default function PatientHistoryPage() {
                   <Table.Row key={history.id}>
                     <Table.Cell>{history.id}</Table.Cell>
                     <Table.Cell>{history.type}</Table.Cell>
-                    <Table.Cell>{patientInfo?.name || 'N/A'}</Table.Cell>
+                    <Table.Cell>
+                      <Button variant="ghost" onClick={() => handleViewPdf(history)}>
+                        {patientInfo?.name || 'N/A'}
+                      </Button>
+                    </Table.Cell>
                     <Table.Cell>${totalAmount.toFixed(2)}</Table.Cell>
                     <Table.Cell>{new Date(history.created_at).toLocaleDateString()}</Table.Cell>
                     <Table.Cell>
-                      <Flex gap="2">
+                      <Flex gap="3">
                         <Tooltip content="View Prescription PDF">
                           <IconButton
-                            size="1"
+                            size="2"
                             variant="ghost"
                             color="blue"
                             onClick={() => handleViewPdf(history)}
                             disabled={isGeneratingPdf}
                           >
                             {isGeneratingPdf ? (
-                              <Box className="animate-spin" style={{ width: '14px', height: '14px' }}>
+                              <Box className="animate-spin" style={{ width: '18px', height: '18px' }}>
                                 ⟳
                               </Box>
                             ) : (
-                              <FileText size={14} />
+                              <FileText size={18} />
                             )}
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip content="Edit Record">
+                          <IconButton
+                            size="2"
+                            variant="ghost"
+                            color="blue"
+                            onClick={() => {
+                              router.push(`/opd/register?id=${patientId}`);
+                            }}
+                          >
+                            <Pencil size={18} />
                           </IconButton>
                         </Tooltip>
                       </Flex>
                     </Table.Cell>
                   </Table.Row>
                 );
-              });
-            })()}
+              })
+            )}
           </Table.Body>
         </Table.Root>
 
         {/* Pagination */}
-        {(() => {
-          const filteredHistories = histories.filter((history) => {
-            const data: HistoryData = JSON.parse(history.json_data);
-            const patientInfo = data.patient || data.patient_info;
-            const searchLower = searchTerm.toLowerCase();
-            
-            return (
-              String(history.id).toLowerCase().includes(searchLower) ||
-              history.type.toLowerCase().includes(searchLower) ||
-              (patientInfo?.name || '').toLowerCase().includes(searchLower) ||
-              new Date(history.created_at).toLocaleDateString().includes(searchLower)
-            );
-          });
-
-          const totalItems = filteredHistories.length;
-          const totalPages = Math.ceil(totalItems / itemsPerPage);
-          const startIndex = (currentPage - 1) * itemsPerPage;
-          const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-
-          if (totalItems === 0) return null;
-
-          return (
-            <Box mt="4">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                itemsPerPage={itemsPerPage}
-                totalItems={totalItems}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                onPageChange={(page) => {
-                  setIsPaginating(true);
-                  setCurrentPage(page);
-                  // Smooth scroll to table top with offset
-                  setTimeout(() => {
-                    if (tableRef.current) {
-                      const yOffset = -20; // 20px offset from top
-                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    // Hide loading after a short delay to show smooth transition
-                    setTimeout(() => setIsPaginating(false), 300);
-                  }, 0);
-                }}
-                onItemsPerPageChange={(newSize) => {
-                  setIsPaginating(true);
-                  setItemsPerPage(newSize);
-                  setCurrentPage(1);
-                  // Smooth scroll to table top with offset
-                  setTimeout(() => {
-                    if (tableRef.current) {
-                      const yOffset = -20; // 20px offset from top
-                      const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    // Hide loading after a short delay to show smooth transition
-                    setTimeout(() => setIsPaginating(false), 300);
-                  }, 0);
-                }}
-              />
-            </Box>
-          );
-        })()}
+        {totalItems > 0 && (
+          <Box mt="4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              totalItems={totalItems}
+              startIndex={(currentPage - 1) * itemsPerPage}
+              endIndex={Math.min(((currentPage - 1) * itemsPerPage) + itemsPerPage, totalItems)}
+              onPageChange={(page) => {
+                setIsPaginating(true);
+                setCurrentPage(page);
+                // Smooth scroll to table top with offset
+                setTimeout(() => {
+                  if (tableRef.current) {
+                    const yOffset = -20; // 20px offset from top
+                    const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                  }
+                  // Hide loading after a short delay to show smooth transition
+                  setTimeout(() => setIsPaginating(false), 300);
+                }, 0);
+              }}
+              onItemsPerPageChange={(newSize) => {
+                setIsPaginating(true);
+                setItemsPerPage(newSize);
+                setCurrentPage(1);
+                // Smooth scroll to table top with offset
+                setTimeout(() => {
+                  if (tableRef.current) {
+                    const yOffset = -20; // 20px offset from top
+                    const y = tableRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                  }
+                  // Hide loading after a short delay to show smooth transition
+                  setTimeout(() => setIsPaginating(false), 300);
+                }, 0);
+              }}
+            />
+          </Box>
+        )}
       </Card>
 
       {/* PDF Preview Modal */}

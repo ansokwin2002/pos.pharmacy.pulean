@@ -84,6 +84,19 @@ export async function getPatientHistory(id: number | string) {
   }
 }
 
+export async function updatePatientHistory(id: string, payload: PatientHistoryPayload) {
+  const res = await fetch(`${API_BASE}/patient-histories/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw await toError(res);
+  return res.json();
+}
+
 async function toError(res: Response) {
   let detail: any = null;
   try { detail = await res.json(); } catch {}
