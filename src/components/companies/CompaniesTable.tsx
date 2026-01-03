@@ -35,8 +35,11 @@ export default function CompaniesTable({
               aria-label="Select all rows"
             />
           </Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>No.</Table.ColumnHeaderCell>
           <Table.ColumnHeaderCell>Company Name</Table.ColumnHeaderCell>
           <Table.ColumnHeaderCell>Status</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Created At</Table.ColumnHeaderCell>
+          <Table.ColumnHeaderCell>Updated At</Table.ColumnHeaderCell>
           <Table.ColumnHeaderCell>Actions</Table.ColumnHeaderCell>
         </Table.Row>
       </Table.Header>
@@ -50,12 +53,15 @@ export default function CompaniesTable({
                 aria-label={`Select row ${company.id}`}
               />
             </Table.Cell>
+            <Table.Cell>{(idx + 1).toString().padStart(3, '0')}</Table.Cell>
             <Table.RowHeaderCell>{company.name}</Table.RowHeaderCell>
             <Table.Cell>
               <Badge color={company.status ? 'green' : 'red'}>
                 {company.status ? 'Active' : 'Inactive'}
               </Badge>
             </Table.Cell>
+            <Table.Cell>{new Date(company.created_at).toLocaleString()}</Table.Cell>
+            <Table.Cell>{new Date(company.updated_at).toLocaleString()}</Table.Cell>
             <Table.Cell>
               <Flex gap="3">
                 <Tooltip content="Edit Company">

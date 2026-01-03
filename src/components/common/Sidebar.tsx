@@ -606,7 +606,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
   return (
     <>
       {/* Loading Overlay */}
-      {isLoading && (
+      {/* {isLoading && (
         <div
           style={{
             position: 'fixed',
@@ -642,7 +642,7 @@ export default function Sidebar({ width, onClose }: SidebarProps) {
             </Flex>
           </div>
         </div>
-      )}
+      )} */}
 
       <Box
         position="fixed"
