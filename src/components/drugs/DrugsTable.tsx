@@ -303,7 +303,7 @@ export default function DrugsTable({
                     )}
                   </Box>
                 </Table.Cell>
-                <Table.Cell>{drug.generic_name}</Table.Cell>
+                <Table.Cell>{drug.generic_name}test</Table.Cell>
                 <Table.Cell>
                   <Text>{getCompanyName(drug.company_id)}</Text>
                 </Table.Cell>
