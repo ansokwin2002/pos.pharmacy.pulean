@@ -63,7 +63,7 @@ export default function DateInput({
     }
     
     return style;
-  }, [displayPosition, inputRef.current, inputRef.current?.getBoundingClientRect().top]); // Depend on relevant position changes
+  }, [displayPosition]);
 
   useEffect(() => {
     setIsMounted(true);

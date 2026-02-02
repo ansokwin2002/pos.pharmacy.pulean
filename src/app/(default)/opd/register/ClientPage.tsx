@@ -422,7 +422,7 @@ export default function RegisterPatientPage() {
       toast.error('Failed to save temporary prescription.');
       return null;
     }
-  }, [_setTempPrescriptionRecordId, patientIdParam, toast]);
+  }, [_setTempPrescriptionRecordId, patientIdParam]);
 
 
 

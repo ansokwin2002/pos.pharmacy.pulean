@@ -56,7 +56,7 @@ export default function CompaniesPage() {
         } as any);
         setCompaniesData(companies);
         setTotalCompanies(companies.length); // Assuming listCompanies returns an array and total is its length if no backend pagination total is provided. This might need adjustment if backend implements full pagination.
-      } catch (_error) {
+      } catch (_ : any) {
         toast.error('Failed to fetch companies.');
       } finally {
         setIsLoading(false);
@@ -72,7 +72,7 @@ export default function CompaniesPage() {
       setTotalCompanies(totalCompanies + 1);
       setIsAddDialogOpen(false);
       toast.success('Company created successfully!');
-    } catch (_error) {
+    } catch (_ : any) {
       toast.error('Failed to create company.');
     }
   };
@@ -90,7 +90,7 @@ export default function CompaniesPage() {
       setIsEditDialogOpen(false);
       setSelectedCompany(null);
       toast.success('Company updated successfully!');
-    } catch (_error) {
+    } catch (_ : any) {
       toast.error('Failed to update company.');
     }
   };
@@ -109,7 +109,7 @@ export default function CompaniesPage() {
       setIsDeleteDialogOpen(false);
       setSelectedCompany(null);
       toast.success('Company deleted successfully!');
-    } catch (_error) {
+    } catch (_ : any) {
       toast.error('Failed to delete company.');
     }
   };
@@ -140,7 +140,7 @@ export default function CompaniesPage() {
       setSelectedIds([]);
       setIsDeleteSelectedDialogOpen(false);
       toast.success(`${selectedIds.length} companies deleted successfully!`);
-    } catch (_error) {
+    } catch (_ : any) {
       toast.error('Failed to delete selected companies.');
     }
   };

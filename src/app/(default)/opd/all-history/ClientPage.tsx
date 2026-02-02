@@ -198,7 +198,7 @@ export default function AllHistoryClientPage() {
             let jsonData: HistoryData = {};
             try {
                 jsonData = JSON.parse(history.json_data);
-            } catch (e) {
+            } catch (_ : any) {
                 console.error('Failed to parse json_data for history:', history.id);
             }
             

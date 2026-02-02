@@ -221,7 +221,7 @@ export default function DrugDetailPage() {
 
                     <Box className="mb-4">
 
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+
 
                       <img src={drug.image} alt={`${drug.name} image`} className="w-full h-auto max-h-64 object-contain rounded-md" />
 
