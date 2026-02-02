@@ -48,9 +48,10 @@ export default function DateInput({
 
   // Memoize calendar position style to avoid unnecessary re-renders
   const calendarPositionStyle = useMemo(() => {
-    if (!inputRef.current) return {};
+    const currentInputRef = inputRef.current;
+    if (!currentInputRef) return {};
     
-    const inputRect = inputRef.current.getBoundingClientRect();
+    const inputRect = currentInputRef.getBoundingClientRect();
     const style: React.CSSProperties = { left: inputRect.left };
     
     if (displayPosition === 'top') {
@@ -62,7 +63,7 @@ export default function DateInput({
     }
     
     return style;
-  }, [displayPosition, open, inputRef.current?.getBoundingClientRect().top]); // Depend on relevant position changes
+  }, [displayPosition, inputRef.current, inputRef.current?.getBoundingClientRect().top]); // Depend on relevant position changes
 
   useEffect(() => {
     setIsMounted(true);

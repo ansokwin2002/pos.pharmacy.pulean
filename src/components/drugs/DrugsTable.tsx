@@ -200,7 +200,7 @@ export default function DrugsTable({
       }
       return 0;
     });
-  }, [drugs, sortConfig]);
+  }, [drugs, sortConfig, getCompanyName]);
 
   return (
     <Box className="overflow-auto">

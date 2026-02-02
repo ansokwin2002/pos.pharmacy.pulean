@@ -59,11 +59,11 @@ export default function RegisterPatientPage() {
 
   const [prescriptions, setPrescriptions] = useState<Presc[]>([]);
   const [historyId, setHistoryId] = useState<string | null>(null);
-  const [tempPrescriptionRecordId, setTempPrescriptionRecordId] = useState<string | null>(null);
-  const [renderKey, setRenderKey] = useState(0);
+  const [_tempPrescriptionRecordId, _setTempPrescriptionRecordId] = useState<string | null>(null);
+  const [_renderKey, _setRenderKey] = useState(0);
   const [isLoadingPrescriptions, setIsLoadingPrescriptions] = useState(false);
-  const [isAddingDrug, setIsAddingDrug] = useState(false);
-  const [removingDrugIndex, setRemovingDrugIndex] = useState<number | null>(null);
+  const [_isAddingDrug, _setIsAddingDrug] = useState(false);
+  const [_removingDrugIndex, _setRemovingDrugIndex] = useState<number | null>(null);
 
   // Tab management
   const [currentTab, setCurrentTab] = useState<'patient-info' | 'prescription' | 'complete'>('patient-info');
@@ -95,7 +95,7 @@ export default function RegisterPatientPage() {
     if (currentTab === 'prescription' && !patientIdParam) { // Only load temp drugs for new registrations
       loadTempDrugs();
     }
-  }, [currentTab, patientIdParam]);
+  }, [currentTab, patientIdParam, loadTempDrugs]);
 
   // Prompt user to add prescriptions if none found
   useEffect(() => {
@@ -223,7 +223,7 @@ export default function RegisterPatientPage() {
         if (!diagnosis.trim()) e.diagnosis = 'Diagnosis is required';
         setErrors(e);
         return Object.keys(e).length === 0;
-      }, [name, gender, age, telephone, address, signOfLife, pe, symptom, diagnosis, setErrors]);
+      }, [name, gender, age, telephone, address, pe, symptom, diagnosis, setErrors]);
     
 
     
@@ -233,7 +233,7 @@ export default function RegisterPatientPage() {
     
   // Show export actions only after successful save
   const [hasSaved, setHasSaved] = useState(false);
-  const [savedHistoryId, setSavedHistoryId] = useState<number | null>(null);
+  const [_savedHistoryId, _setSavedHistoryId] = useState<number | null>(null);
 
   // Tab navigation functions
 
@@ -401,7 +401,7 @@ export default function RegisterPatientPage() {
   const [afterMeal, setAfterMeal] = useState<boolean>(false);
   const [beforeMeal, setBeforeMeal] = useState<boolean>(false);
 
-  const savePrescriptionsToTempAPI = async (drugsToSave: Presc[]) => {
+  const _savePrescriptionsToTempAPI = useCallback(async (drugsToSave: Presc[]) => {
     try {
       const { createTempPrescriptionForPatient } = await import('@/utilities/api/tempPrescriptions');
       const currentPatientId = patientIdParam;
@@ -415,99 +415,98 @@ export default function RegisterPatientPage() {
       const result = await createTempPrescriptionForPatient(currentPatientId, drugsToSave);
       
       console.log('Saved prescriptions to temp API:', result);
-      setTempPrescriptionRecordId(result.id); 
+      _setTempPrescriptionRecordId(result.id); 
       return result;
     } catch (error: any) {
       console.warn('Temp API interaction failed:', error.message);
       toast.error('Failed to save temporary prescription.');
       return null;
     }
-  };
+  }, [_setTempPrescriptionRecordId, patientIdParam, toast]);
 
 
 
-  const loadTempDrugs = async () => {
-    setIsLoadingPrescriptions(true);
-    console.log('loadTempDrugs: Fetching for patientIdParam:', patientIdParam);
-
-    try {
-      const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
-      const currentPatientId = patientIdParam;
-      if (!currentPatientId) {
-        console.warn('loadTempDrugs: No patient ID found in URL.');
-        setPrescriptions([]);
-        setIsLoadingPrescriptions(false);
-        return;
-      }
-      
-      const temps = await listTempPrescriptions(currentPatientId);
-      console.log('loadTempDrugs: Raw temporary prescriptions received:', temps);
-
-      if (temps && Array.isArray(temps) && temps.length > 0) {
-        // Sort by ID (descending) as a fallback for created_at, assuming higher ID is newer.
-        temps.sort((a, b) => {
-          const idA = a.id ? parseInt(a.id, 10) : 0;
-          const idB = b.id ? parseInt(b.id, 10) : 0;
-          return idB - idA;
-        });
-        const tempPrescriptionRecord = temps[0];
-        console.log('loadTempDrugs: Latest temporary prescription record selected (by ID):', tempPrescriptionRecord);
-
-        setTempPrescriptionRecordId(tempPrescriptionRecord.id);
-        
-        let drugs = [];
-        if (tempPrescriptionRecord) { // Ensure record is not null/undefined
-            // Check if json_data is already an object (parsed by Laravel/ORM)
-            if (typeof tempPrescriptionRecord.json_data === 'object' && tempPrescriptionRecord.json_data !== null) {
-                console.log('loadTempDrugs: json_data is already an object:', tempPrescriptionRecord.json_data);
-                if (Array.isArray(tempPrescriptionRecord.json_data.drugs)) {
-                    drugs = tempPrescriptionRecord.json_data.drugs;
-                } else {
-                    console.warn('loadTempDrugs: json_data.drugs is not an array, defaulting to empty.');
-                }
-            } else if (typeof tempPrescriptionRecord.json_data === 'string') {
-                // Otherwise, treat it as a string and attempt parsing
-                console.log('loadTempDrugs: json_data before parsing (string assumption):', tempPrescriptionRecord.json_data);
-                try {
-                    const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
-                    console.log('loadTempDrugs: parsedData after first parse:', parsedData);
-
-                    // Check if the parsed data is another string (double-encoded)
-                    if (typeof parsedData === 'string') {
-                        const innerParsed = JSON.parse(parsedData);
-                        console.log('loadTempDrugs: innerParsed data:', innerParsed);
-                        drugs = innerParsed.drugs || [];
-                    } else {
-                        drugs = parsedData.drugs || [];
-                    }
-                } catch (e) {
-                    console.error("loadTempDrugs: Failed to parse temp prescription json_data (string assumed)", e);
-                    drugs = [];
-                }
-            } else {
-                console.warn('loadTempDrugs: tempPrescriptionRecord.json_data is neither object nor string, defaulting to empty drugs array.');
-            }
+    const loadTempDrugs = useCallback(async () => {
+      setIsLoadingPrescriptions(true);
+      console.log('loadTempDrugs: Fetching for patientIdParam:', patientIdParam);
+  
+      try {
+        const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
+        const currentPatientId = patientIdParam;
+        if (!currentPatientId) {
+          console.warn('loadTempDrugs: No patient ID found in URL.');
+          setPrescriptions([]);
+          setIsLoadingPrescriptions(false);
+          return;
         }
         
-        setPrescriptions(drugs);
-        console.log('loadTempDrugs: Final drugs array set to state:', drugs);
-      } else {
-        console.log('loadTempDrugs: No temporary prescriptions found or response is not an array.');
+        const temps = await listTempPrescriptions(currentPatientId);
+        console.log('loadTempDrugs: Raw temporary prescriptions received:', temps);
+  
+        if (temps && Array.isArray(temps) && temps.length > 0) {
+          // Sort by ID (descending) as a fallback for created_at, assuming higher ID is newer.
+          temps.sort((a, b) => {
+            const idA = a.id ? parseInt(a.id, 10) : 0;
+            const idB = b.id ? parseInt(b.id, 10) : 0;
+            return idB - idA;
+          });
+          const tempPrescriptionRecord = temps[0];
+          console.log('loadTempDrugs: Latest temporary prescription record selected (by ID):', tempPrescriptionRecord);
+  
+          _setTempPrescriptionRecordId(tempPrescriptionRecord.id); 
+          
+          let drugs = [];
+          if (tempPrescriptionRecord) { // Ensure record is not null/undefined
+              // Check if json_data is already an object (parsed by Laravel/ORM)
+              if (typeof tempPrescriptionRecord.json_data === 'object' && tempPrescriptionRecord.json_data !== null) {
+                  console.log('loadTempDrugs: json_data is already an object:', tempPrescriptionRecord.json_data);
+                  if (Array.isArray(tempPrescriptionRecord.json_data.drugs)) {
+                      drugs = tempPrescriptionRecord.json_data.drugs;
+                  } else {
+                      console.warn('loadTempDrugs: json_data.drugs is not an array, defaulting to empty.');
+                  }
+              } else if (typeof tempPrescriptionRecord.json_data === 'string') {
+                  // Otherwise, treat it as a string and attempt parsing
+                  console.log('loadTempDrugs: json_data before parsing (string assumption):', tempPrescriptionRecord.json_data);
+                  try {
+                      const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
+                      console.log('loadTempDrugs: parsedData after first parse:', parsedData);
+  
+                      // Check if the parsed data is another string (double-encoded)
+                      if (typeof parsedData === 'string') {
+                          const innerParsed = JSON.parse(parsedData);
+                          console.log('loadTempDrugs: innerParsed data:', innerParsed);
+                          drugs = innerParsed.drugs || [];
+                      } else {
+                          drugs = parsedData.drugs || [];
+                      }
+                  } catch (e) {
+                      console.error("loadTempDrugs: Failed to parse temp prescription json_data (string assumed)", e);
+                      drugs = [];
+                  }
+              } else {
+                  console.warn('loadTempDrugs: tempPrescriptionRecord.json_data is neither object nor string, defaulting to empty drugs array.');
+              }
+          }
+          
+          setPrescriptions(drugs);
+          console.log('loadTempDrugs: Final drugs array set to state:', drugs);
+        } else {
+          console.log('loadTempDrugs: No temporary prescriptions found or response is not an array.');
+          setPrescriptions([]);
+        }
+      } catch (error: any) {
+        if (error.status === 404) {
+          console.warn('loadTempDrugs: No temporary prescriptions found for this patient (API returned 404).');
+        } else {
+          console.error('loadTempDrugs: Failed to load temp prescriptions:', error);
+          toast.error(`Failed to load temporary prescriptions: ${error.message || 'Unknown error'} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
+        }
         setPrescriptions([]);
+      } finally {
+        setIsLoadingPrescriptions(false);
       }
-    } catch (error: any) {
-      if (error.status === 404) {
-        console.warn('loadTempDrugs: No temporary prescriptions found for this patient (API returned 404).');
-      } else {
-        console.error('loadTempDrugs: Failed to load temp prescriptions:', error);
-        toast.error(`Failed to load temporary prescriptions: ${error.message || 'Unknown error'} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
-      }
-      setPrescriptions([]);
-    } finally {
-      setIsLoadingPrescriptions(false);
-    }
-  };
-
+    }, [patientIdParam, setIsLoadingPrescriptions]); // Add patientIdParam and setIsLoadingPrescriptions as dependencies
   const addDrugToTable = () => {
     // Validate required Drug selection
     const d = drugOptions.find(x => x.id === selectedDrugId);
@@ -765,17 +764,17 @@ export default function RegisterPatientPage() {
   };
 
 
-  const isAutoFilled = selectedPatient !== null;
+  const _isAutoFilled = selectedPatient !== null;
 
   // Progress calculation
-  const getProgressPercentage = useCallback(() => {
+  const _getProgressPercentage = useCallback(() => {
     const steps = ['patient-info', 'prescription', 'complete'];
     const currentIndex = steps.indexOf(currentTab);
     const completedCount = Array.from(completedTabs).length;
     return Math.max(((currentIndex + 1) / steps.length) * 100, (completedCount / steps.length) * 100);
   }, [currentTab, completedTabs]);
 
-  const getStepStatus = useCallback((step: string) => {
+  const _getStepStatus = useCallback((step: string) => {
     if (completedTabs.has(step)) return 'completed';
     if (step === currentTab) return 'current';
     return 'pending';
@@ -1192,9 +1191,9 @@ export default function RegisterPatientPage() {
                   {prescErrors.meal && (
                     <Text size="1" className="text-red-500 mt-1 pl-4">{prescErrors.meal}</Text>
                   )}
-                  <Button onClick={addDrugToTable} disabled={isAddingDrug || isLoadingPrescriptions}>
+                  <Button onClick={addDrugToTable} disabled={_isAddingDrug || isLoadingPrescriptions}>
                     <Plus size={16} />
-                    {isAddingDrug ? 'Adding...' : 'Add'}
+                    {_isAddingDrug ? 'Adding...' : 'Add'}
                   </Button>
                 </Flex>
               </Box>
@@ -1244,20 +1243,20 @@ export default function RegisterPatientPage() {
                         <Table.Row 
                           key={`${p.id}-${p.name}-${idx}`}
                           style={{
-                            opacity: removingDrugIndex === idx ? 0.5 : 1,
+                            opacity: _removingDrugIndex === idx ? 0.5 : 1,
                             transition: 'opacity 0.3s ease',
                             position: 'relative'
                           }}
                         >
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-8 rounded" />
                             ) : (
                               idx + 1
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-32 rounded" />
                             ) : (
                               <Flex align="center" gap="2">
@@ -1268,7 +1267,7 @@ export default function RegisterPatientPage() {
                                   color="red"
                                   onClick={() => removeDrug(idx)}
                                   title="Remove medication"
-                                  disabled={removingDrugIndex !== null}
+                                  disabled={_removingDrugIndex !== null}
                                 >
                                   <Trash2 size={14} />
                                 </IconButton>
@@ -1276,69 +1275,69 @@ export default function RegisterPatientPage() {
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.morning
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.afternoon
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.evening
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.night
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
                               p.period
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.qty
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.afterMeal ? 'Yes' : 'No'
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-12 rounded" />
                             ) : (
                               p.beforeMeal ? 'Yes' : 'No'
                             )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
                                                              `$${(p.price || 0).toFixed(2)}`                            )}
                           </Table.Cell>
                           <Table.Cell>
-                            {removingDrugIndex === idx ? (
+                            {_removingDrugIndex === idx ? (
                               <Box className="animate-pulse bg-gray-200 h-4 w-16 rounded" />
                             ) : (
                               `$${(p.price * p.qty).toFixed(2)}`
@@ -1346,7 +1345,7 @@ export default function RegisterPatientPage() {
                           </Table.Cell>
                         </Table.Row>
                       ))}
-                      {isAddingDrug && (
+                      {_isAddingDrug && (
                         <Table.Row style={{ backgroundColor: 'var(--blue-2)' }}>
                           <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-8 rounded" /></Table.Cell>
                           <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-32 rounded" /></Table.Cell>
@@ -1362,7 +1361,7 @@ export default function RegisterPatientPage() {
                           <Table.Cell><Box className="animate-pulse bg-blue-300 h-4 w-16 rounded" /></Table.Cell>
                         </Table.Row>
                       )}
-                      {prescriptions.length === 0 && !isAddingDrug && (
+                      {prescriptions.length === 0 && !_isAddingDrug && (
                         <Table.Row>
                           <Table.Cell colSpan={12}>
                             <Flex direction="column" align="center" justify="center" py="6">

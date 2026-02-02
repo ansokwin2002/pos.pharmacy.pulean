@@ -55,8 +55,8 @@ export default function OPDHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedHistory, setSelectedHistory] = useState<HistoryData | null>(null);
-  const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
+  const [_selectedHistory, _setSelectedHistory] = useState<HistoryData | null>(null);
+  const [_isPdfDialogOpen, _setIsPdfDialogOpen] = useState(false);
 
   // Fetch histories from API
   useEffect(() => {

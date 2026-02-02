@@ -12,8 +12,8 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import DateInput from '@/components/common/DateInput';
 import PatientsTableSkeleton from '@/components/opd/PatientsTableSkeleton';
 import HistoryResultsTableSkeleton from '@/components/opd/HistoryResultsTableSkeleton';
-import AOS from 'aos';
 import 'aos/dist/aos.css';
+import AOS from 'aos';
 import useDebounce from '@/hooks/useDebounce'; // Import useDebounce
 
 // Interfaces
@@ -284,16 +284,10 @@ export default function PatientListPage() {
   useEffect(() => {
     // Dynamically import AOS on client side
     if (typeof window !== 'undefined') {
-      import('aos')
-        .then((module) => { // Renamed parameter to 'module' for clarity
-          module.default.init({ // Correctly access the default export
-            duration: 1000,
-            once: true,
-          });
-          // Import AOS CSS after initialization
-          import('aos/dist/aos.css');
-        })
-        .catch((error) => console.error('Failed to load AOS:', error));
+      AOS.init({ // Correctly access the default export
+        duration: 1000,
+        once: true,
+      });
     }
   }, []);
 

@@ -9,8 +9,7 @@ import {
   TextField,
   Select,
   Dialog,
-  AlertDialog,
-  Text as RadixText
+  AlertDialog
 } from '@radix-ui/themes';
 import { Drug } from '@/types/inventory';
 import DrugsTable from '@/components/drugs/DrugsTable';
@@ -21,7 +20,7 @@ import { Plus, Search, RefreshCcw, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { listDrugs, createDrug, updateDrug, deleteDrug, getDrug } from '@/utilities/api/drugs';
+import { listDrugs, createDrug, updateDrug, deleteDrug } from '@/utilities/api/drugs';
 import { toast } from 'sonner';
 import useDebounce from '@/hooks/useDebounce';
 
@@ -361,7 +360,7 @@ export default function DrugsPage() {
           <Callout.Root color="blue" size="1" mb="4">
             <Callout.Text>
               {searchTerm ? (
-                <>Showing results for "<strong>{searchTerm}</strong>"</>
+                <>Showing results for &quot;<strong>{searchTerm}</strong>&quot;</>
               ) : (
                 <>Manage your pharmaceutical inventory. Track drug quantities, expiry dates, and maintain accurate records.</>
               )}

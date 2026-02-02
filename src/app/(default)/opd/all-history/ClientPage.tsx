@@ -11,8 +11,7 @@ import {
   TextField,
   IconButton,
   Tooltip,
-  Dialog,
-  Skeleton
+  Dialog
 } from '@radix-ui/themes';
 import { PageHeading } from '@/components/common/PageHeading';
 import { Search, FileText, Download, Printer } from 'lucide-react';
@@ -45,9 +44,9 @@ interface HistoryData {
 }
 
 export default function AllHistoryClientPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const [histories, setHistories] = useState<PatientHistory[]>([]);
-  const [unpaginatedFilteredHistories, setUnpaginatedFilteredHistories] = useState<PatientHistory[]>([]);
+  const [unpaginatedFilteredHistories, _setUnpaginatedFilteredHistories] = useState<PatientHistory[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search term
   const [dateFilter, setDateFilter] = useState<Date | null>(null);
@@ -123,15 +122,15 @@ export default function AllHistoryClientPage() {
       setPdfPreviewUrl(url);
       setSelectedHistoryFileName(fileName); // Save the filename
       setIsPdfPreviewOpen(true);
-    } catch (e: any) { // Explicitly type e as any for now to access message
-      console.error('Failed to generate PDF:', e);
-      toast.error(`Failed to generate PDF: ${e.message || e}`); // Display the error message
+    } catch (_e: any) { // Explicitly type e as any for now to access message
+      console.error('Failed to generate PDF:', _e);
+      toast.error(`Failed to generate PDF: ${_e.message || _e}`); // Display the error message
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  const filteredAndSortedHistories = useMemo(() => {
+  const _filteredAndSortedHistories = useMemo(() => {
     let newFilteredHistories = [...histories];
 
     // Filtering logic
@@ -233,7 +232,7 @@ export default function AllHistoryClientPage() {
     }
   };
 
-  const getPrescriptionCount = (jsonData: string): number => {
+  const _getPrescriptionCount = (jsonData: string): number => {
     try {
       const data: HistoryData = JSON.parse(jsonData);
       const prescriptions = data.prescriptions || data.prescription || [];

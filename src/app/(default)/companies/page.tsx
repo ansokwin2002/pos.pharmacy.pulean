@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Box, Button, Flex, TextField, Dialog, AlertDialog, Text, Callout, Select } from '@radix-ui/themes';
+import { Box, Button, Flex, TextField, Dialog, AlertDialog, Callout, Select } from '@radix-ui/themes';
 import { Plus, Search, RefreshCcw, Trash2 } from 'lucide-react';
 import { PageHeading } from '@/components/common/PageHeading';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -13,6 +12,8 @@ import { Company } from '@/types/company';
 import { listCompanies, createCompany, updateCompany, deleteCompany } from '@/utilities/api/companies';
 import { toast } from 'sonner';
 import useDebounce from '@/hooks/useDebounce';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -35,15 +36,10 @@ export default function CompaniesPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      import('aos')
-        .then((module) => {
-          module.default.init({
-            duration: 1000,
-            once: true,
-          });
-          import('aos/dist/aos.css');
-        })
-        .catch((error) => console.error('Failed to load AOS:', error));
+      AOS.init({
+        duration: 1000,
+        once: true,
+      });
     }
   }, []);
 
@@ -60,7 +56,7 @@ export default function CompaniesPage() {
         } as any);
         setCompaniesData(companies);
         setTotalCompanies(companies.length); // Assuming listCompanies returns an array and total is its length if no backend pagination total is provided. This might need adjustment if backend implements full pagination.
-      } catch (error) {
+      } catch (_error) {
         toast.error('Failed to fetch companies.');
       } finally {
         setIsLoading(false);
@@ -76,7 +72,7 @@ export default function CompaniesPage() {
       setTotalCompanies(totalCompanies + 1);
       setIsAddDialogOpen(false);
       toast.success('Company created successfully!');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to create company.');
     }
   };
@@ -94,7 +90,7 @@ export default function CompaniesPage() {
       setIsEditDialogOpen(false);
       setSelectedCompany(null);
       toast.success('Company updated successfully!');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to update company.');
     }
   };
@@ -113,7 +109,7 @@ export default function CompaniesPage() {
       setIsDeleteDialogOpen(false);
       setSelectedCompany(null);
       toast.success('Company deleted successfully!');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete company.');
     }
   };
@@ -144,7 +140,7 @@ export default function CompaniesPage() {
       setSelectedIds([]);
       setIsDeleteSelectedDialogOpen(false);
       toast.success(`${selectedIds.length} companies deleted successfully!`);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete selected companies.');
     }
   };
@@ -262,7 +258,7 @@ export default function CompaniesPage() {
         <AlertDialog.Content style={{ maxWidth: 450 }}>
           <AlertDialog.Title>Delete Company</AlertDialog.Title>
           <AlertDialog.Description>
-            <p>{`Are you sure you want to delete "${selectedCompany?.name}"? This action cannot be undone.`}</p>
+            <p>{`Are you sure you want to delete "&quot;${selectedCompany?.name}&quot;"? This action cannot be undone.`}</p>
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel><Button variant="soft" color="gray">Cancel</Button></AlertDialog.Cancel>
