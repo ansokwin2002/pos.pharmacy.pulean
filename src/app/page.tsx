@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 export default function Home() {
   const router = useRouter();
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    router.replace(token ? '/dashboard' : '/auth/login');
+    router.replace('/dashboard');
   }, [router]);
   return null;
 }
