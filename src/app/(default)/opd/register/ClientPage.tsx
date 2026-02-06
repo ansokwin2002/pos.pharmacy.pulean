@@ -11,6 +11,11 @@ import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
   const router = useRouter(); // Initialize useRouter
+  // Get search params for secure patient ID lookup
+  const searchParams = useSearchParams();
+
+  // Extract patient ID from URL parameters (secure approach)
+  const patientIdParam = searchParams.get('id');
   // Existing patient selection (fake dataset)
   type Patient = {
     id: string;
@@ -65,6 +70,88 @@ export default function RegisterPatientPage() {
   const [_isAddingDrug, _setIsAddingDrug] = useState(false);
   const [_removingDrugIndex, _setRemovingDrugIndex] = useState<number | null>(null);
 
+    const loadTempDrugs = useCallback(async () => {
+      setIsLoadingPrescriptions(true);
+      console.log('loadTempDrugs: Fetching for patientIdParam:', patientIdParam);
+  
+      try {
+        const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
+        const currentPatientId = patientIdParam;
+        if (!currentPatientId) {
+          console.warn('loadTempDrugs: No patient ID found in URL.');
+          setPrescriptions([]);
+          setIsLoadingPrescriptions(false);
+          return;
+        }
+        
+        const temps = await listTempPrescriptions(currentPatientId);
+        console.log('loadTempDrugs: Raw temporary prescriptions received:', temps);
+  
+        if (temps && Array.isArray(temps) && temps.length > 0) {
+          // Sort by ID (descending) as a fallback for created_at, assuming higher ID is newer.
+          temps.sort((a, b) => {
+            const idA = a.id ? parseInt(a.id, 10) : 0;
+            const idB = b.id ? parseInt(b.id, 10) : 0;
+            return idB - idA;
+          });
+          const tempPrescriptionRecord = temps[0];
+          console.log('loadTempDrugs: Latest temporary prescription record selected (by ID):', tempPrescriptionRecord);
+  
+          _setTempPrescriptionRecordId(tempPrescriptionRecord.id); 
+          
+          let drugs = [];
+          if (tempPrescriptionRecord) { // Ensure record is not null/undefined
+              // Check if json_data is already an object (parsed by Laravel/ORM)
+              if (typeof tempPrescriptionRecord.json_data === 'object' && tempPrescriptionRecord.json_data !== null) {
+                  console.log('loadTempDrugs: json_data is already an object:', tempPrescriptionRecord.json_data);
+                  if (Array.isArray(tempPrescriptionRecord.json_data.drugs)) {
+                      drugs = tempPrescriptionRecord.json_data.drugs;
+                  } else {
+                      console.warn('loadTempDrugs: json_data.drugs is not an array, defaulting to empty.');
+                  }
+              } else if (typeof tempPrescriptionRecord.json_data === 'string') {
+                  // Otherwise, treat it as a string and attempt parsing
+                  console.log('loadTempDrugs: json_data before parsing (string assumption):', tempPrescriptionRecord.json_data);
+                  try {
+                      const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
+                      console.log('loadTempDrugs: parsedData after first parse:', parsedData);
+  
+                      // Check if the parsed data is another string (double-encoded)
+                      if (typeof parsedData === 'string') {
+                          const innerParsed = JSON.parse(parsedData);
+                          console.log('loadTempDrugs: innerParsed data:', innerParsed);
+                          drugs = innerParsed.drugs || [];
+                      } else {
+                          drugs = parsedData.drugs || [];
+                      }
+                  } catch (e) {
+                      console.error("loadTempDrugs: Failed to parse temp prescription json_data (string assumed)", e);
+                      drugs = [];
+                  }
+              } else {
+                  console.warn('loadTempDrugs: tempPrescriptionRecord.json_data is neither object nor string, defaulting to empty drugs array.');
+              }
+          }
+          
+          setPrescriptions(drugs);
+          console.log('loadTempDrugs: Final drugs array set to state:', drugs);
+        } else {
+          console.log('loadTempDrugs: No temporary prescriptions found or response is not an array.');
+          setPrescriptions([]);
+        }
+      } catch (error: any) {
+        if (error.status === 404) {
+          console.warn('loadTempDrugs: No temporary prescriptions found for this patient (API returned 404).');
+        } else {
+          console.error('loadTempDrugs: Failed to load temp prescriptions:', error);
+          toast.error(`Failed to load temporary prescriptions: ${error.message || 'Unknown error'} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
+        }
+        setPrescriptions([]);
+      } finally {
+        setIsLoadingPrescriptions(false);
+      }
+    }, [patientIdParam, setIsLoadingPrescriptions]);
+
   // Tab management
   const [currentTab, setCurrentTab] = useState<'patient-info' | 'prescription' | 'complete'>('patient-info');
   const [completedTabs, setCompletedTabs] = useState<Set<string>>(() => new Set());
@@ -78,19 +165,7 @@ export default function RegisterPatientPage() {
     }
   }, []); // Run once on client mount
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('currentRegisterTab', currentTab);
-    }
-  }, [currentTab]);
 
-  // Get search params for secure patient ID lookup
-  const searchParams = useSearchParams();
-
-  // Extract patient ID from URL parameters (secure approach)
-  const patientIdParam = searchParams.get('id');
-
-  // Load temp drugs on mount
   useEffect(() => {
     if (currentTab === 'prescription' && !patientIdParam) { // Only load temp drugs for new registrations
       loadTempDrugs();
@@ -426,87 +501,7 @@ export default function RegisterPatientPage() {
 
 
 
-    const loadTempDrugs = useCallback(async () => {
-      setIsLoadingPrescriptions(true);
-      console.log('loadTempDrugs: Fetching for patientIdParam:', patientIdParam);
-  
-      try {
-        const { listTempPrescriptions } = await import('@/utilities/api/tempPrescriptions');
-        const currentPatientId = patientIdParam;
-        if (!currentPatientId) {
-          console.warn('loadTempDrugs: No patient ID found in URL.');
-          setPrescriptions([]);
-          setIsLoadingPrescriptions(false);
-          return;
-        }
-        
-        const temps = await listTempPrescriptions(currentPatientId);
-        console.log('loadTempDrugs: Raw temporary prescriptions received:', temps);
-  
-        if (temps && Array.isArray(temps) && temps.length > 0) {
-          // Sort by ID (descending) as a fallback for created_at, assuming higher ID is newer.
-          temps.sort((a, b) => {
-            const idA = a.id ? parseInt(a.id, 10) : 0;
-            const idB = b.id ? parseInt(b.id, 10) : 0;
-            return idB - idA;
-          });
-          const tempPrescriptionRecord = temps[0];
-          console.log('loadTempDrugs: Latest temporary prescription record selected (by ID):', tempPrescriptionRecord);
-  
-          _setTempPrescriptionRecordId(tempPrescriptionRecord.id); 
-          
-          let drugs = [];
-          if (tempPrescriptionRecord) { // Ensure record is not null/undefined
-              // Check if json_data is already an object (parsed by Laravel/ORM)
-              if (typeof tempPrescriptionRecord.json_data === 'object' && tempPrescriptionRecord.json_data !== null) {
-                  console.log('loadTempDrugs: json_data is already an object:', tempPrescriptionRecord.json_data);
-                  if (Array.isArray(tempPrescriptionRecord.json_data.drugs)) {
-                      drugs = tempPrescriptionRecord.json_data.drugs;
-                  } else {
-                      console.warn('loadTempDrugs: json_data.drugs is not an array, defaulting to empty.');
-                  }
-              } else if (typeof tempPrescriptionRecord.json_data === 'string') {
-                  // Otherwise, treat it as a string and attempt parsing
-                  console.log('loadTempDrugs: json_data before parsing (string assumption):', tempPrescriptionRecord.json_data);
-                  try {
-                      const parsedData = JSON.parse(tempPrescriptionRecord.json_data);
-                      console.log('loadTempDrugs: parsedData after first parse:', parsedData);
-  
-                      // Check if the parsed data is another string (double-encoded)
-                      if (typeof parsedData === 'string') {
-                          const innerParsed = JSON.parse(parsedData);
-                          console.log('loadTempDrugs: innerParsed data:', innerParsed);
-                          drugs = innerParsed.drugs || [];
-                      } else {
-                          drugs = parsedData.drugs || [];
-                      }
-                  } catch (e) {
-                      console.error("loadTempDrugs: Failed to parse temp prescription json_data (string assumed)", e);
-                      drugs = [];
-                  }
-              } else {
-                  console.warn('loadTempDrugs: tempPrescriptionRecord.json_data is neither object nor string, defaulting to empty drugs array.');
-              }
-          }
-          
-          setPrescriptions(drugs);
-          console.log('loadTempDrugs: Final drugs array set to state:', drugs);
-        } else {
-          console.log('loadTempDrugs: No temporary prescriptions found or response is not an array.');
-          setPrescriptions([]);
-        }
-      } catch (error: any) {
-        if (error.status === 404) {
-          console.warn('loadTempDrugs: No temporary prescriptions found for this patient (API returned 404).');
-        } else {
-          console.error('loadTempDrugs: Failed to load temp prescriptions:', error);
-          toast.error(`Failed to load temporary prescriptions: ${error.message || 'Unknown error'} ${error.detail?.message ? ` - ${error.detail.message}` : ''}`);
-        }
-        setPrescriptions([]);
-      } finally {
-        setIsLoadingPrescriptions(false);
-      }
-    }, [patientIdParam, setIsLoadingPrescriptions]); // Add patientIdParam and setIsLoadingPrescriptions as dependencies
+
   const addDrugToTable = () => {
     // Validate required Drug selection
     const d = drugOptions.find(x => x.id === selectedDrugId);
@@ -718,7 +713,7 @@ export default function RegisterPatientPage() {
       }
 
       setHasSaved(true);
-      setSavedHistoryId(saved.id);
+      _setSavedHistoryId(saved.id);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
       // --- Stock Deduction Logic ---
@@ -739,7 +734,7 @@ export default function RegisterPatientPage() {
 
       // Clear temp-related states, as the main history is now saved
       setPrescriptions([]);
-      setTempPrescriptionRecordId(null);
+      _setTempPrescriptionRecordId(null);
       
       console.log('Saved/Updated patient history:', saved);
     } catch (e: any) {
@@ -1200,7 +1195,7 @@ export default function RegisterPatientPage() {
             </Box>
 
             {/* Prescription table */}
-            <Box mt="4" key={`prescription-table-${renderKey}`}>
+            <Box mt="4" key={`prescription-table-${_renderKey}`}>
               <Table.Root variant="surface" style={{ width: '100%' }}>
                 <Table.Header>
                   <Table.Row>

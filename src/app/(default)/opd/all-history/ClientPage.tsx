@@ -25,7 +25,7 @@ import { patientHistoryData } from '@/data/PatientHistoryData';
 import { format } from 'date-fns';
 import useDebounce from '@/hooks/useDebounce'; // Import useDebounce
 
-interface PatientHistory {
+export interface PatientHistory {
   id: string;
   patient_id: string;
   patient_name: string;

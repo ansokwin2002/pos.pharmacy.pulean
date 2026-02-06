@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Flex, TextField, Dialog, AlertDialog, Callout, Select } from '@radix-ui/themes';
 import { Plus, Search, RefreshCcw, Trash2 } from 'lucide-react';
 import { PageHeading } from '@/components/common/PageHeading';
@@ -155,7 +156,7 @@ export default function CompaniesPage() {
   return (
     <Box className="space-y-4">
       <Flex direction={{ initial: "column", sm: "row" }} justify="between" align={{ initial: "stretch", sm: "center" }} gap={{ initial: "4", sm: "0" }} mb="5">
-        <PageHeading title="Companies" noMarginBottom />
+        <PageHeading title="Companies" description="Manage your supplier companies. Track company details and maintain accurate records." noMarginBottom />
         {selectedIds.length > 0 && (
           <Button color="red" onClick={handleDeleteSelected}>
             <Trash2 size={16} /> Delete Selected ({selectedIds.length})
@@ -258,7 +259,7 @@ export default function CompaniesPage() {
         <AlertDialog.Content style={{ maxWidth: 450 }}>
           <AlertDialog.Title>Delete Company</AlertDialog.Title>
           <AlertDialog.Description>
-            <p>{`Are you sure you want to delete "&quot;${selectedCompany?.name}&quot;"? This action cannot be undone.`}</p>
+            <p>{`Are you sure you want to delete &quot;${selectedCompany?.name}&quot;? This action cannot be undone.`}</p>
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel><Button variant="soft" color="gray">Cancel</Button></AlertDialog.Cancel>

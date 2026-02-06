@@ -20,6 +20,7 @@ import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { formatCurrency } from '@/utilities';
+import Image from 'next/image';
 
 export default function DrugDetailPage() {
   const router = useRouter();
@@ -219,13 +220,11 @@ export default function DrugDetailPage() {
 
                   {drug.image && (
 
-                    <Box className="mb-4">
+                                        <Box className="mb-4">
 
+                                          <Image src={drug.image} alt={`${drug.name} image`} width={256} height={256} className="w-full h-auto max-h-64 object-contain rounded-md" />
 
-
-                      <img src={drug.image} alt={`${drug.name} image`} className="w-full h-auto max-h-64 object-contain rounded-md" />
-
-                    </Box>
+                                        </Box>
 
                   )}
 

@@ -121,7 +121,7 @@ export default function OPDHistoryPage() {
   const handleRowClick = async (history: PatientHistory) => {
     try {
       const data: HistoryData = JSON.parse(history.json_data);
-      setSelectedHistory(data);
+      _setSelectedHistory(data);
       
       // Generate PDF and open in new window
       await generateAndShowPDF(data);
