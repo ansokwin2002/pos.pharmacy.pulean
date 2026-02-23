@@ -311,6 +311,65 @@ export default function RegisterPatientPage() {
   const [hasSaved, setHasSaved] = useState(false);
   const [_savedHistoryId, _setSavedHistoryId] = useState<number | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+
+  // Function to generate PDF preview
+  const generatePreview = useCallback(async () => {
+    setIsGeneratingPreview(true);
+    try {
+      const patientData = {
+        id: selectedPatientId || patientIdParam || undefined,
+        name,
+        gender,
+        age,
+        telephone,
+        address,
+        signs_of_life: signOfLife,
+        pe,
+        symptom,
+        diagnosis,
+      };
+
+      const prescriptionData = prescriptions.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        morning: p.morning,
+        afternoon: p.afternoon,
+        evening: p.evening,
+        night: p.night,
+        period: p.period,
+        qty: p.qty,
+        afterMeal: p.afterMeal,
+        beforeMeal: p.beforeMeal,
+        total: p.price * p.qty,
+      }));
+
+      const totalAmount = prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0);
+
+      const historyData = {
+        patient: patientData,
+        prescriptions: prescriptionData,
+        totalAmount,
+        createdAt: new Date().toISOString(),
+      };
+
+      const { generatePdfFromComponent } = await import('@/utilities/pdf');
+      const { blob } = await generatePdfFromComponent(historyData, historyData.createdAt);
+      
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+      
+      const url = URL.createObjectURL(blob);
+      setPdfUrl(url);
+    } catch (e) {
+      console.error('Failed to generate preview:', e);
+      toast.error('Failed to generate PDF preview');
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  }, [selectedPatientId, patientIdParam, name, gender, age, telephone, address, signOfLife, pe, symptom, diagnosis, prescriptions, pdfUrl]);
 
   // Cleanup PDF URL on unmount
   useEffect(() => {
@@ -353,8 +412,9 @@ export default function RegisterPatientPage() {
       setCompletedTabs(prev => new Set([...prev, 'patient-info']));
     } else if (tabId === 'complete' && isPatientInfoValid && prescriptions.length > 0) {
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription']));
+      generatePreview();
     }
-  }, [prescriptions.length, validatePatientInfo, hasSaved]);
+  }, [prescriptions.length, validatePatientInfo, hasSaved, generatePreview]);
 
   const proceedToNextTab = useCallback(() => {
     const isPatientInfoValid = validatePatientInfo();
@@ -727,15 +787,8 @@ export default function RegisterPatientPage() {
       _setSavedHistoryId(saved.id);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
-      // Generate PDF URL for preview
-      try {
-        const { generatePdfFromComponent } = await import('@/utilities/pdf');
-        const { blob } = await generatePdfFromComponent(historyData, historyData.createdAt);
-        const url = URL.createObjectURL(blob);
-        setPdfUrl(url);
-      } catch (pdfErr) {
-        console.error('Failed to generate PDF for preview:', pdfErr);
-      }
+      // Re-generate PDF URL for preview with final saved data if needed
+      generatePreview();
 
       // --- Stock Deduction Logic ---
       try {
@@ -1434,40 +1487,31 @@ export default function RegisterPatientPage() {
                   borderRadius: '6px',
                   border: hasSaved ? '1px solid var(--green-6)' : 'none'
                 }}>
-                  <Text size="2" style={{ color: hasSaved ? 'var(--green-11)' : 'var(--gray-11)' }}>
-                    {hasSaved ? '✅ Success! OPD history has been saved.' : '✅ Step 3: Review the patient information and prescription details. Save the patient record and export/print the prescription.'}
-                  </Text>
-                </Box>
-                {/* Summary Section */}
+                                    <Text size="2" style={{ color: hasSaved ? 'var(--green-11)' : 'var(--gray-11)' }}>
+                                      {hasSaved ? '✅ Success! OPD history has been saved.' : '✅ Step 3: Review the prescription preview below. Save the patient record and export/print the prescription.'}
+                                    </Text>
+                                  </Box>
+                                  
+                                  {/* PDF Preview Frame (Replaces Summary Section) */}
                 <Box mb="4">
-                  <Text size="4" weight="bold" mb="3">Summary</Text>
-
-                  {/* Patient Summary */}
-                  <Card mb="3">
-                    <Box p="3">
-                      <Text size="3" weight="bold" mb="2">Patient Information</Text>
-                      <Flex direction="column" gap="1">
-                        <Text size="2"><strong>Name:</strong> {name}</Text>
-                        <Text size="2"><strong>Gender:</strong> {gender}</Text>
-                        <Text size="2"><strong>Age:</strong> {age}</Text>
-                        <Text size="2"><strong>Phone:</strong> {telephone}</Text>
-                        <Text size="2"><strong>Address:</strong> {address}</Text>
-                        <Text size="2"><strong>Vital sign:</strong> {signOfLife}</Text>
-                        <Text size="2"><strong>PE:</strong> {pe}</Text>
-                        <Text size="2"><strong>Symptom:</strong> {symptom}</Text>
-                        <Text size="2"><strong>Diagnosis:</strong> {diagnosis}</Text>
-                      </Flex>
-                    </Box>
-                  </Card>
-
-                  {/* Prescription Summary */}
-                  <Card mb="3">
-                    <Box p="3">
-                      <Text size="3" weight="bold" mb="2">Prescription Summary</Text>
-                      <Text size="2" mb="2">Total Medications: {prescriptions.length}</Text>
-                      <Text size="2" weight="bold">Total Cost: ${prescriptions.reduce((sum, p) => sum + (p.price * p.qty), 0).toFixed(2)}</Text>
-                    </Box>
-                  </Card>
+                  {isGeneratingPreview ? (
+                    <Flex direction="column" align="center" justify="center" p="8" style={{ height: '600px', backgroundColor: 'var(--gray-2)', borderRadius: '8px' }}>
+                      <Box className="animate-spin" style={{ width: '32px', height: '32px', border: '3px solid var(--gray-6)', borderTopColor: 'var(--blue-9)', borderRadius: '50%', marginBottom: '12px' }} />
+                      <Text size="2" color="gray">Generating prescription preview...</Text>
+                    </Flex>
+                  ) : pdfUrl ? (
+                    <Card style={{ height: '700px', overflow: 'hidden', padding: 0 }}>
+                      <iframe 
+                        src={pdfUrl} 
+                        style={{ width: '100%', height: '100%', border: 'none' }} 
+                        title="Prescription Preview"
+                      />
+                    </Card>
+                  ) : (
+                    <Flex align="center" justify="center" style={{ height: '200px', backgroundColor: 'var(--gray-2)', borderRadius: '8px' }}>
+                      <Text color="gray">Preview not available. Please go back and ensure all details are correct.</Text>
+                    </Flex>
+                  )}
                 </Box>
 
                 {/* Action Buttons */}
@@ -1476,37 +1520,25 @@ export default function RegisterPatientPage() {
                     Back: Prescription
                   </Button>
                   <Flex gap="2">
-                    <Button variant="soft" color="gray">
+                    <Button variant="soft" color="gray" onClick={() => router.push('/opd/patients')}>
                       Cancel
                     </Button>
-                    <Button onClick={handleSubmit}>
+                    <Button onClick={handleSubmit} disabled={hasSaved}>
                       <Save size={16} />
-                      Save OPD History
+                      {hasSaved ? 'Already Saved' : 'Save OPD History'}
                     </Button>
                   </Flex>
                 </Flex>
 
                 {hasSaved && (
-                  <Box mt="4">
-                    <Box p="3" mb="4" style={{ backgroundColor: 'var(--green-2)', borderRadius: '6px', border: '1px solid var(--green-6)' }}>
-                      <Text size="2" style={{ color: 'var(--green-11)' }} mb="2">
-                        ✅ OPD history saved successfully! You can now export or print the prescription.
-                      </Text>
-                      <Flex gap="2" mt="2">
-                        <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>
-                        <Button variant="soft" onClick={previewPrintPdf}>Print Prescription</Button>
-                      </Flex>
-                    </Box>
-                    
-                    {pdfUrl && (
-                      <Card style={{ height: '600px', overflow: 'hidden' }}>
-                        <iframe 
-                          src={pdfUrl} 
-                          style={{ width: '100%', height: '100%', border: 'none' }} 
-                          title="Prescription Preview"
-                        />
-                      </Card>
-                    )}
+                  <Box mt="4" p="3" style={{ backgroundColor: 'var(--green-2)', borderRadius: '6px', border: '1px solid var(--green-6)' }}>
+                    <Text size="2" style={{ color: 'var(--green-11)' }} mb="2">
+                      ✅ OPD history saved successfully! You can now export or print the prescription using the buttons above or preview.
+                    </Text>
+                    <Flex gap="2" mt="2">
+                      <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>
+                      <Button variant="soft" onClick={previewPrintPdf}>Print Prescription</Button>
+                    </Flex>
                   </Box>
                 )}
               </Box>
