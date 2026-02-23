@@ -210,7 +210,8 @@ p.beforeMeal ? "Yes" : "No"
 
 ## Files Modified
 
-- `src/app/(default)/opd/register/ClientPage.tsx`
+- `src/app/(default)/opd/create/patient/ClientPage.tsx`
+- `src/app/(default)/opd/edit/patient/ClientPage.tsx`
   - Line 695: Added "After Meal" and "Before Meal" to headers
   - Lines 705-706: Added afterMeal and beforeMeal data
   - Line 709: Updated empty row padding (11 columns)

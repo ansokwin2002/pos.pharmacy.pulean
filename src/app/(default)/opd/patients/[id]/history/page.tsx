@@ -342,7 +342,7 @@ export default function PatientHistoryPage() {
                             variant="ghost"
                             color="blue"
                             onClick={() => {
-                              router.push(`/opd/register?id=${patientId}`);
+                              router.push(`/opd/edit/patient?id=${patientId}`);
                             }}
                           >
                             <Pencil size={18} />

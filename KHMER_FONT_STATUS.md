@@ -5,7 +5,8 @@
 ### 1. PDF Generation Code is Ready
 - ✅ Font loading code implemented in both PDF generators:
   - `src/app/(default)/opd/patients/[id]/history/page.tsx` (Patient History PDF)
-  - `src/app/(default)/opd/register/ClientPage.tsx` (Register Patient PDF)
+  - `src/app/(default)/opd/create/patient/ClientPage.tsx` (Register Patient PDF)
+  - `src/app/(default)/opd/edit/patient/ClientPage.tsx` (Register Patient PDF)
 - ✅ Tries to load fonts in this order:
   1. NotoSansKhmer-Regular.ttf (Primary)
   2. KhmerOS.ttf (Fallback)

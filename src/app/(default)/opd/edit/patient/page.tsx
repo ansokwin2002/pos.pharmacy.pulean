@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Register — punleukrek pharmacy'
+  title: 'Edit OPD — punleukrek pharmacy'
 };
 
 import { Suspense } from 'react';

@@ -29,7 +29,7 @@ export function PatientActionsMenu({ patient }: PatientActionsMenuProps) {
 
   const handleOPDClick = () => {
     // Navigate to register page with secure patient ID
-    router.push(`/opd/register?id=${patient.id}`);
+    router.push(`/opd/create/patient?id=${patient.id}`);
   };
 
   return (
@@ -66,7 +66,7 @@ export function PatientNameWithMenu({ patient }: PatientNameWithMenuProps) {
 
   const handleOPDClick = () => {
     setIsOPDLoading(true);
-    router.push(`/opd/register?id=${patient.id}`);
+    router.push(`/opd/create/patient?id=${patient.id}`);
   };
 
   const handleHistoryClick = () => {

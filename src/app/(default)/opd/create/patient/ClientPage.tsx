@@ -259,6 +259,7 @@ export default function RegisterPatientPage() {
                 setPe(patient.pe || '');
                 setSymptom(patient.symptom || '');
                 setDiagnosis(patient.diagnosis || '');
+                setPrescriptions([]); // Clear prescriptions for new entry
               }
             } catch (error) {
               console.error('Failed to load patient history:', error);
@@ -309,6 +310,16 @@ export default function RegisterPatientPage() {
   // Show export actions only after successful save
   const [hasSaved, setHasSaved] = useState(false);
   const [_savedHistoryId, _setSavedHistoryId] = useState<number | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  // Cleanup PDF URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
 
   // Tab navigation functions
 
@@ -716,6 +727,16 @@ export default function RegisterPatientPage() {
       _setSavedHistoryId(saved.id);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
+      // Generate PDF URL for preview
+      try {
+        const { generatePdfFromComponent } = await import('@/utilities/pdf');
+        const { blob } = await generatePdfFromComponent(historyData, historyData.createdAt);
+        const url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+      } catch (pdfErr) {
+        console.error('Failed to generate PDF for preview:', pdfErr);
+      }
+
       // --- Stock Deduction Logic ---
       try {
         const { deductDrugStock } = await import('@/utilities/api/stock');
@@ -733,7 +754,7 @@ export default function RegisterPatientPage() {
       // --- End Stock Deduction Logic ---
 
       // Clear temp-related states, as the main history is now saved
-      setPrescriptions([]);
+      // Removed: setPrescriptions([]); to keep summary visible
       _setTempPrescriptionRecordId(null);
       
       console.log('Saved/Updated patient history:', saved);
@@ -1466,14 +1487,26 @@ export default function RegisterPatientPage() {
                 </Flex>
 
                 {hasSaved && (
-                  <Box mt="4" p="3" style={{ backgroundColor: 'var(--green-2)', borderRadius: '6px', border: '1px solid var(--green-6)' }}>
-                    <Text size="2" style={{ color: 'var(--green-11)' }} mb="2">
-                      ✅ OPD history saved successfully! You can now export or print the prescription.
-                    </Text>
-                    <Flex gap="2" mt="2">
-                      <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>
-                      <Button variant="soft" onClick={previewPrintPdf}>Print Prescription</Button>
-                    </Flex>
+                  <Box mt="4">
+                    <Box p="3" mb="4" style={{ backgroundColor: 'var(--green-2)', borderRadius: '6px', border: '1px solid var(--green-6)' }}>
+                      <Text size="2" style={{ color: 'var(--green-11)' }} mb="2">
+                        ✅ OPD history saved successfully! You can now export or print the prescription.
+                      </Text>
+                      <Flex gap="2" mt="2">
+                        <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>
+                        <Button variant="soft" onClick={previewPrintPdf}>Print Prescription</Button>
+                      </Flex>
+                    </Box>
+                    
+                    {pdfUrl && (
+                      <Card style={{ height: '600px', overflow: 'hidden' }}>
+                        <iframe 
+                          src={pdfUrl} 
+                          style={{ width: '100%', height: '100%', border: 'none' }} 
+                          title="Prescription Preview"
+                        />
+                      </Card>
+                    )}
                   </Box>
                 )}
               </Box>

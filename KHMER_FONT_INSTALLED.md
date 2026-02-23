@@ -87,7 +87,8 @@ The installed font supports:
 
 The font is automatically loaded in these files:
 - `src/app/(default)/opd/patients/[id]/history/page.tsx`
-- `src/app/(default)/opd/register/ClientPage.tsx`
+- `src/app/(default)/opd/create/patient/ClientPage.tsx`
+- `src/app/(default)/opd/edit/patient/ClientPage.tsx`
 
 You can use Khmer text directly in your PDF generation:
 

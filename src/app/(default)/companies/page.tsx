@@ -259,7 +259,7 @@ export default function CompaniesPage() {
         <AlertDialog.Content style={{ maxWidth: 450 }}>
           <AlertDialog.Title>Delete Company</AlertDialog.Title>
           <AlertDialog.Description>
-            <p>{`Are you sure you want to delete &quot;${selectedCompany?.name}&quot;? This action cannot be undone.`}</p>
+            Are you sure you want to delete "{selectedCompany?.name}"? This action cannot be undone.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel><Button variant="soft" color="gray">Cancel</Button></AlertDialog.Cancel>

@@ -78,7 +78,7 @@ doc.text("ភេទ:", margin, y);    // Gender
 1. **Patient History PDF** (`src/app/(default)/opd/patients/[id]/history/page.tsx`)
    - Line ~147-230: buildPdf function with Khmer font loading
 
-2. **Register Patient PDF** (`src/app/(default)/opd/register/ClientPage.tsx`)
+2. **Register Patient PDF** (`src/app/(default)/opd/create/patient/ClientPage.tsx`, `src/app/(default)/opd/edit/patient/ClientPage.tsx`)
    - Line ~520-800: buildPdf function with Khmer font loading
 
 ## Troubleshooting
