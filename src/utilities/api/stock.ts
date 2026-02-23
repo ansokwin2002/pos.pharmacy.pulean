@@ -23,7 +23,8 @@ export async function deductDrugStock(payload: StockDeductionPayload) {
   if (!res.ok) {
     let detail: any = null;
     try {
-      detail = await res.json();
+      const text = await res.text();
+      detail = text ? JSON.parse(text) : null;
     } catch (e) {
       console.error('Failed to parse error response:', e);
     }
@@ -33,5 +34,6 @@ export async function deductDrugStock(payload: StockDeductionPayload) {
     throw err;
   }
 
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
 }

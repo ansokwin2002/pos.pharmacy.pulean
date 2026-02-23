@@ -16,7 +16,8 @@ export async function createPatientHistory(payload: PatientHistoryPayload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw await toError(res);
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
 }
 
 export async function listPatientHistories(patientId?: string) {
@@ -94,7 +95,8 @@ export async function updatePatientHistory(id: string, payload: PatientHistoryPa
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw await toError(res);
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
 }
 
 async function toError(res: Response) {

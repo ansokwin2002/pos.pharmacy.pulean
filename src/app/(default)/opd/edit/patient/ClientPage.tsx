@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Box, Flex, Button, TextField, Text, Select, Card, TextArea, Table, Switch, Dialog, Tabs, IconButton } from "@radix-ui/themes";
 import { PageHeading } from '@/components/common/PageHeading';
 import SearchableSelect from '@/components/common/SearchableSelect';
@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 
 export default function RegisterPatientPage() {
   const router = useRouter(); // Initialize useRouter
+  const pathname = usePathname();
+  const isEditMode = pathname?.includes('/edit/');
   // Get search params for secure patient ID lookup
   const searchParams = useSearchParams();
 
@@ -167,7 +169,7 @@ export default function RegisterPatientPage() {
 
 
   useEffect(() => {
-    if (currentTab === 'prescription' && !patientIdParam) { // Only load temp drugs for new registrations
+    if (currentTab === 'prescription' && patientIdParam) { // Load temp drugs if patient ID is present
       loadTempDrugs();
     }
   }, [currentTab, patientIdParam, loadTempDrugs]);
@@ -215,7 +217,9 @@ export default function RegisterPatientPage() {
 
               if (histories && histories.length > 0) {
                 const latestHistory = histories[0];
-                setHistoryId(latestHistory.id); // Set the history ID for editing
+                if (isEditMode) {
+                  setHistoryId(latestHistory.id); // Set the history ID only for editing
+                }
                 const data = JSON.parse(latestHistory.json_data);
                 
                 const patientInfoFromHistory = data.patient || data.patient_info;
@@ -238,8 +242,10 @@ export default function RegisterPatientPage() {
                     setDiagnosis(patientInfoFromHistory.diagnosis || '');
                 }
 
-                if (data.prescriptions) {
+                if (isEditMode && data.prescriptions) {
                   setPrescriptions(data.prescriptions);
+                } else if (!isEditMode) {
+                  setPrescriptions([]); // Ensure empty for new registrations
                 }
                 
                 setErrors({});
@@ -312,6 +318,31 @@ export default function RegisterPatientPage() {
   const [_savedHistoryId, _setSavedHistoryId] = useState<number | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+
+  // Function to reset the form for a new patient
+  const resetForm = useCallback(() => {
+    setName('');
+    setGender('');
+    setAge('');
+    setTelephone('');
+    setAddress('');
+    setSignOfLife('');
+    setPe('');
+    setSymptom('');
+    setDiagnosis('');
+    setPrescriptions([]);
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+    }
+    setPdfUrl(null);
+    setHasSaved(false);
+    setCompletedTabs(new Set());
+    setCurrentTab('patient-info');
+    setHistoryId(null);
+    _setSavedHistoryId(null);
+    // Remove patient ID from URL to ensure a clean state
+    router.replace('/opd/create/patient');
+  }, [pdfUrl, router]);
 
   // Function to generate PDF preview
   const generatePreview = useCallback(async () => {
@@ -633,8 +664,14 @@ export default function RegisterPatientPage() {
       unitType: medicineTypeFilter === 'box-only' ? 'box' : (medicineTypeFilter === 'strip-only' ? 'strip' : 'tablet'),
     };
 
-    setPrescriptions(prev => [...prev, entry]);
+    const newPrescriptions = [...prescriptions, entry];
+    setPrescriptions(newPrescriptions);
     toast.success('Medication added. Save to apply changes.');
+
+    // Sync to temp API if patient selected
+    if (selectedPatientId || patientIdParam) {
+      _savePrescriptionsToTempAPI(newPrescriptions);
+    }
 
     // reset inputs
     setSelectedDrugId('');
@@ -654,6 +691,11 @@ export default function RegisterPatientPage() {
     const newPrescriptions = prescriptions.filter((_, i) => i !== index);
     setPrescriptions(newPrescriptions);
     toast.success('Medication removed. Save to apply changes.');
+    
+    // Sync to temp API if patient selected
+    if (selectedPatientId || patientIdParam) {
+      _savePrescriptionsToTempAPI(newPrescriptions);
+    }
   };
 
 
@@ -784,31 +826,32 @@ export default function RegisterPatientPage() {
       }
 
       setHasSaved(true);
-      _setSavedHistoryId(saved.id);
+      _setSavedHistoryId(saved?.id || null);
+      console.log('Saved history response:', saved);
       setCompletedTabs(prev => new Set([...prev, 'patient-info', 'prescription', 'complete']));
       
       // Re-generate PDF URL for preview with final saved data if needed
       generatePreview();
 
-      // --- Stock Deduction Logic ---
-      try {
-        const { deductDrugStock } = await import('@/utilities/api/stock');
-        const stockDeductions = prescriptions.map(p => ({
-          drug_id: p.id,
-          deducted_quantity: p.qty,
-          deduction_unit: p.unitType,
-        }));
-        await deductDrugStock({ deductions: stockDeductions });
-        toast.success('Drug stock deducted successfully!');
-      } catch (stockErr: any) {
-        console.error('Failed to deduct drug stock:', stockErr);
-        toast.error(stockErr.detail?.message || stockErr.message || 'Failed to deduct drug stock');
-      }
-      // --- End Stock Deduction Logic ---
-
       // Clear temp-related states, as the main history is now saved
-      // Removed: setPrescriptions([]); to keep summary visible
       _setTempPrescriptionRecordId(null);
+      
+      // Delete temp prescriptions from server
+      const currentId = selectedPatientId || patientIdParam;
+      if (currentId) {
+        try {
+          const { deleteTempPrescriptionsByPatientId } = await import('@/utilities/api/tempPrescriptions');
+          await deleteTempPrescriptionsByPatientId(currentId);
+          console.log('Deleted temp prescriptions for patient:', currentId);
+        } catch (tempErr) {
+          console.warn('Failed to delete temp prescriptions:', tempErr);
+        }
+      }
+      
+      // Auto-reset after a short delay so the user sees the success state but is ready for next
+      // Or we can just keep the "Done" button. User said "it should be empty".
+      // I will clear the prescriptions specifically now.
+      setPrescriptions([]);
       
       console.log('Saved/Updated patient history:', saved);
     } catch (e: any) {
@@ -1538,6 +1581,10 @@ export default function RegisterPatientPage() {
                     <Flex gap="2" mt="2">
                       <Button variant="outline" onClick={downloadPdf}>Export PDF</Button>
                       <Button variant="soft" onClick={previewPrintPdf}>Print Prescription</Button>
+                      <Button color="green" onClick={resetForm}>
+                        <Plus size={16} />
+                        Done & New Patient
+                      </Button>
                     </Flex>
                   </Box>
                 )}
